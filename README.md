@@ -10,7 +10,7 @@ This is a prototype SIEM system consisting of:
 - Go 1.18+ (Development only, if building agent from source)
 - Linux environment (for log paths)
 
-## Quick Start
+## Quick Start (Testing)
 
 ### 1. Start the Backend
 ```bash
