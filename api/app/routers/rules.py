@@ -1,0 +1,92 @@
+from fastapi import APIRouter, Depends, Request, Form
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy.orm import Session
+from sqlalchemy import desc
+from datetime import datetime
+import json
+from .. import models, db
+
+router = APIRouter()
+templates = Jinja2Templates(directory="templates")
+
+# --- UI Routes ---
+
+@router.get("/rules", response_class=HTMLResponse)
+def view_rules(request: Request, db: Session = Depends(db.get_db)):
+    rules = db.query(models.DetectionRule).order_by(models.DetectionRule.id).all()
+    # Ensure default rule exists (simple seed check)
+    if not rules:
+        logic = {
+            "keywords": ["curl", "wget", "base64", "nc", "python", "bash -i", "sh -c", "chmod +x"],
+            "patterns": [
+                {"name": "download_pipe_shell", "all_of": ["curl|wget", "| sh| | bash|chmod +x"], "severity": "HIGH"},
+                {"name": "base64_decode_exec", "all_of": ["base64", "bash|sh|python"], "severity": "HIGH"},
+                {"name": "netcat_shell", "all_of": ["nc", "-e|bash -i|python -c"], "severity": "HIGH"}
+            ]
+        }
+        default_rule = models.DetectionRule(
+            name="T1059 Suspicious Command Execution",
+            enabled=True,
+            severity_default="MED",
+            mitre_technique_id="T1059",
+            mitre_technique_name="Command and Scripting Interpreter",
+            log_type_scope="auditd",
+            logic_json=json.dumps(logic)
+        )
+        db.add(default_rule)
+        db.commit()
+        rules = [default_rule]
+
+    return templates.TemplateResponse("rules.html", {"request": request, "rules": rules})
+
+@router.get("/rules/{id}", response_class=HTMLResponse)
+def edit_rule(id: int, request: Request, db: Session = Depends(db.get_db)):
+    rule = db.query(models.DetectionRule).filter(models.DetectionRule.id == id).first()
+    return templates.TemplateResponse("rule_edit.html", {"request": request, "rule": rule})
+
+# --- JSON/Action Routes ---
+
+@router.post("/api/rules/{id}/toggle")
+def toggle_rule(id: int, db: Session = Depends(db.get_db)):
+    rule = db.query(models.DetectionRule).filter(models.DetectionRule.id == id).first()
+    if rule:
+        rule.enabled = not rule.enabled
+        rule.updated_at_utc = datetime.utcnow()
+        
+        # Audit
+        audit = models.ActivityAudit(
+            actor="admin",
+            action="RULE_ENABLED" if rule.enabled else "RULE_DISABLED",
+            object_type="rule",
+            object_id=str(rule.id)
+        )
+        db.add(audit)
+        db.commit()
+    return {"status": "ok", "enabled": rule.enabled}
+
+@router.post("/rules/save")
+def save_rule(
+    id: int = Form(...),
+    name: str = Form(...),
+    severity: str = Form(...),
+    logic: str = Form(...),
+    db: Session = Depends(db.get_db)
+):
+    rule = db.query(models.DetectionRule).filter(models.DetectionRule.id == id).first()
+    if rule:
+        rule.name = name
+        rule.severity_default = severity
+        rule.logic_json = logic
+        rule.updated_at_utc = datetime.utcnow()
+        
+        audit = models.ActivityAudit(
+            actor="admin",
+            action="RULE_UPDATED",
+            object_type="rule",
+            object_id=str(rule.id),
+            details=f"Updated logic"
+        )
+        db.add(audit)
+        db.commit()
+    return RedirectResponse(url="/rules", status_code=303)

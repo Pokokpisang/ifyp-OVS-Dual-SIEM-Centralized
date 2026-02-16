@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/siemdb
+    depends_on:
+      - db
+    networks:
+      - siem-network
+
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=siemdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - siem-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d siemdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+networks:
+  siem-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
