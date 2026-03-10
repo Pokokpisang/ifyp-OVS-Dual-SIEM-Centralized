@@ -1,100 +1,199 @@
 {% extends "base.html" %}
 
-{% block title %}Alerts Explorer{% endblock %}
+{% block title %}OVS SIEM - Security Alerts{% endblock %}
 
-{% block content %}
-<div class="card p-4">
-    <form class="filters" method="get" action="/alerts">
-        <select name="severity">
-            <option value="">All Severities</option>
-            {% for s in severities %}
-            <option value="{{ s }}" {% if s==current_severity %}selected{% endif %}>{{ s }}</option>
-            {% endfor %}
-        </select>
+{% block page_title %}Security Alerts{% endblock %}
 
-        <select name="source">
-            <option value="">All Types (Source)</option>
-            {% for s in sources %}
-            <option value="{{ s }}" {% if s==current_source %}selected{% endif %}>{{ s }}</option>
-            {% endfor %}
-        </select>
+{% block header_actions %}
+<div class="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[11px] font-bold border border-emerald-500/20">
+    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+    LIVE STATUS
+</div>
+{% endblock %}
 
-        <select name="host">
-            <option value="">All Hosts</option>
-            {% for h in hosts %}
-            <option value="{{ h }}" {% if h==current_host %}selected{% endif %}>{{ h }}</option>
-            {% endfor %}
-        </select>
+{% block main_content %}
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto p-8 space-y-6">
 
-        <button type="submit">Filter</button>
-        <a href="/alerts"
-            style="margin-left:10px; font-size:12px; color:var(--text-muted); text-decoration: none;">Clear</a>
-    </form>
+    <!-- Filter Bar -->
+    <div class="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-primary/5 p-4 shadow-sm">
+        <form class="flex flex-wrap items-center gap-4" method="get" action="/alerts">
+            <div class="flex flex-col gap-1.5 min-w-[180px]">
+                <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-primary/60 px-1">Severity</label>
+                <div class="relative">
+                    <select name="severity" class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/20 rounded-lg py-2 pl-3 pr-10 text-sm focus:ring-primary appearance-none">
+                        <option value="">All Severities</option>
+                        {% for s in severities %}
+                        <option value="{{ s }}" {% if s==current_severity %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                    <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">expand_more</span>
+                </div>
+            </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th width="150">Timestamp</th>
-                <th width="80">Severity</th>
-                <th width="120">Host</th>
-                <th width="150">Type / Source</th>
-                <th>Description</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for alert in alerts %}
-            <tr>
-                <td style="font-size:12px; color:var(--text-muted);">{{ alert.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
-                </td>
-                <td><span class="badge {{ alert.severity }}">{{ alert.severity }}</span></td>
-                <td>{{ alert.host }}</td>
-                <td>{{ alert.source }}</td>
-                <td>{{ alert.description }}</td>
-            </tr>
+            <div class="flex flex-col gap-1.5 min-w-[180px]">
+                <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-primary/60 px-1">Source / Type</label>
+                <div class="relative">
+                    <select name="source" class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/20 rounded-lg py-2 pl-3 pr-10 text-sm focus:ring-primary appearance-none">
+                        <option value="">All Types (Source)</option>
+                        {% for s in sources %}
+                        <option value="{{ s }}" {% if s==current_source %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                    <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">expand_more</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-1.5 flex-1 min-w-[240px]">
+                <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-primary/60 px-1">Host / Agent</label>
+                <div class="relative">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">dns</span>
+                    <select name="host" class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/20 rounded-lg py-2 pl-10 pr-4 text-sm focus:ring-primary appearance-none">
+                        <option value="">All Hosts</option>
+                        {% for h in hosts %}
+                        <option value="{{ h }}" {% if h==current_host %}selected{% endif %}>{{ h }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-end h-full gap-2">
+                <button type="submit" class="bg-primary hover:bg-primary/90 text-white rounded-lg px-6 py-2 text-sm font-bold flex items-center gap-2 h-[38px] transition-colors">
+                    <span class="material-symbols-outlined text-lg">filter_list</span>
+                    Apply Filters
+                </button>
+                <a href="/alerts" class="bg-slate-200 dark:bg-primary/10 hover:bg-slate-300 dark:hover:bg-primary/20 text-slate-600 dark:text-slate-300 rounded-lg px-4 py-2 text-sm font-bold flex items-center justify-center h-[38px] transition-colors">
+                    Clear
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table Container -->
+    <div class="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-primary/5 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-200 dark:border-primary/10 flex justify-between items-center bg-slate-50/50 dark:bg-primary/5">
+            <h3 class="font-bold text-slate-900 dark:text-slate-100">Live Alert Stream</h3>
+            <div class="flex items-center gap-4">
+                <span class="text-xs text-slate-500 dark:text-slate-400">Showing page {{ page }} of {{ total_pages }} ({{ total_count }} total)</span>
+                
+                <div class="flex rounded-lg border border-slate-200 dark:border-primary/20 overflow-hidden">
+                    {% if page > 1 %}
+                    <a href="/alerts?page={{ page - 1 }}&severity={{ current_severity }}&source={{ current_source }}&host={{ current_host }}" class="p-1.5 hover:bg-slate-100 dark:hover:bg-primary/10 border-r border-slate-200 dark:border-primary/20 text-slate-500 dark:text-slate-400">
+                        <span class="material-symbols-outlined text-lg">chevron_left</span>
+                    </a>
+                    {% else %}
+                    <button disabled class="p-1.5 border-r border-slate-200 dark:border-primary/20 text-slate-300 dark:text-slate-600 cursor-not-allowed">
+                        <span class="material-symbols-outlined text-lg">chevron_left</span>
+                    </button>
+                    {% endif %}
+                    
+                    {% if page < total_pages %}
+                    <a href="/alerts?page={{ page + 1 }}&severity={{ current_severity }}&source={{ current_source }}&host={{ current_host }}" class="p-1.5 hover:bg-slate-100 dark:hover:bg-primary/10 text-slate-500 dark:text-slate-400">
+                        <span class="material-symbols-outlined text-lg">chevron_right</span>
+                    </a>
+                    {% else %}
+                    <button disabled class="p-1.5 text-slate-300 dark:text-slate-600 cursor-not-allowed">
+                        <span class="material-symbols-outlined text-lg">chevron_right</span>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 dark:bg-primary/5">
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Timestamp</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Severity</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Description / Rule</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Agent / Host</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Source / Type</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-primary/10">
+                    {% for alert in alerts %}
+                    <tr class="hover:bg-slate-50/80 dark:hover:bg-primary/5 transition-colors group">
+                        <td class="px-6 py-5 whitespace-nowrap">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-medium">{{ alert.timestamp.strftime('%Y-%m-%d') }}</span>
+                                <span class="text-xs text-slate-500 dark:text-slate-400">{{ alert.timestamp.strftime('%H:%M:%S') }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5">
+                            {% if alert.severity == 'HIGH' or alert.severity == 'CRITICAL' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-severity-critical/10 text-severity-critical border border-severity-critical/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-severity-critical mr-2"></span>
+                                    {{ alert.severity }}
+                                </span>
+                            {% elif alert.severity == 'MED' or alert.severity == 'WARNING' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-severity-warning/10 text-severity-warning border border-severity-warning/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-severity-warning mr-2"></span>
+                                    {{ alert.severity }}
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-primary mr-2"></span>
+                                    {{ alert.severity }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-5">
+                            <div class="flex flex-col">
+                                <!-- Assuming rule name is part of description or we just show description -->
+                                <span class="text-sm font-bold text-slate-800 dark:text-slate-200">{{ alert.description[:50] }}{% if alert.description|length > 50 %}...{% endif %}</span>
+                                <span class="text-xs text-slate-500 dark:text-slate-400" title="{{ alert.description }}">{{ alert.description }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-slate-400 text-lg">terminal</span>
+                                <span class="text-sm font-mono text-slate-700 dark:text-slate-300">{{ alert.host }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5">
+                            <span class="text-xs font-medium px-2 py-1 rounded-lg bg-slate-100 dark:bg-primary/10 border border-slate-200 dark:border-primary/20">{{ alert.source }}</span>
+                        </td>
+                        <td class="px-6 py-5">
+                            <button class="text-primary hover:text-primary/80 transition-colors opacity-0 group-hover:opacity-100">
+                                <span class="material-symbols-outlined">visibility</span>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                            <div class="flex flex-col items-center gap-2">
+                                <span class="material-symbols-outlined text-4xl opacity-50">search_off</span>
+                                <p>No alerts found matching your criteria.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Footer Pagination -->
+    <div class="flex items-center justify-between px-4">
+        <p class="text-sm text-slate-500 dark:text-slate-400">Showing page {{ page }} of {{ total_pages }}</p>
+        <div class="flex gap-2">
+            {% if page > 1 %}
+            <a href="/alerts?page={{ page - 1 }}&severity={{ current_severity }}&source={{ current_source }}&host={{ current_host }}" class="px-4 py-2 text-sm font-medium bg-white dark:bg-card-dark border border-slate-200 dark:border-primary/20 rounded-lg hover:bg-slate-50 dark:hover:bg-primary/10 transition-colors text-slate-700 dark:text-slate-200">Previous</a>
             {% else %}
-            <tr>
-                <td colspan="5" style="text-align:center; padding:30px;">No alerts found</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <div class="pagination">
-        {% if page > 1 %}
-        <a href="/alerts?page={{ page - 1 }}&severity={{ current_severity }}&source={{ current_source }}&host={{ current_host }}"
-            class="page-link">Prev</a>
-        {% endif %}
-
-        <span style="padding:5px;">Page {{ page }} of {{ total_pages }} ({{ total_count }} total)</span>
-
-        {% if page < total_pages %} <a
-            href="/alerts?page={{ page + 1 }}&severity={{ current_severity }}&source={{ current_source }}&host={{ current_host }}"
-            class="page-link">Next</a>
+            <button disabled class="px-4 py-2 text-sm font-medium bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg text-slate-400 dark:text-slate-600 cursor-not-allowed">Previous</button>
             {% endif %}
+
+            <button class="w-10 h-10 flex items-center justify-center bg-primary text-white rounded-lg text-sm font-bold shadow-lg shadow-primary/20">{{ page }}</button>
+
+            {% if page < total_pages %}
+            <a href="/alerts?page={{ page + 1 }}&severity={{ current_severity }}&source={{ current_source }}&host={{ current_host }}" class="px-4 py-2 text-sm font-medium bg-white dark:bg-card-dark border border-slate-200 dark:border-primary/20 rounded-lg hover:bg-slate-50 dark:hover:bg-primary/10 transition-colors text-slate-700 dark:text-slate-200">Next</a>
+            {% else %}
+            <button disabled class="px-4 py-2 text-sm font-medium bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg text-slate-400 dark:text-slate-600 cursor-not-allowed">Next</button>
+            {% endif %}
+        </div>
     </div>
 </div>
-
-<style>
-    .badge {
-        padding: 3px 8px;
-        border-radius: 4px;
-        font-size: 11px;
-        font-weight: bold;
-        background: #333;
-        color: white;
-    }
-
-    .badge.HIGH {
-        background: var(--secondary);
-    }
-
-    .badge.MED {
-        background: var(--primary);
-    }
-
-    .badge.LOW {
-        background: var(--accent);
-        color: black;
-    }
-</style>
 {% endblock %}

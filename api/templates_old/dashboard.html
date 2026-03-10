@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}System Overview{% endblock %}
+
+{% block controls %}
+<select id="hostSelect"
+    style="background:var(--card-bg); color:var(--text); border:1px solid var(--border); padding:5px;">
+    {% for host in hosts %}
+    <option value="{{ host }}">{{ host }}</option>
+    {% endfor %}
+</select>
+<button onclick="window.location.reload()">Refresh</button>
+{% endblock %}
+
+{% block content %}
+<div class="grid-dashboard">
+    <div class="main-panel">
+        <!-- Row 1: KPIs -->
+        <div class="kpi-row">
+            <div class="card kpi-card">
+                <h3>CPU Usage</h3>
+                <div class="kpi-value" id="kpi-cpu">-</div>
+            </div>
+            <div class="card kpi-card">
+                <h3>RAM Usage</h3>
+                <div class="kpi-value" id="kpi-ram">-</div>
+            </div>
+            <div class="card kpi-card">
+                <h3>Net In</h3>
+                <div class="kpi-value" id="kpi-net-in">-</div>
+            </div>
+            <div class="card kpi-card">
+                <h3>Net Out</h3>
+                <div class="kpi-value" id="kpi-net-out">-</div>
+            </div>
+        </div>
+
+        <!-- Row 2: Charts -->
+        <div class="chart-row">
+            <div class="card">
+                <canvas id="cpuChart"></canvas>
+            </div>
+            <div class="card">
+                <canvas id="netChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="side-panel">
+        <div class="card alert-feed">
+            <h3 style="margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">Security Alerts
+            </h3>
+            <div id="alert-container">
+                <!-- Alerts injected by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/dashboard.js"></script>
+{% endblock %}

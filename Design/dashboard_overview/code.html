@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OVS SIEM - Dashboard Overview</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f05684",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#18161a",
+                        "card-dark": "#232126",
+                        "text-main": "#ededed",
+                        "severity-critical": "#ce2e46",
+                        "severity-warning": "#f59b00",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-text-main font-display min-h-screen flex">
+<!-- Left Sidebar -->
+<aside class="w-64 border-r border-slate-200 dark:border-primary/10 flex flex-col h-screen sticky top-0 bg-background-light dark:bg-background-dark shrink-0">
+<div class="p-6 flex flex-col gap-1">
+<h1 class="text-xl font-bold text-primary tracking-tight">OVS SIEM</h1>
+<p class="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-widest">Security Monitoring</p>
+</div>
+<nav class="flex-1 px-4 py-4 space-y-8 overflow-y-auto">
+<!-- Monitoring Section -->
+<div>
+<p class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Monitoring</p>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary text-white font-medium transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+<span class="text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">badge</span>
+<span class="text-sm">Agents</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">notifications_active</span>
+<span class="text-sm">Alerts</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">description</span>
+<span class="text-sm">Logs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">lan</span>
+<span class="text-sm">Network</span>
+</a>
+</div>
+</div>
+<!-- System Section -->
+<div>
+<p class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">System</p>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">gavel</span>
+<span class="text-sm">Rules</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">group</span>
+<span class="text-sm">Clients</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span class="text-sm">Settings</span>
+</a>
+</div>
+</div>
+</nav>
+<div class="p-4 border-t border-slate-200 dark:border-primary/10 flex flex-col gap-4">
+<div class="flex items-center gap-3 px-2">
+<span class="material-symbols-outlined text-slate-400 text-[18px]">info</span>
+<span class="text-xs text-slate-500 font-medium">v1.4.2 Prototype</span>
+</div>
+<div class="flex items-center gap-3 p-2 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5">
+<div class="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs" data-alt="User avatar placeholder">JD</div>
+<div class="flex flex-col overflow-hidden">
+<span class="text-xs font-semibold truncate">Admin Profile</span>
+<span class="text-[10px] text-slate-500 truncate">admin@ovs-siem.io</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+<!-- Top Header -->
+<header class="h-16 flex items-center justify-between px-8 border-b border-slate-200 dark:border-primary/10 bg-background-light dark:bg-background-dark z-10 shrink-0">
+<div class="flex items-center gap-6 flex-1">
+<h2 class="text-lg font-bold">Dashboard Overview</h2>
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
+<input class="w-full bg-slate-100 dark:bg-card-dark border-none rounded-lg pl-10 pr-4 py-1.5 text-sm focus:ring-1 focus:ring-primary" placeholder="Search incidents, agents, or rules..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[11px] font-bold border border-emerald-500/20">
+<span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    LIVE STATUS
+                </div>
+<button class="relative p-2 text-slate-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 h-2 w-2 bg-primary rounded-full border-2 border-background-dark"></span>
+</button>
+<button class="p-2 text-slate-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</div>
+</header>
+<div class="flex-1 overflow-y-auto p-8 space-y-6">
+<!-- System Status Banner -->
+<div class="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/20">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">check_circle</span>
+</div>
+<div>
+<h3 class="text-sm font-bold">System Status</h3>
+<p class="text-xs text-slate-500 dark:text-slate-400">OVS Core running stable. No critical outages reported in the last 24h.</p>
+</div>
+</div>
+<button class="text-xs font-bold text-primary hover:underline">View System Logs</button>
+</div>
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
+<span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Agents</span>
+<div class="flex items-end justify-between">
+<span class="text-3xl font-bold tracking-tight">1,284</span>
+<span class="text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">+5%</span>
+</div>
+<div class="mt-4 h-1.5 w-full bg-slate-200 dark:bg-background-dark rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 85%"></div>
+</div>
+</div>
+<div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
+<span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Active Alerts</span>
+<div class="flex items-end justify-between">
+<span class="text-3xl font-bold tracking-tight text-severity-warning">42</span>
+<span class="text-xs font-medium text-severity-critical bg-severity-critical/10 px-2 py-0.5 rounded-full">+12%</span>
+</div>
+<div class="mt-4 h-1.5 w-full bg-slate-200 dark:bg-background-dark rounded-full overflow-hidden">
+<div class="h-full bg-severity-warning" style="width: 45%"></div>
+</div>
+</div>
+<div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
+<span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Offline Agents</span>
+<div class="flex items-end justify-between">
+<span class="text-3xl font-bold tracking-tight">12</span>
+<span class="text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">-2%</span>
+</div>
+<div class="mt-4 h-1.5 w-full bg-slate-200 dark:bg-background-dark rounded-full overflow-hidden">
+<div class="h-full bg-slate-400" style="width: 12%"></div>
+</div>
+</div>
+</div>
+<!-- Dashboard Panels -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Alerts by Severity Chart -->
+<div class="lg:col-span-1 p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col h-full">
+<div class="flex items-center justify-between mb-8">
+<h3 class="text-sm font-bold">Alerts by Severity</h3>
+<span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Last 24h</span>
+</div>
+<div class="flex-1 flex flex-col justify-center gap-6">
+<div class="space-y-4">
+<div class="space-y-1">
+<div class="flex justify-between text-xs font-medium mb-1">
+<span>Critical</span>
+<span class="text-severity-critical">124</span>
+</div>
+<div class="h-2 w-full bg-background-dark rounded-full overflow-hidden">
+<div class="h-full bg-severity-critical" style="width: 48%"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between text-xs font-medium mb-1">
+<span>Warning</span>
+<span class="text-severity-warning">86</span>
+</div>
+<div class="h-2 w-full bg-background-dark rounded-full overflow-hidden">
+<div class="h-full bg-severity-warning" style="width: 32%"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between text-xs font-medium mb-1">
+<span>Info</span>
+<span class="text-primary">46</span>
+</div>
+<div class="h-2 w-full bg-background-dark rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 20%"></div>
+</div>
+</div>
+</div>
+<div class="pt-6 border-t border-slate-200 dark:border-primary/5 grid grid-cols-2 gap-4">
+<div>
+<p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Total</p>
+<p class="text-xl font-bold">256</p>
+</div>
+<div>
+<p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Growth</p>
+<p class="text-xl font-bold text-severity-critical">+18%</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Alerts Table -->
+<div class="lg:col-span-2 p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-sm font-bold">Recent Alerts</h3>
+<button class="text-xs font-bold text-primary hover:underline">View All Alerts</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left text-sm">
+<thead>
+<tr class="text-[10px] text-slate-500 font-bold uppercase tracking-widest border-b border-slate-200 dark:border-primary/5">
+<th class="pb-3 px-2">Time</th>
+<th class="pb-3 px-2">Severity</th>
+<th class="pb-3 px-2">Rule</th>
+<th class="pb-3 px-2 text-right">Agent</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-200 dark:divide-primary/5">
+<tr class="group hover:bg-primary/5">
+<td class="py-4 px-2 text-xs font-medium text-slate-400">14:23:01</td>
+<td class="py-4 px-2">
+<span class="px-2 py-0.5 rounded bg-severity-critical/10 text-severity-critical text-[10px] font-bold border border-severity-critical/20">CRITICAL</span>
+</td>
+<td class="py-4 px-2 font-medium">Potential Brute Force detected</td>
+<td class="py-4 px-2 text-right font-mono text-xs text-slate-400">srv-prod-04</td>
+</tr>
+<tr class="group hover:bg-primary/5">
+<td class="py-4 px-2 text-xs font-medium text-slate-400">14:18:55</td>
+<td class="py-4 px-2">
+<span class="px-2 py-0.5 rounded bg-severity-warning/10 text-severity-warning text-[10px] font-bold border border-severity-warning/20">WARNING</span>
+</td>
+<td class="py-4 px-2 font-medium">Unexpected SSH connection</td>
+<td class="py-4 px-2 text-right font-mono text-xs text-slate-400">wkst-eng-12</td>
+</tr>
+<tr class="group hover:bg-primary/5">
+<td class="py-4 px-2 text-xs font-medium text-slate-400">14:15:22</td>
+<td class="py-4 px-2">
+<span class="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">INFO</span>
+</td>
+<td class="py-4 px-2 font-medium">Configuration change detected</td>
+<td class="py-4 px-2 text-right font-mono text-xs text-slate-400">srv-db-01</td>
+</tr>
+<tr class="group hover:bg-primary/5">
+<td class="py-4 px-2 text-xs font-medium text-slate-400">14:02:11</td>
+<td class="py-4 px-2">
+<span class="px-2 py-0.5 rounded bg-severity-critical/10 text-severity-critical text-[10px] font-bold border border-severity-critical/20">CRITICAL</span>
+</td>
+<td class="py-4 px-2 font-medium">Malware signature match</td>
+<td class="py-4 px-2 text-right font-mono text-xs text-slate-400">srv-web-10</td>
+</tr>
+<tr class="group hover:bg-primary/5">
+<td class="py-4 px-2 text-xs font-medium text-slate-400">13:58:44</td>
+<td class="py-4 px-2">
+<span class="px-2 py-0.5 rounded bg-severity-warning/10 text-severity-warning text-[10px] font-bold border border-severity-warning/20">WARNING</span>
+</td>
+<td class="py-4 px-2 font-medium">High CPU usage alert</td>
+<td class="py-4 px-2 text-right font-mono text-xs text-slate-400">srv-prod-02</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

@@ -1,38 +1,57 @@
 {% extends "base.html" %}
 
-{% block title %}Edit Rule: {{ rule.name }}{% endblock %}
+{% block title %}OVS SIEM - Edit Rule: {{ rule.name }}{% endblock %}
 
-{% block content %}
-<div class="card p-4" style="max-width: 800px;">
-    <form action="/rules/save" method="post">
-        <input type="hidden" name="id" value="{{ rule.id }}">
+{% block page_title %}Edit Rule: {{ rule.name }}{% endblock %}
 
-        <div style="margin-bottom: 20px;">
-            <label>Rule Name</label>
-            <input type="text" name="name" value="{{ rule.name }}" style="width: 100%;">
+{% block main_content %}
+<div class="flex-1 overflow-y-auto p-8">
+    <!-- Action Bar -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+            <h3 class="text-2xl font-black text-slate-900 dark:text-slate-50">Rule Configuration</h3>
+            <p class="text-slate-500 dark:text-slate-400 text-sm">Update detection logic and settings for this rule.</p>
         </div>
+        <a href="/rules" class="bg-slate-200 dark:bg-card-dark hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-6 py-2.5 rounded-lg flex items-center gap-2 font-bold text-sm transition-all border border-slate-300 dark:border-primary/10">
+            <span class="material-symbols-outlined text-lg">arrow_back</span>
+            Back to Rules
+        </a>
+    </div>
 
-        <div style="margin-bottom: 20px;">
-            <label>Default Severity</label>
-            <select name="severity">
-                <option value="HIGH" {% if rule.severity_default=='HIGH' %}selected{% endif %}>HIGH</option>
-                <option value="MED" {% if rule.severity_default=='MED' %}selected{% endif %}>MED</option>
-                <option value="LOW" {% if rule.severity_default=='LOW' %}selected{% endif %}>LOW</option>
-            </select>
-        </div>
+    <div class="bg-white dark:bg-card-dark border border-slate-200 dark:border-primary/10 rounded-xl overflow-hidden shadow-sm max-w-4xl mx-auto">
+        <form action="/rules/save" method="post" class="p-8 space-y-6">
+            <input type="hidden" name="id" value="{{ rule.id }}">
 
-        <div style="margin-bottom: 20px;">
-            <label>Detection Logic (JSON)</label>
-            <textarea name="logic" rows="15"
-                style="width: 100%; background: #111; color: #ddd; font-family: monospace; border: 1px solid var(--border); padding: 10px;">{{ rule.logic_json }}</textarea>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">
-                Supports "keywords": [] and "patterns": [{"all_of": ["regex|or", "must_exist"]}]
+            <div>
+                <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Rule Name</label>
+                <input type="text" name="name" value="{{ rule.name }}" class="w-full bg-slate-50 dark:bg-background-dark border border-slate-300 dark:border-primary/20 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary text-slate-900 dark:text-slate-100 transition-colors" required>
             </div>
-        </div>
 
-        <button type="submit" style="background: var(--primary); border: none; font-weight: bold; cursor: pointer;">Save
-            Changes</button>
-        <a href="/rules" style="margin-left: 15px; color: var(--text-muted); text-decoration: none;">Cancel</a>
-    </form>
+            <div>
+                <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Default Severity</label>
+                <select name="severity" class="w-full bg-slate-50 dark:bg-background-dark border border-slate-300 dark:border-primary/20 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary text-slate-900 dark:text-slate-100 transition-colors">
+                    <option value="CRITICAL" {% if rule.severity_default=='CRITICAL' %}selected{% endif %}>CRITICAL</option>
+                    <option value="HIGH" {% if rule.severity_default=='HIGH' %}selected{% endif %}>HIGH</option>
+                    <option value="MED" {% if rule.severity_default=='MED' %}selected{% endif %}>MEDIUM</option>
+                    <option value="LOW" {% if rule.severity_default=='LOW' %}selected{% endif %}>LOW</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Detection Logic (JSON)</label>
+                <textarea name="logic" rows="15" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-sm font-mono text-emerald-400 focus:ring-2 focus:ring-primary focus:border-primary transition-colors">{{ rule.logic_json }}</textarea>
+                <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                    Supports <code class="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-primary">"keywords": []</code> and <code class="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-primary">"patterns": [{"all_of": ["regex|or", "must_exist"]}]</code>
+                </p>
+            </div>
+
+            <div class="pt-6 border-t border-slate-200 dark:border-primary/10 flex items-center justify-end gap-4">
+                <a href="/rules" class="text-sm font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">Cancel</a>
+                <button type="submit" class="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg font-bold text-sm transition-all shadow-lg shadow-primary/20">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}

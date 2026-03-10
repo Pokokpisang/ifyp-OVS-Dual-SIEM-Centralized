@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIEM Prototype</title>
+    <link rel="stylesheet" href="/static/app.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">SIEM<span class="accent">.proto</span></div>
+            <nav>
+                <a href="/dashboard" class="{% if request.url.path == '/dashboard' %}active{% endif %}">Dashboard</a>
+                <a href="/logs" class="{% if request.url.path == '/logs' %}active{% endif %}">Logs</a>
+                <a href="/alerts" class="{% if request.url.path == '/alerts' %}active{% endif %}">Alerts</a>
+                <a href="/rules" class="{% if '/rules' in request.url.path %}active{% endif %}">Rules</a>
+                <a href="#" class="disabled">Settings</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div class="page-title">{% block title %}Dashboard{% endblock %}</div>
+                <div class="controls">
+                    {% block controls %}{% endblock %}
+                    <div class="user-profile">admin</div>
+                </div>
+            </header>
+
+            <div class="content-wrapper">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

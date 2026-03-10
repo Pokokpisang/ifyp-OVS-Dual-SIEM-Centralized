@@ -1,61 +1,146 @@
 {% extends "base.html" %}
 
-{% block title %}System Overview{% endblock %}
+{% block title %}OVS SIEM - Dashboard Overview{% endblock %}
 
-{% block controls %}
-<select id="hostSelect"
-    style="background:var(--card-bg); color:var(--text); border:1px solid var(--border); padding:5px;">
-    {% for host in hosts %}
-    <option value="{{ host }}">{{ host }}</option>
-    {% endfor %}
-</select>
-<button onclick="window.location.reload()">Refresh</button>
+{% block page_title %}Dashboard Overview{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-4">
+    <select id="hostSelect" class="bg-slate-100 dark:bg-card-dark border-none rounded-lg py-1.5 text-sm focus:ring-1 focus:ring-primary text-slate-700 dark:text-slate-300">
+        {% for host in hosts %}
+        <option value="{{ host }}">{{ host }}</option>
+        {% endfor %}
+    </select>
+    <button onclick="window.location.reload()" class="p-2 text-slate-500 hover:text-primary transition-colors">
+        <span class="material-symbols-outlined">refresh</span>
+    </button>
+</div>
+<div class="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[11px] font-bold border border-emerald-500/20">
+    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+    LIVE STATUS
+</div>
 {% endblock %}
 
-{% block content %}
-<div class="grid-dashboard">
-    <div class="main-panel">
-        <!-- Row 1: KPIs -->
-        <div class="kpi-row">
-            <div class="card kpi-card">
-                <h3>CPU Usage</h3>
-                <div class="kpi-value" id="kpi-cpu">-</div>
+{% block main_content %}
+<div class="flex-1 overflow-y-auto p-8 space-y-6">
+    <!-- System Status Banner -->
+    <div class="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/20">
+        <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+                <span class="material-symbols-outlined">check_circle</span>
             </div>
-            <div class="card kpi-card">
-                <h3>RAM Usage</h3>
-                <div class="kpi-value" id="kpi-ram">-</div>
-            </div>
-            <div class="card kpi-card">
-                <h3>Net In</h3>
-                <div class="kpi-value" id="kpi-net-in">-</div>
-            </div>
-            <div class="card kpi-card">
-                <h3>Net Out</h3>
-                <div class="kpi-value" id="kpi-net-out">-</div>
+            <div>
+                <h3 class="text-sm font-bold">System Status</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400">OVS Core running stable. No critical outages reported in the last 24h.</p>
             </div>
         </div>
+        <a href="/logs" class="text-xs font-bold text-primary hover:underline">View System Logs</a>
+    </div>
 
-        <!-- Row 2: Charts -->
-        <div class="chart-row">
-            <div class="card">
-                <canvas id="cpuChart"></canvas>
+    <!-- Summary Cards (KPIs) -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">CPU Usage</span>
+            <div class="flex items-end justify-between">
+                <span class="text-3xl font-bold tracking-tight" id="kpi-cpu">-</span>
+                <!-- <span class="text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">+5%</span> -->
             </div>
-            <div class="card">
-                <canvas id="netChart"></canvas>
+            <!-- <div class="mt-4 h-1.5 w-full bg-slate-200 dark:bg-background-dark rounded-full overflow-hidden">
+                <div class="h-full bg-primary" id="bar-cpu" style="width: 0%"></div>
+            </div> -->
+        </div>
+
+        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">RAM Usage</span>
+            <div class="flex items-end justify-between">
+                <span class="text-3xl font-bold tracking-tight text-severity-warning" id="kpi-ram">-</span>
+                <!-- <span class="text-xs font-medium text-severity-critical bg-severity-critical/10 px-2 py-0.5 rounded-full">+12%</span> -->
             </div>
+            <!-- <div class="mt-4 h-1.5 w-full bg-slate-200 dark:bg-background-dark rounded-full overflow-hidden">
+                <div class="h-full bg-severity-warning" id="bar-ram" style="width: 0%"></div>
+            </div> -->
+        </div>
+
+        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Net In</span>
+            <div class="flex items-end justify-between">
+                <span class="text-3xl font-bold tracking-tight" id="kpi-net-in">-</span>
+                <!-- <span class="text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">-2%</span> -->
+            </div>
+             <!-- <div class="mt-4 h-1.5 w-full bg-slate-200 dark:bg-background-dark rounded-full overflow-hidden">
+                <div class="h-full bg-slate-400" id="bar-net-in" style="width: 0%"></div>
+            </div> -->
+        </div>
+
+        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Net Out</span>
+            <div class="flex items-end justify-between">
+                <span class="text-3xl font-bold tracking-tight" id="kpi-net-out">-</span>
+                <!-- <span class="text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">-2%</span> -->
+            </div>
+             <!-- <div class="mt-4 h-1.5 w-full bg-slate-200 dark:bg-background-dark rounded-full overflow-hidden">
+                <div class="h-full bg-slate-400" id="bar-net-out" style="width: 0%"></div>
+            </div> -->
         </div>
     </div>
 
-    <div class="side-panel">
-        <div class="card alert-feed">
-            <h3 style="margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">Security Alerts
-            </h3>
-            <div id="alert-container">
-                <!-- Alerts injected by JS -->
+    <!-- Dashboard Panels -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Charts -->
+        <div class="lg:col-span-2 space-y-6">
+             <!-- CPU Chart -->
+             <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-sm font-bold">CPU & RAM Usage</h3>
+                    <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Live</span>
+                </div>
+                <div class="relative w-full h-64">
+                    <canvas id="cpuChart"></canvas>
+                </div>
             </div>
+
+            <!-- NET Chart -->
+            <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-sm font-bold">Network Traffic</h3>
+                    <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Live</span>
+                </div>
+                <div class="relative w-full h-64">
+                    <canvas id="netChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Alerts Feed -->
+        <div class="lg:col-span-1 p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col h-full max-h-[800px]">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-sm font-bold">Live Security Alerts</h3>
+                <a href="/alerts" class="text-xs font-bold text-primary hover:underline">View All Alerts</a>
+            </div>
+            <div class="flex-1 overflow-y-auto pr-2 space-y-4" id="alert-container">
+                <!-- Alerts injected by JS -->
+                <div class="p-4 rounded-lg bg-background-dark border border-slate-200 dark:border-primary/5">
+                     <p class="text-sm text-slate-400 text-center py-4">Waiting for alerts...</p>
+                </div>
+            </div>
+            <!-- Alert template (hidden, used by JS if we want to build it in HTML, but let's keep JS logic the "same" for now. We might need to adjust `dashboard.js` later if it generates hardcoded HTML) -->
         </div>
     </div>
 </div>
+
+<style>
+/* Custom styled scrollbars for alert container */
+#alert-container::-webkit-scrollbar {
+    width: 4px;
+}
+#alert-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+#alert-container::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
+</style>
 {% endblock %}
 
 {% block scripts %}

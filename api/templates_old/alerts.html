@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Alerts Explorer{% endblock %}
+
+{% block content %}
+<div class="card p-4">
+    <form class="filters" method="get" action="/alerts">
+        <select name="severity">
+            <option value="">All Severities</option>
+            {% for s in severities %}
+            <option value="{{ s }}" {% if s==current_severity %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+
+        <select name="source">
+            <option value="">All Types (Source)</option>
+            {% for s in sources %}
+            <option value="{{ s }}" {% if s==current_source %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+
+        <select name="host">
+            <option value="">All Hosts</option>
+            {% for h in hosts %}
+            <option value="{{ h }}" {% if h==current_host %}selected{% endif %}>{{ h }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="submit">Filter</button>
+        <a href="/alerts"
+            style="margin-left:10px; font-size:12px; color:var(--text-muted); text-decoration: none;">Clear</a>
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th width="150">Timestamp</th>
+                <th width="80">Severity</th>
+                <th width="120">Host</th>
+                <th width="150">Type / Source</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for alert in alerts %}
+            <tr>
+                <td style="font-size:12px; color:var(--text-muted);">{{ alert.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                </td>
+                <td><span class="badge {{ alert.severity }}">{{ alert.severity }}</span></td>
+                <td>{{ alert.host }}</td>
+                <td>{{ alert.source }}</td>
+                <td>{{ alert.description }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="text-align:center; padding:30px;">No alerts found</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="/alerts?page={{ page - 1 }}&severity={{ current_severity }}&source={{ current_source }}&host={{ current_host }}"
+            class="page-link">Prev</a>
+        {% endif %}
+
+        <span style="padding:5px;">Page {{ page }} of {{ total_pages }} ({{ total_count }} total)</span>
+
+        {% if page < total_pages %} <a
+            href="/alerts?page={{ page + 1 }}&severity={{ current_severity }}&source={{ current_source }}&host={{ current_host }}"
+            class="page-link">Next</a>
+            {% endif %}
+    </div>
+</div>
+
+<style>
+    .badge {
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
+        background: #333;
+        color: white;
+    }
+
+    .badge.HIGH {
+        background: var(--secondary);
+    }
+
+    .badge.MED {
+        background: var(--primary);
+    }
+
+    .badge.LOW {
+        background: var(--accent);
+        color: black;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OVS SIEM - Security Alerts</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f05684",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221016",
+                        "severity-critical": "#ce2e46",
+                        "severity-warning": "#f59b00",
+                        "severity-info": "#F05484",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar -->
+<aside class="w-64 border-r border-slate-200 dark:border-primary/20 bg-background-light dark:bg-background-dark flex flex-col">
+<div class="p-6 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined">shield_with_heart</span>
+</div>
+<div>
+<h1 class="font-bold text-lg leading-none">OVS SIEM</h1>
+<p class="text-xs text-slate-500 dark:text-primary/60">Security Operations</p>
+</div>
+</div>
+<nav class="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary text-white transition-colors" href="#">
+<span class="material-symbols-outlined">notifications_active</span>
+<span class="font-medium text-sm">Alerts</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+<span class="font-medium text-sm">Agents</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined">rule</span>
+<span class="font-medium text-sm">Rules</span>
+</a>
+<div class="pt-4 mt-4 border-t border-slate-200 dark:border-primary/20">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-medium text-sm">Settings</span>
+</a>
+</div>
+</nav>
+<div class="p-4 border-t border-slate-200 dark:border-primary/20">
+<div class="flex items-center gap-3 px-2">
+<div class="w-8 h-8 rounded-full bg-slate-300" data-alt="User profile avatar placeholder" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDSbc1rTGZVUuTsoZouXnov7h4GTEfUJWU8AIFPNRcpcxldhVEi9t-Ct8Y28IREPxJOPklgS6eCmO9g9NcP3fxn-JxI8u-ouUaPFX0j7PFZRIe7mC43F4HXkqeimG5S92pOC1aH1kMoOgIhCLPRO8il2Xi3QhRGQqmHjSG5U-cfvH-dnlxA4jr9PaHuFmC6oXnT7FXIwEEmEzBS-i31sAhPvCY1DiLjaogNQCHRs2JLMmq5w-5aFeeerfktBL5wxUifRsQFA-S-zZMM')"></div>
+<div class="flex-1 overflow-hidden">
+<p class="text-xs font-medium truncate">Admin User</p>
+<p class="text-[10px] text-slate-500 truncate">admin@ovs-siem.com</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col overflow-hidden">
+<!-- Header -->
+<header class="h-16 border-b border-slate-200 dark:border-primary/20 bg-background-light dark:bg-background-dark flex items-center justify-between px-8">
+<div class="flex items-center gap-8">
+<h2 class="text-xl font-bold">Security Alerts</h2>
+<div class="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-bold uppercase tracking-wider">
+<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Status: Live
+                    </div>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-primary/40 text-lg">search</span>
+<input class="pl-10 pr-4 py-2 w-64 bg-slate-100 dark:bg-primary/5 border-none rounded-lg focus:ring-2 focus:ring-primary/50 text-sm" placeholder="Global Search..." type="text"/>
+</div>
+<button class="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-primary/5 hover:bg-primary/20 transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full ring-2 ring-background-dark"></span>
+</button>
+<button class="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-primary/5 hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined">grid_view</span>
+</button>
+</div>
+</header>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto p-8 space-y-6">
+<!-- Filter Bar -->
+<div class="bg-white dark:bg-primary/5 rounded-xl border border-slate-200 dark:border-primary/20 p-4">
+<div class="flex flex-wrap items-center gap-4">
+<div class="flex flex-col gap-1.5 min-w-[180px]">
+<label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-primary/60 px-1">Severity</label>
+<div class="relative">
+<select class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/20 rounded-lg py-2 pl-3 pr-10 text-sm focus:ring-primary appearance-none">
+<option>All Severities</option>
+<option>Critical Only</option>
+<option>Warning Only</option>
+<option>Info Only</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5 flex-1 min-w-[240px]">
+<label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-primary/60 px-1">Search Agent</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">dns</span>
+<input class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/20 rounded-lg py-2 pl-10 pr-4 text-sm focus:ring-primary" placeholder="Search by agent name or IP..." type="text"/>
+</div>
+</div>
+<div class="flex flex-col gap-1.5 min-w-[240px]">
+<label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-primary/60 px-1">Date Range</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">calendar_today</span>
+<input class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/20 rounded-lg py-2 pl-10 pr-4 text-sm focus:ring-primary cursor-pointer" type="text" value="Oct 26, 2023 - Oct 27, 2023"/>
+</div>
+</div>
+<div class="flex items-end h-full">
+<button class="bg-primary hover:bg-primary/90 text-white rounded-lg px-6 py-2 text-sm font-bold flex items-center gap-2 h-[38px]">
+<span class="material-symbols-outlined text-lg">filter_list</span>
+                                Apply Filters
+                            </button>
+</div>
+</div>
+</div>
+<!-- Table Container -->
+<div class="bg-white dark:bg-primary/5 rounded-xl border border-slate-200 dark:border-primary/20 overflow-hidden">
+<div class="px-6 py-4 border-b border-slate-200 dark:border-primary/20 flex justify-between items-center bg-slate-50/50 dark:bg-primary/5">
+<h3 class="font-bold text-slate-900 dark:text-slate-100">Live Alert Stream</h3>
+<div class="flex items-center gap-4">
+<span class="text-xs text-slate-500 dark:text-slate-400">Showing 3 of 1,240 events</span>
+<div class="flex rounded-lg border border-slate-200 dark:border-primary/20 overflow-hidden">
+<button class="p-1.5 hover:bg-slate-100 dark:hover:bg-primary/10 border-r border-slate-200 dark:border-primary/20"><span class="material-symbols-outlined text-lg">chevron_left</span></button>
+<button class="p-1.5 hover:bg-slate-100 dark:hover:bg-primary/10"><span class="material-symbols-outlined text-lg">chevron_right</span></button>
+</div>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-slate-50 dark:bg-primary/10">
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/60">Timestamp</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/60">Severity</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/60">Rule</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/60">Agent</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/60">Status</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/60">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-200 dark:divide-primary/20">
+<!-- Alert 1: Critical -->
+<tr class="hover:bg-slate-50/80 dark:hover:bg-primary/5 transition-colors">
+<td class="px-6 py-5 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm font-medium">Oct 27, 2023</span>
+<span class="text-xs text-slate-500 dark:text-slate-400">10:15:22.401</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-[#ce2e46]/10 text-[#ce2e46] border border-[#ce2e46]/20">
+<span class="w-1.5 h-1.5 rounded-full bg-[#ce2e46] mr-2"></span>
+                                            CRITICAL
+                                        </span>
+</td>
+<td class="px-6 py-5">
+<div class="flex flex-col">
+<span class="text-sm font-bold">Brute Force Attempt</span>
+<span class="text-xs text-slate-500 dark:text-slate-400">Multiple failed SSH logins from 192.168.1.104</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-400 text-lg">terminal</span>
+<span class="text-sm">Web-Server-01</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="text-xs font-medium px-2 py-1 rounded-lg bg-slate-100 dark:bg-primary/20">OPEN</span>
+</td>
+<td class="px-6 py-5">
+<button class="text-primary hover:text-primary/80 transition-colors">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</td>
+</tr>
+<!-- Alert 2: Warning -->
+<tr class="hover:bg-slate-50/80 dark:hover:bg-primary/5 transition-colors">
+<td class="px-6 py-5 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm font-medium">Oct 27, 2023</span>
+<span class="text-xs text-slate-500 dark:text-slate-400">09:42:10.122</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-[#f59b00]/10 text-[#f59b00] border border-[#f59b00]/20">
+<span class="w-1.5 h-1.5 rounded-full bg-[#f59b00] mr-2"></span>
+                                            WARNING
+                                        </span>
+</td>
+<td class="px-6 py-5">
+<div class="flex flex-col">
+<span class="text-sm font-bold">Unusual Login Pattern</span>
+<span class="text-xs text-slate-500 dark:text-slate-400">Login from unrecognized location (Tokyo, JP)</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-400 text-lg">database</span>
+<span class="text-sm">DB-Master</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="text-xs font-medium px-2 py-1 rounded-lg bg-slate-100 dark:bg-primary/20 text-primary">INVESTIGATING</span>
+</td>
+<td class="px-6 py-5">
+<button class="text-primary hover:text-primary/80 transition-colors">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</td>
+</tr>
+<!-- Alert 3: Info -->
+<tr class="hover:bg-slate-50/80 dark:hover:bg-primary/5 transition-colors">
+<td class="px-6 py-5 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm font-medium">Oct 27, 2023</span>
+<span class="text-xs text-slate-500 dark:text-slate-400">08:20:05.993</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-[#F05484]/10 text-[#F05484] border border-[#F05484]/20">
+<span class="w-1.5 h-1.5 rounded-full bg-[#F05484] mr-2"></span>
+                                            INFO
+                                        </span>
+</td>
+<td class="px-6 py-5">
+<div class="flex flex-col">
+<span class="text-sm font-bold">System Update Started</span>
+<span class="text-xs text-slate-500 dark:text-slate-400">Automatic security patching initiated by root</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-400 text-lg">cloud</span>
+<span class="text-sm">App-Node-04</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="text-xs font-medium px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-500">CLOSED</span>
+</td>
+<td class="px-6 py-5">
+<button class="text-primary hover:text-primary/80 transition-colors">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Footer Pagination -->
+<div class="flex items-center justify-between px-4">
+<p class="text-sm text-slate-500 dark:text-slate-400">Showing page 1 of 42</p>
+<div class="flex gap-2">
+<button class="px-4 py-2 text-sm font-medium bg-white dark:bg-primary/10 border border-slate-200 dark:border-primary/20 rounded-lg hover:bg-slate-50 transition-colors">Previous</button>
+<button class="w-10 h-10 flex items-center justify-center bg-primary text-white rounded-lg text-sm font-bold">1</button>
+<button class="w-10 h-10 flex items-center justify-center bg-white dark:bg-primary/10 border border-slate-200 dark:border-primary/20 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">2</button>
+<button class="w-10 h-10 flex items-center justify-center bg-white dark:bg-primary/10 border border-slate-200 dark:border-primary/20 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">3</button>
+<span class="flex items-center px-2">...</span>
+<button class="px-4 py-2 text-sm font-medium bg-white dark:bg-primary/10 border border-slate-200 dark:border-primary/20 rounded-lg hover:bg-slate-50 transition-colors">Next</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>
