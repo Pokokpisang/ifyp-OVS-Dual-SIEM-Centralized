@@ -1,27 +1,9 @@
-INFO:     Started server process [19248]
+INFO:     Started server process [26740]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:52026 - "GET /dashboard HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56956 - "GET /dashboard HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56956 - "GET /static/dashboard.js HTTP/1.1" 304 Not Modified
-INFO:     127.0.0.1:56956 - "GET /favicon.ico HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:56956 - "GET /agents HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:32988 - "GET /alerts HTTP/1.1" 200 OK
-INFO:     127.0.0.1:33002 - "GET /alerts HTTP/1.1" 200 OK
-INFO:     127.0.0.1:33002 - "GET /logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34680 - "GET /rules HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34710 - "GET /dashboard HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34710 - "GET /agents HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:34710 - "GET /alerts HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34876 - "GET /logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34876 - "GET /dashboard HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59448 - "GET /agents HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:40098 - "GET /alerts HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56444 - "GET /dashboard HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56444 - "GET /agents HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:56444 - "GET /alerts HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56444 - "GET /logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56444 - "GET /alerts HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56444 - "GET /dashboard HTTP/1.1" 200 OK
-INFO:     127.0.0.1:33386 - "GET /agents HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:38026 - "GET /agents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50874 - "GET /agents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33354 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33354 - "GET /agents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35742 - "GET /agents HTTP/1.1" 200 OK
