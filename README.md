@@ -12,11 +12,24 @@ This is a prototype SIEM system consisting of:
 
 ## Quick Start
 
-### 1. Start the Backend
+The easiest way to start the entire system (backend + agent) is using the provided `Makefile`.
+
+### Start Everything
 ```bash
-docker-compose up -d --build
+make up
 ```
+*Note: You may be prompted for your sudo password, as the agent requires root privileges to read system logs like `/var/log/syslog`.*
+
 Access the Dashboard: **http://localhost:8000/dashboard**
+
+### Stop Everything
+```bash
+make down
+```
+
+### Manual Setup (Without Makefile)
+
+### 1. Start the Backend
 
 ### 2. Run the Agent
 The agent runs natively on the host to access logs and system metrics.
