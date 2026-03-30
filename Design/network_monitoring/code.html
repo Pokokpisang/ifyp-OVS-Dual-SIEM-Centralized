@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OVS SIEM - Network Monitoring</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f05684",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221016",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #47242e;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar -->
+<aside class="w-64 flex-shrink-0 flex flex-col bg-background-light dark:bg-background-dark border-r border-slate-200 dark:border-primary/20">
+<div class="p-6 flex items-center gap-3">
+<div class="size-10 rounded-full bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined">shield_with_heart</span>
+</div>
+<div>
+<h1 class="text-base font-bold leading-none">OVS SIEM</h1>
+<p class="text-xs text-primary/70">Enterprise Security</p>
+</div>
+</div>
+<nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto custom-scrollbar">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-primary/10 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 bg-primary/10 text-primary rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">router</span>
+<span class="text-sm font-medium">Network</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-primary/10 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">warning</span>
+<span class="text-sm font-medium">Incidents</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-primary/10 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">article</span>
+<span class="text-sm font-medium">Logs</span>
+</a>
+<div class="pt-4 mt-4 border-t border-slate-200 dark:border-primary/10">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-primary/10 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</div>
+</nav>
+<div class="p-4 border-t border-slate-200 dark:border-primary/10">
+<div class="flex items-center gap-3 p-2 bg-slate-50 dark:bg-primary/5 rounded-xl">
+<div class="size-8 rounded-full bg-slate-300 dark:bg-primary/20 bg-cover bg-center" data-alt="User profile avatar placeholder" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBXP_qtIOdWFzPFmNv-EQP-wyaMLrPl6EQmKF55G4toOxpV3K07iH3hsAlTSms09AxtphH0gKB-2U6eRbU9xNUHXUxcrc47GoHm-YaWoWAAH9UJHf_9w7436BiunNSoOKjcr16N6DVYWDiNcvBZNAyvEJtF7-My0B9MS0BT6jSJ9LMFJB-Tf43cWsV0EryQElNGj730eA-0exemvuOfByztgVfvoPammeLcZicXNc792t8tNr9zAk_XwoL4G-H27LXSRC-cWq3kVr6V')"></div>
+<div class="flex-1 min-w-0">
+<p class="text-xs font-bold truncate">Admin User</p>
+<p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">Security Analyst</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col overflow-hidden">
+<!-- Header -->
+<header class="h-16 flex items-center justify-between px-8 bg-background-light dark:bg-background-dark border-b border-slate-200 dark:border-primary/20">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">analytics</span>
+<h2 class="text-lg font-bold tracking-tight">Network Monitoring</h2>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-sm">search</span>
+<input class="pl-10 pr-4 py-1.5 rounded-lg bg-slate-100 dark:bg-primary/10 border-none focus:ring-1 focus:ring-primary text-sm w-64 transition-all placeholder:text-slate-400" placeholder="Search traffic..." type="text"/>
+</div>
+<button class="size-9 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-primary/10 hover:bg-slate-200 dark:hover:bg-primary/20 text-slate-600 dark:text-slate-200 transition-colors">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<button class="size-9 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-primary/10 hover:bg-slate-200 dark:hover:bg-primary/20 text-slate-600 dark:text-slate-200 transition-colors">
+<span class="material-symbols-outlined text-[20px]">help_outline</span>
+</button>
+</div>
+</header>
+<!-- Content Area -->
+<div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+<div class="max-w-7xl mx-auto space-y-6">
+<!-- Intro -->
+<div class="flex flex-col gap-1">
+<h3 class="text-2xl font-black tracking-tight">Real-time Traffic Analysis</h3>
+<p class="text-slate-500 dark:text-slate-400 text-sm">Monitoring 14.2k active nodes across global cloud infrastructure.</p>
+</div>
+<!-- Map Card -->
+<div class="rounded-xl bg-white dark:bg-primary/5 border border-slate-200 dark:border-primary/10 overflow-hidden shadow-sm">
+<div class="p-6 flex flex-col @container">
+<div class="flex items-center justify-between mb-6">
+<div>
+<h4 class="text-lg font-bold">Incoming Connections by Country</h4>
+<p class="text-sm text-slate-500 dark:text-slate-400">Geographic distribution of all inbound network traffic over the last 24 hours</p>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:opacity-90 transition-opacity">
+                                        View Full Map
+                                    </button>
+</div>
+</div>
+<!-- Map Visualization Placeholder -->
+<div class="aspect-[21/9] w-full bg-slate-100 dark:bg-primary/10 rounded-lg flex items-center justify-center relative group">
+<div class="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary via-transparent to-transparent"></div>
+<div class="relative z-10 text-center">
+<div class="size-16 mx-auto mb-4 bg-primary/20 rounded-full flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-4xl">public</span>
+</div>
+<p class="text-sm font-medium text-slate-400">World Map Visualization Active</p>
+</div>
+<div class="absolute bottom-4 left-4 flex gap-4">
+<div class="flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded border border-white/10">
+<div class="size-2 rounded-full bg-primary animate-pulse"></div>
+<span class="text-[10px] font-bold">LIVE TRAFFIC</span>
+</div>
+</div>
+<!-- Background placeholder for the actual map image -->
+<div class="absolute inset-0 z-0 opacity-40 bg-cover bg-center mix-blend-overlay" data-alt="Stylized dark world map with data points" data-location="Global" style="background-image: url('https://placeholder.pics/svg/300')"></div>
+</div>
+</div>
+</div>
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="p-6 rounded-xl bg-white dark:bg-primary/5 border border-slate-200 dark:border-primary/10 shadow-sm flex flex-col gap-2">
+<div class="flex items-center justify-between text-slate-500 dark:text-slate-400">
+<span class="text-sm font-medium">Total Connections</span>
+<span class="material-symbols-outlined text-primary">hub</span>
+</div>
+<div class="flex items-end justify-between">
+<p class="text-3xl font-black">1,284,902</p>
+<span class="text-xs font-bold text-emerald-500 flex items-center">+12.4% <span class="material-symbols-outlined text-sm">trending_up</span></span>
+</div>
+</div>
+<div class="p-6 rounded-xl bg-white dark:bg-primary/5 border border-slate-200 dark:border-primary/10 shadow-sm flex flex-col gap-2">
+<div class="flex items-center justify-between text-slate-500 dark:text-slate-400">
+<span class="text-sm font-medium">Unique Source Countries</span>
+<span class="material-symbols-outlined text-primary">flag</span>
+</div>
+<div class="flex items-end justify-between">
+<p class="text-3xl font-black">142</p>
+<span class="text-xs font-bold text-orange-500 flex items-center">-2.1% <span class="material-symbols-outlined text-sm">trending_down</span></span>
+</div>
+</div>
+<div class="p-6 rounded-xl bg-white dark:bg-primary/5 border border-slate-200 dark:border-primary/10 shadow-sm flex flex-col gap-2">
+<div class="flex items-center justify-between text-slate-500 dark:text-slate-400">
+<span class="text-sm font-medium">Active VPS Targets</span>
+<span class="material-symbols-outlined text-primary">storage</span>
+</div>
+<div class="flex items-end justify-between">
+<p class="text-3xl font-black">84</p>
+<span class="text-xs font-bold text-emerald-500 flex items-center">+5.0% <span class="material-symbols-outlined text-sm">trending_up</span></span>
+</div>
+</div>
+</div>
+<!-- Data Table -->
+<div class="rounded-xl bg-white dark:bg-primary/5 border border-slate-200 dark:border-primary/10 shadow-sm overflow-hidden">
+<div class="px-6 py-4 border-b border-slate-200 dark:border-primary/10 flex items-center justify-between">
+<h4 class="font-bold">Top Source Countries</h4>
+<button class="text-xs text-primary font-bold hover:underline">Download CSV</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-slate-50 dark:bg-primary/5 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider">
+<th class="px-6 py-3 font-semibold">Country</th>
+<th class="px-6 py-3 font-semibold text-right">Connection Count</th>
+<th class="px-6 py-3 font-semibold">Distribution</th>
+<th class="px-6 py-3 font-semibold text-right">Percentage</th>
+</tr>
+</thead>
+<tbody class="text-sm divide-y divide-slate-200 dark:divide-primary/10">
+<tr class="hover:bg-slate-50 dark:hover:bg-primary/5 transition-colors">
+<td class="px-6 py-4 flex items-center gap-3">
+<span class="size-6 rounded bg-slate-100 dark:bg-primary/10 flex items-center justify-center font-bold text-[10px]">US</span>
+                                            United States
+                                        </td>
+<td class="px-6 py-4 text-right font-medium">425,102</td>
+<td class="px-6 py-4 min-w-[120px]">
+<div class="w-full h-1.5 bg-slate-200 dark:bg-primary/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 33%"></div>
+</div>
+</td>
+<td class="px-6 py-4 text-right text-slate-500">33.1%</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-primary/5 transition-colors">
+<td class="px-6 py-4 flex items-center gap-3">
+<span class="size-6 rounded bg-slate-100 dark:bg-primary/10 flex items-center justify-center font-bold text-[10px]">CN</span>
+                                            China
+                                        </td>
+<td class="px-6 py-4 text-right font-medium">210,544</td>
+<td class="px-6 py-4 min-w-[120px]">
+<div class="w-full h-1.5 bg-slate-200 dark:bg-primary/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 16%"></div>
+</div>
+</td>
+<td class="px-6 py-4 text-right text-slate-500">16.4%</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-primary/5 transition-colors">
+<td class="px-6 py-4 flex items-center gap-3">
+<span class="size-6 rounded bg-slate-100 dark:bg-primary/10 flex items-center justify-center font-bold text-[10px]">DE</span>
+                                            Germany
+                                        </td>
+<td class="px-6 py-4 text-right font-medium">102,883</td>
+<td class="px-6 py-4 min-w-[120px]">
+<div class="w-full h-1.5 bg-slate-200 dark:bg-primary/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 8%"></div>
+</div>
+</td>
+<td class="px-6 py-4 text-right text-slate-500">8.0%</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-primary/5 transition-colors">
+<td class="px-6 py-4 flex items-center gap-3">
+<span class="size-6 rounded bg-slate-100 dark:bg-primary/10 flex items-center justify-center font-bold text-[10px]">BR</span>
+                                            Brazil
+                                        </td>
+<td class="px-6 py-4 text-right font-medium">76,432</td>
+<td class="px-6 py-4 min-w-[120px]">
+<div class="w-full h-1.5 bg-slate-200 dark:bg-primary/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 6%"></div>
+</div>
+</td>
+<td class="px-6 py-4 text-right text-slate-500">5.9%</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-primary/5 transition-colors">
+<td class="px-6 py-4 flex items-center gap-3">
+<span class="size-6 rounded bg-slate-100 dark:bg-primary/10 flex items-center justify-center font-bold text-[10px]">NL</span>
+                                            Netherlands
+                                        </td>
+<td class="px-6 py-4 text-right font-medium">62,110</td>
+<td class="px-6 py-4 min-w-[120px]">
+<div class="w-full h-1.5 bg-slate-200 dark:bg-primary/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 4.8%"></div>
+</div>
+</td>
+<td class="px-6 py-4 text-right text-slate-500">4.8%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OVS SIEM - Agents Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f05684",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221016",
+                        "card-dark": "#232126",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .fill-1 {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar -->
+<aside class="w-64 flex flex-col bg-background-light dark:bg-background-dark border-r border-primary/10">
+<div class="p-6 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined fill-1">security</span>
+</div>
+<div>
+<h1 class="text-lg font-bold leading-none">OVS SIEM</h1>
+<p class="text-xs text-primary font-medium mt-1">Console v2.0</p>
+</div>
+</div>
+<nav class="flex-1 px-4 py-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-primary/10 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 bg-primary/20 text-primary rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined fill-1">dns</span>
+<span class="text-sm font-bold">Agents</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-primary/10 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">shield_with_heart</span>
+<span class="text-sm font-medium">Threats</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-primary/10 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="text-sm font-medium">Logs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-primary/10 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+<div class="p-4 border-t border-primary/10">
+<div class="flex items-center gap-3 p-2 bg-slate-100 dark:bg-card-dark rounded-xl">
+<img alt="User avatar" class="w-10 h-10 rounded-full" data-alt="Security administrator profile photo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCT2puNASeR86A0p0F3wPH0vYdbsJYOVDA_Yz7lZRKAVQxqr4FCG7tZ36OXcWVLQ4m7uF-s5seBUsLe2Zls58i4eq7a5W32L39muFlOorGBy1ODs0Mj_LtEAwAK8I0BOezwEHXGUl-vwZrF62Sy1mYvf7j3SXw1y_aaBinyidi0UPmlQ46YiU_QwtfEdJYJA2MikPuhd3aghlm28BX0Cmhgm5sA_ndZ0swBIVCLtKcdZOtXeEI_2RaFL-N2a5BM3yOmP-gzuY8izfXB"/>
+<div class="overflow-hidden">
+<p class="text-xs font-bold truncate">Admin User</p>
+<p class="text-[10px] text-slate-500 uppercase tracking-wider">Enterprise</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col overflow-y-auto">
+<!-- Header -->
+<header class="h-16 border-b border-primary/10 flex items-center justify-between px-8 sticky top-0 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md z-10">
+<div class="flex items-center gap-4">
+<h2 class="text-xl font-bold tracking-tight">Agents Management</h2>
+<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 text-[10px] font-bold uppercase tracking-widest border border-green-500/20">
+<span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                    Live
+                </div>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative hidden md:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+<input class="pl-10 pr-4 py-2 w-64 bg-slate-100 dark:bg-card-dark border-none rounded-lg text-sm focus:ring-1 focus:ring-primary transition-all" placeholder="Global search..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-card-dark relative transition-colors">
+<span class="material-symbols-outlined text-slate-500">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-background-light dark:border-background-dark"></span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-card-dark transition-colors">
+<span class="material-symbols-outlined text-slate-500">help</span>
+</button>
+</div>
+</div>
+</header>
+<div class="p-8 space-y-8">
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<div class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined">dns</span>
+</div>
+<span class="text-xs font-medium text-slate-400">Total</span>
+</div>
+<p class="text-3xl font-bold">248</p>
+<p class="text-sm text-slate-500 mt-1">Managed Endpoints</p>
+</div>
+<div class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 rounded-lg bg-green-500/10 text-green-500">
+<span class="material-symbols-outlined">check_circle</span>
+</div>
+<span class="text-xs font-medium text-slate-400">Online</span>
+</div>
+<p class="text-3xl font-bold">232</p>
+<p class="text-sm text-green-500 mt-1">+2% from last hour</p>
+</div>
+<div class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 rounded-lg bg-red-500/10 text-red-500">
+<span class="material-symbols-outlined">error</span>
+</div>
+<span class="text-xs font-medium text-slate-400">Offline</span>
+</div>
+<p class="text-3xl font-bold">16</p>
+<p class="text-sm text-slate-500 mt-1">Last check 5m ago</p>
+</div>
+<div class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 rounded-lg bg-amber-500/10 text-amber-500">
+<span class="material-symbols-outlined">monitoring</span>
+</div>
+<span class="text-xs font-medium text-slate-400">High Load</span>
+</div>
+<p class="text-3xl font-bold">4</p>
+<p class="text-sm text-amber-500 mt-1">Needs attention</p>
+</div>
+</div>
+<!-- Actions Bar -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="flex flex-1 items-center gap-3">
+<div class="relative flex-1 max-w-sm">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+<input class="pl-10 pr-4 py-2.5 w-full bg-white dark:bg-card-dark border border-primary/10 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all" placeholder="Filter agents by ID or IP..." type="text"/>
+</div>
+<div class="relative">
+<select class="appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-card-dark border border-primary/10 rounded-lg text-sm font-medium focus:ring-2 focus:ring-primary focus:border-transparent">
+<option>Status: All</option>
+<option>Online</option>
+<option>Offline</option>
+<option>Maintenance</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
+</div>
+</div>
+<button class="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-lg">add</span>
+                    Register New Agent
+                </button>
+</div>
+<!-- Table -->
+<div class="bg-white dark:bg-card-dark rounded-xl border border-primary/5 shadow-sm overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-primary/10">
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Agent ID</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Hostname / IP</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">CPU Load</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Memory Usage</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-primary/5">
+<!-- Agent 1 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+<td class="px-6 py-5">
+<span class="text-sm font-medium">AG-8821</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex flex-col">
+<span class="text-sm font-bold">SRV-PROD-01</span>
+<span class="text-xs text-slate-500">192.168.1.45</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-2.5 py-1 rounded-full bg-green-500/10 text-green-500 text-[11px] font-bold">ONLINE</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3 w-32">
+<div class="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 45%"></div>
+</div>
+<span class="text-xs font-medium">45%</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3 w-32">
+<div class="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 62%"></div>
+</div>
+<span class="text-xs font-medium">62%</span>
+</div>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="text-primary hover:text-primary/70 font-bold text-xs uppercase tracking-widest transition-colors">Edit</button>
+</td>
+</tr>
+<!-- Agent 2 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+<td class="px-6 py-5">
+<span class="text-sm font-medium">AG-9904</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex flex-col">
+<span class="text-sm font-bold">SRV-DB-BACKUP</span>
+<span class="text-xs text-slate-500">10.0.4.12</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[11px] font-bold uppercase">High Load</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3 w-32">
+<div class="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 92%"></div>
+</div>
+<span class="text-xs font-medium text-amber-500">92%</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3 w-32">
+<div class="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 88%"></div>
+</div>
+<span class="text-xs font-medium text-amber-500">88%</span>
+</div>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="text-primary hover:text-primary/70 font-bold text-xs uppercase tracking-widest transition-colors">Edit</button>
+</td>
+</tr>
+<!-- More agents can be listed here -->
+</tbody>
+</table>
+</div>
+<div class="px-6 py-4 border-t border-primary/10 flex items-center justify-between bg-slate-50 dark:bg-slate-800/30">
+<p class="text-xs text-slate-500 font-medium">Showing 2 of 248 agents</p>
+<div class="flex gap-2">
+<button class="p-1.5 rounded border border-primary/10 hover:bg-white dark:hover:bg-card-dark disabled:opacity-50 transition-colors" disabled="">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<button class="p-1.5 rounded border border-primary/10 hover:bg-white dark:hover:bg-card-dark transition-colors">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

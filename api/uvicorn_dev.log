@@ -1,0 +1,26 @@
+INFO:     Started server process [11159]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:32952 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39390 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39390 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39390 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39390 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39390 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39390 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39390 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39390 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39390 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39390 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39390 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39390 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39390 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39390 - "GET /static/dashboard.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:35206 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41504 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41504 - "GET /agents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41504 - "GET /alerts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41504 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47056 - "GET /rules HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47056 - "GET /dashboard HTTP/1.1" 200 OK

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Log Explorer{% endblock %}
+
+{% block content %}
+<div class="card p-4">
+    <form class="filters" method="get" action="/logs">
+        <input type="text" name="q" placeholder="Search logs..." value="{{ q }}">
+        <select name="host">
+            <option value="">All Hosts</option>
+            {% for h in hosts %}
+            <option value="{{ h }}" {% if h==current_host %}selected{% endif %}>{{ h }}</option>
+            {% endfor %}
+        </select>
+        <select name="log_type">
+            <option value="">All Types</option>
+            {% for t in types %}
+            <option value="{{ t }}" {% if t==current_type %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Filter</button>
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th width="150">Timestamp</th>
+                <th width="120">Host</th>
+                <th width="80">Type</th>
+                <th>Message</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td style="font-size:12px; color:var(--text-muted);">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                </td>
+                <td>{{ log.host }}</td>
+                <td><span style="background:var(--border); padding:2px 6px; border-radius:4px; font-size:11px;">{{
+                        log.log_type }}</span></td>
+                <td style="font-family:monospace; font-size:12px;">{{ log.message[:200] }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" style="text-align:center; padding:30px;">No logs found</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="/logs?page={{ page - 1 }}&q={{ q }}&host={{ current_host }}&log_type={{ current_type }}"
+            class="page-link">Prev</a>
+        {% endif %}
+
+        <span style="padding:5px;">Page {{ page }} of {{ total_pages }} ({{ total_count }} total)</span>
+
+        {% if page < total_pages %} <a
+            href="/logs?page={{ page + 1 }}&q={{ q }}&host={{ current_host }}&log_type={{ current_type }}"
+            class="page-link">Next</a>
+            {% endif %}
+    </div>
+</div>
+{% endblock %}

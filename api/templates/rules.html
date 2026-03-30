@@ -1,124 +1,96 @@
 {% extends "base.html" %}
 
-{% block title %}Detection Rules (MITRE){% endblock %}
+{% block title %}OVS SIEM - Rules Management{% endblock %}
 
-{% block content %}
-<div class="card p-4">
-    <table>
-        <thead>
-            <tr>
-                <th>Status</th>
-                <th>Rule Name</th>
-                <th>Technique</th>
-                <th>Severity</th>
-                <th>Scope</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for rule in rules %}
-            <tr>
-                <td>
-                    <label class="switch">
-                        <input type="checkbox" onchange="toggleRule('{{ rule.id }}')" {% if rule.enabled %}checked{%
-                            endif %}>
-                        <span class="slider"></span>
-                    </label>
-                </td>
-                <td style="font-weight:bold;">{{ rule.name }}</td>
-                <td><span class="badge">{{ rule.mitre_technique_id }}</span></td>
-                <td><span class="badge {{ rule.severity_default }}">{{ rule.severity_default }}</span></td>
-                <td>{{ rule.log_type_scope }}</td>
-                <td>
-                    <a href="/rules/{{ rule.id }}" class="btn-sm">Edit</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+{% block page_title %}Rules{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-2">
+    <span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-primary/10 text-[10px] font-bold text-primary uppercase">{{ rules|length }} Active</span>
 </div>
+{% endblock %}
 
+{% block main_content %}
+<!-- Content -->
+<div class="flex-1 overflow-y-auto p-8">
+    <!-- Action Bar -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+            <h3 class="text-2xl font-black text-slate-900 dark:text-slate-50">Rule Management</h3>
+            <p class="text-slate-500 dark:text-slate-400 text-sm">Configure detection logic and monitor matching activity.</p>
+        </div>
+        <!-- Note: the create rule button was not functional in old design, linking it to # for now -->
+        <a href="#" class="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg flex items-center gap-2 font-bold text-sm transition-all shadow-lg shadow-primary/20">
+            <span class="material-symbols-outlined text-lg">add</span>
+            Add Rule
+        </a>
+    </div>
+
+    <!-- Rules Table Container -->
+    <div class="bg-white dark:bg-card-dark border border-slate-200 dark:border-primary/10 rounded-xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 dark:bg-primary/5 text-slate-500 dark:text-primary/70 text-xs font-bold uppercase tracking-wider">
+                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Rule Name</th>
+                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">MITRE Technique</th>
+                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Severity</th>
+                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Status</th>
+                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10 border-r border-slate-200 dark:border-primary/10">Scope</th>
+                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-primary/10">
+                    {% for rule in rules %}
+                    <tr class="hover:bg-slate-50 dark:hover:bg-primary/5 transition-colors group">
+                        <td class="px-6 py-5 font-semibold text-slate-900 dark:text-slate-100">{{ rule.name }}</td>
+                        <td class="px-6 py-5">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-slate-200 dark:bg-primary/20 text-slate-800 dark:text-primary border border-slate-300 dark:border-primary/30">
+                                {{ rule.mitre_technique_id }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-5">
+                            {% if rule.severity_default == 'HIGH' or rule.severity_default == 'CRITICAL' %}
+                                <span class="px-2 py-0.5 rounded bg-severity-critical/10 text-severity-critical text-[10px] font-bold border border-severity-critical/20">{{ rule.severity_default }}</span>
+                            {% elif rule.severity_default == 'MED' or rule.severity_default == 'WARNING' %}
+                                <span class="px-2 py-0.5 rounded bg-severity-warning/10 text-severity-warning text-[10px] font-bold border border-severity-warning/20">{{ rule.severity_default }}</span>
+                            {% else %}
+                                <span class="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">{{ rule.severity_default }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-5">
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer" onchange="toggleRule('{{ rule.id }}')" {% if rule.enabled %}checked{% endif %}>
+                                <div class="w-9 h-5 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </td>
+                        <td class="px-6 py-5 text-sm text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-primary/10">
+                             {{ rule.log_type_scope }}
+                        </td>
+                        <td class="px-6 py-5 text-right">
+                            <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <a href="/rules/{{ rule.id }}" class="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-primary/20 text-slate-500 dark:text-slate-400">
+                                    <span class="material-symbols-outlined text-xl">edit</span>
+                                </a>
+                                <!-- Delete not implemented yet, using placeholder -->
+                                <button class="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500">
+                                    <span class="material-symbols-outlined text-xl">delete</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
     async function toggleRule(id) {
         await fetch(`/api/rules/${id}/toggle`, { method: 'POST' });
     }
 </script>
-
-<style>
-    /* Simple Switch Toggle */
-    .switch {
-        position: relative;
-        display: inline-block;
-        width: 34px;
-        height: 20px;
-    }
-
-    .switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: #332f36;
-        transition: .4s;
-        border-radius: 20px;
-        border: 1px solid #555;
-    }
-
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 14px;
-        width: 14px;
-        left: 2px;
-        bottom: 2px;
-        background-color: #888;
-        transition: .4s;
-        border-radius: 50%;
-    }
-
-    input:checked+.slider {
-        background-color: var(--primary);
-        border-color: var(--primary);
-    }
-
-    input:checked+.slider:before {
-        transform: translateX(14px);
-        background-color: white;
-    }
-
-    .badge {
-        background: var(--border);
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 11px;
-    }
-
-    .badge.HIGH {
-        background: var(--secondary);
-        color: white;
-    }
-
-    .badge.MED {
-        background: var(--primary);
-        color: white;
-    }
-
-    .btn-sm {
-        padding: 4px 8px;
-        background: var(--card-bg);
-        border: 1px solid var(--border);
-        text-decoration: none;
-        color: var(--text);
-        border-radius: 4px;
-        font-size: 12px;
-    }
-</style>
 {% endblock %}

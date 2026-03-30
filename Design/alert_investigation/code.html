@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OVS SIEM - Alert Investigation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f05684",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221016",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-64 flex-shrink-0 bg-background-dark/50 border-r border-primary/20 flex flex-col">
+<div class="p-6">
+<h1 class="text-primary text-xl font-bold tracking-tight">OVS SIEM</h1>
+<p class="text-slate-400 text-xs font-medium">Security Operations Center</p>
+</div>
+<nav class="flex-1 px-4 space-y-2 overflow-y-auto">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary text-white transition-colors" href="#">
+<span class="material-symbols-outlined">notifications_active</span>
+<span class="text-sm font-medium">Alerts</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="text-sm font-medium">Logs</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined">dns</span>
+<span class="text-sm font-medium">Agents</span>
+</a>
+<div class="pt-4 mt-4 border-t border-primary/10">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-primary/10 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</div>
+</nav>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col overflow-hidden">
+<!-- Header -->
+<header class="h-16 border-b border-primary/20 flex items-center justify-between px-8 bg-background-dark/30 backdrop-blur-md">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary">security</span>
+<h2 class="text-lg font-bold">Alert Investigation</h2>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+<input class="bg-primary/5 border border-primary/20 rounded-lg pl-10 pr-4 py-1.5 text-sm focus:ring-1 focus:ring-primary outline-none w-64" placeholder="Search incidents..." type="text"/>
+</div>
+<button class="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white">
+                        AN
+                    </div>
+</div>
+</header>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-hide">
+<!-- Title and Status Summary -->
+<div class="flex justify-between items-end">
+<div>
+<div class="flex items-center gap-3 mb-1">
+<span class="px-2 py-1 rounded bg-red-500/20 text-red-500 text-[10px] font-bold uppercase tracking-wider">Critical</span>
+<span class="text-slate-400 text-sm">ID: #6</span>
+</div>
+<h3 class="text-3xl font-bold">Critical Unauthorized Access Attempt</h3>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-lg shadow-primary/20">Isolate Host</button>
+<button class="px-4 py-2 bg-slate-700 text-white rounded-lg text-sm font-bold">Block IP</button>
+</div>
+</div>
+<!-- Main Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Left Column: Details and Status -->
+<div class="lg:col-span-2 space-y-8">
+<!-- Section 1: Alert Details -->
+<section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+<h4 class="text-sm font-bold text-primary mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">info</span> Alert Details
+                            </h4>
+<div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+<div>
+<p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Severity</p>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+<p class="text-sm font-medium">Critical</p>
+</div>
+</div>
+<div>
+<p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Rule Name</p>
+<p class="text-sm font-medium">Brute Force Detection</p>
+</div>
+<div>
+<p class="text-slate-400 text-[10px] uppercase font-bold mb-1">MITRE Technique</p>
+<p class="text-sm font-medium text-primary">T1110.001</p>
+</div>
+<div>
+<p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Affected Agent</p>
+<p class="text-sm font-medium">Endpoint-001 (Ubuntu 22.04)</p>
+</div>
+<div>
+<p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Source IP</p>
+<p class="text-sm font-medium">192.168.1.105</p>
+</div>
+<div>
+<p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Timestamp</p>
+<p class="text-sm font-medium">2023-10-27 14:30:05</p>
+</div>
+</div>
+</section>
+<!-- Section 2: Incident Status & Notes -->
+<section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+<h4 class="text-sm font-bold text-primary mb-6">Analyst Assessment</h4>
+<div class="space-y-6">
+<div>
+<p class="text-slate-400 text-[10px] uppercase font-bold mb-3">Status Update</p>
+<div class="flex flex-wrap gap-3">
+<button class="px-4 py-2 rounded-full border border-primary/30 text-xs font-bold hover:bg-primary/10">New</button>
+<button class="px-4 py-2 rounded-full bg-primary/20 border border-primary text-primary text-xs font-bold">Investigating</button>
+<button class="px-4 py-2 rounded-full border border-primary/30 text-xs font-bold hover:bg-primary/10">Resolved</button>
+<button class="px-4 py-2 rounded-full border border-primary/30 text-xs font-bold hover:bg-primary/10">False Positive</button>
+</div>
+</div>
+<div>
+<p class="text-slate-400 text-[10px] uppercase font-bold mb-3">Investigation Notes</p>
+<textarea class="w-full h-32 bg-background-dark border border-primary/20 rounded-lg p-4 text-sm focus:ring-1 focus:ring-primary outline-none" placeholder="Enter findings, evidence, or next steps..."></textarea>
+</div>
+<div class="flex justify-end">
+<button class="px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold">Save Assessment</button>
+</div>
+</div>
+</section>
+<!-- Section 4: Related Logs Table -->
+<section class="bg-primary/5 border border-primary/10 rounded-xl overflow-hidden">
+<div class="p-6 border-b border-primary/10 flex justify-between items-center">
+<h4 class="text-sm font-bold text-primary uppercase">Correlated Events</h4>
+<button class="text-xs text-slate-400 hover:text-white flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">download</span> Export CSV
+                                </button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left text-xs">
+<thead class="bg-primary/10 text-slate-400 uppercase font-bold">
+<tr>
+<th class="px-6 py-3">Timestamp</th>
+<th class="px-6 py-3">Host</th>
+<th class="px-6 py-3">Message</th>
+<th class="px-6 py-3">Severity</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-primary/10">
+<tr>
+<td class="px-6 py-4 whitespace-nowrap">14:29:58</td>
+<td class="px-6 py-4">Endpoint-001</td>
+<td class="px-6 py-4">SSH: Failed password for root from 192.168.1.105</td>
+<td class="px-6 py-4"><span class="text-yellow-500">Warning</span></td>
+</tr>
+<tr>
+<td class="px-6 py-4 whitespace-nowrap">14:30:02</td>
+<td class="px-6 py-4">Endpoint-001</td>
+<td class="px-6 py-4">SSH: Multiple failed logins in short duration</td>
+<td class="px-6 py-4"><span class="text-red-500">Critical</span></td>
+</tr>
+<tr>
+<td class="px-6 py-4 whitespace-nowrap">14:30:05</td>
+<td class="px-6 py-4">Endpoint-001</td>
+<td class="px-6 py-4">SIEM: Brute Force Detection triggered</td>
+<td class="px-6 py-4"><span class="text-red-500 font-bold uppercase">Critical</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+<!-- Right Column: Context and Sidebar Info -->
+<div class="space-y-8">
+<!-- Section 3: Event Timeline -->
+<section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+<h4 class="text-sm font-bold text-primary mb-6">Timeline</h4>
+<div class="relative space-y-6 before:absolute before:inset-0 before:ml-2 before:h-full before:w-0.5 before:-translate-x-1/2 before:bg-primary/20">
+<div class="relative pl-8">
+<div class="absolute left-0 top-1 h-4 w-4 -translate-x-1/2 rounded-full border-2 border-primary bg-background-dark"></div>
+<p class="text-[10px] text-slate-400 font-bold">14:28:12</p>
+<p class="text-xs font-medium">Initial SSH Connection established</p>
+</div>
+<div class="relative pl-8">
+<div class="absolute left-0 top-1 h-4 w-4 -translate-x-1/2 rounded-full border-2 border-primary bg-background-dark"></div>
+<p class="text-[10px] text-slate-400 font-bold">14:29:45</p>
+<p class="text-xs font-medium">First failed login attempt detected</p>
+</div>
+<div class="relative pl-8">
+<div class="absolute left-0 top-1 h-4 w-4 -translate-x-1/2 rounded-full border-2 border-primary bg-background-dark"></div>
+<p class="text-[10px] text-primary font-bold">14:30:05</p>
+<p class="text-xs font-bold text-primary">Detection Rule: Brute Force Triggered</p>
+</div>
+<div class="relative pl-8">
+<div class="absolute left-0 top-1 h-4 w-4 -translate-x-1/2 rounded-full border-2 border-slate-600 bg-background-dark"></div>
+<p class="text-[10px] text-slate-400 font-bold">PENDING</p>
+<p class="text-xs font-medium italic text-slate-500">Waiting for analyst action...</p>
+</div>
+</div>
+</section>
+<!-- Section 5: Source IP Context -->
+<section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+<h4 class="text-sm font-bold text-primary mb-6">Source Intelligence</h4>
+<div class="space-y-4">
+<div class="flex justify-between items-center text-xs">
+<span class="text-slate-400">IP Address</span>
+<span class="font-mono">192.168.1.105</span>
+</div>
+<div class="flex justify-between items-center text-xs">
+<span class="text-slate-400">Geolocation</span>
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">location_on</span> Netherlands
+                                    </span>
+</div>
+<div class="flex justify-between items-center text-xs">
+<span class="text-slate-400">ASN</span>
+<span>AS12345 (Digital Ocean)</span>
+</div>
+<div class="flex justify-between items-center text-xs">
+<span class="text-slate-400">Total Attempts</span>
+<span class="text-primary font-bold">142</span>
+</div>
+<div class="pt-4 mt-4 border-t border-primary/10">
+<div class="w-full h-24 bg-primary/20 rounded-lg flex items-center justify-center relative overflow-hidden">
+<div class="absolute inset-0 bg-slate-800/50"></div>
+<span class="relative text-[10px] font-bold uppercase tracking-widest text-primary">Map View unavailable</span>
+<div class="hidden" data-location="Amsterdam" style=""></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 6: Host Metrics -->
+<section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+<h4 class="text-sm font-bold text-primary mb-6">Endpoint Health</h4>
+<div class="space-y-4">
+<div>
+<div class="flex justify-between text-[10px] font-bold mb-1 uppercase">
+<span>CPU Utilization</span>
+<span class="text-primary">84%</span>
+</div>
+<div class="w-full h-1.5 bg-primary/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 84%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-bold mb-1 uppercase">
+<span>RAM Usage</span>
+<span>62%</span>
+</div>
+<div class="w-full h-1.5 bg-primary/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary/40 rounded-full" style="width: 62%"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 7: Quick Response Actions -->
+<section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+<h4 class="text-sm font-bold text-primary mb-6 uppercase">Active Responses</h4>
+<div class="grid grid-cols-1 gap-2">
+<button class="w-full py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded flex items-center justify-center gap-2 border border-primary/30">
+<span class="material-symbols-outlined text-sm">lock</span> Revoke Credentials
+                                </button>
+<button class="w-full py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded flex items-center justify-center gap-2 border border-primary/30">
+<span class="material-symbols-outlined text-sm">terminal</span> Kill SSH Processes
+                                </button>
+<button class="w-full py-2 bg-red-600/20 hover:bg-red-600/30 text-red-500 text-xs font-bold rounded flex items-center justify-center gap-2 border border-red-500/30">
+<span class="material-symbols-outlined text-sm">warning</span> Full System Wipe
+                                </button>
+</div>
+</section>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

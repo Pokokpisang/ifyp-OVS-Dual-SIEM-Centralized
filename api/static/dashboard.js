@@ -84,4 +84,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Polling
     setInterval(updateData, 2000); // Metrics fast
     updateData(); // Initial load
+
+    if (hostSelect) {
+        hostSelect.addEventListener('change', updateData);
+    }
 });

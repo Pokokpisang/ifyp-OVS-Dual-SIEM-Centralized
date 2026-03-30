@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f05684",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221016",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<title>OVS SIEM - Settings</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100">
+<div class="flex min-h-screen">
+<!-- Sidebar -->
+<aside class="w-64 border-r border-primary/10 bg-background-light dark:bg-background-dark hidden md:flex flex-col">
+<div class="p-6 flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-white">shield_lock</span>
+</div>
+<div>
+<h1 class="font-bold text-lg leading-none">OVS SIEM</h1>
+<p class="text-xs text-primary/70">Security Monitor</p>
+</div>
+</div>
+<nav class="flex-1 px-4 py-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-primary/10 hover:text-primary rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-primary/10 hover:text-primary rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">warning</span>
+<span class="text-sm font-medium">Incidents</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-primary/10 hover:text-primary rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="text-sm font-medium">Logs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-primary/10 hover:text-primary rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">bar_chart</span>
+<span class="text-sm font-medium">Reports</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 bg-primary/20 text-primary rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+<div class="p-4 mt-auto">
+<div class="p-4 rounded-xl bg-primary/5 border border-primary/10">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800" data-alt="User profile avatar placeholder"></div>
+<div class="overflow-hidden">
+<p class="text-xs font-semibold truncate">Admin User</p>
+<p class="text-[10px] text-slate-500 truncate">admin@ovs-siem.com</p>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col h-screen overflow-y-auto">
+<!-- Header -->
+<header class="h-16 border-b border-primary/10 flex items-center justify-between px-8 bg-background-light/50 dark:bg-background-dark/50 backdrop-blur-md sticky top-0 z-10">
+<div class="flex items-center gap-4">
+<h2 class="text-xl font-bold">Settings</h2>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-slate-400 cursor-pointer">notifications</span>
+<span class="material-symbols-outlined text-slate-400 cursor-pointer">help_outline</span>
+</div>
+</header>
+<!-- Scrollable Content Area -->
+<div class="flex-1 p-8 max-w-4xl mx-auto w-full">
+<div class="space-y-12">
+<!-- User Management Section -->
+<section>
+<div class="mb-6">
+<h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">group</span>
+                                User Management
+                            </h3>
+<p class="text-sm text-slate-500">Configure administrative access and default permissions.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-slate-700 dark:text-slate-300">Admin Email</label>
+<input class="bg-primary/5 border border-primary/20 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all dark:text-white" placeholder="admin@example.com" type="email"/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-slate-700 dark:text-slate-300">Default User Role</label>
+<select class="bg-primary/5 border border-primary/20 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all dark:bg-background-dark dark:text-white">
+<option>Viewer</option>
+<option>Analyst</option>
+<option>Administrator</option>
+</select>
+</div>
+</div>
+</section>
+<!-- Notification Settings Section -->
+<section>
+<div class="mb-6 border-t border-primary/10 pt-8">
+<h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">notifications_active</span>
+                                Notification Settings
+                            </h3>
+<p class="text-sm text-slate-500">Manage how and where you receive security alerts.</p>
+</div>
+<div class="space-y-6">
+<div class="p-4 rounded-xl border border-primary/10 bg-primary/5 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-[#4A154B] flex items-center justify-center">
+<span class="material-symbols-outlined text-white">chat</span>
+</div>
+<div>
+<p class="text-sm font-semibold">Slack Integration</p>
+<p class="text-xs text-slate-500">Send critical alerts to a dedicated channel.</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-2">
+<input class="text-xs bg-background-light dark:bg-background-dark border border-primary/20 rounded-lg px-3 py-2 w-64 focus:ring-1 focus:ring-primary outline-none" placeholder="Webhook URL" type="text"/>
+</div>
+</div>
+<div class="p-4 rounded-xl border border-primary/10 bg-primary/5 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center">
+<span class="material-symbols-outlined text-white">mail</span>
+</div>
+<div>
+<p class="text-sm font-semibold">Email Alerts</p>
+<p class="text-xs text-slate-500">Digest reports and immediate threat warnings.</p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</section>
+<!-- Agent Configuration Section -->
+<section>
+<div class="mb-6 border-t border-primary/10 pt-8">
+<h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">terminal</span>
+                                Agent Configuration
+                            </h3>
+<p class="text-sm text-slate-500">Configure global settings for monitoring agents.</p>
+</div>
+<div class="grid grid-cols-1 gap-6">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-medium text-slate-700 dark:text-slate-300">Log Retention Period (Days)</label>
+<input class="bg-primary/5 border border-primary/20 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all dark:text-white max-w-xs" type="number" value="30"/>
+</div>
+<div class="flex items-center gap-4 p-4 rounded-xl border border-primary/10 bg-primary/5">
+<div class="flex-1">
+<p class="text-sm font-semibold">Automatic Agent Updates</p>
+<p class="text-xs text-slate-500">Automatically push new security definitions to all agents.</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- Footer Action Bar -->
+<footer class="p-6 border-t border-primary/10 bg-background-light dark:bg-background-dark flex justify-end gap-4 sticky bottom-0">
+<button class="px-6 py-2 rounded-lg border border-primary/20 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium">
+                    Reset Changes
+                </button>
+<button class="px-8 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-all text-sm font-semibold shadow-lg shadow-primary/20">
+                    Save Settings
+                </button>
+</footer>
+</main>
+</div>
+</body></html>

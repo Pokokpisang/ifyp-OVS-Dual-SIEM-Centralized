@@ -1,65 +1,128 @@
 {% extends "base.html" %}
 
-{% block title %}Log Explorer{% endblock %}
+{% block title %}OVS SIEM - System Logs{% endblock %}
 
-{% block content %}
-<div class="card p-4">
-    <form class="filters" method="get" action="/logs">
-        <input type="text" name="q" placeholder="Search logs..." value="{{ q }}">
-        <select name="host">
-            <option value="">All Hosts</option>
-            {% for h in hosts %}
-            <option value="{{ h }}" {% if h==current_host %}selected{% endif %}>{{ h }}</option>
-            {% endfor %}
-        </select>
-        <select name="log_type">
-            <option value="">All Types</option>
-            {% for t in types %}
-            <option value="{{ t }}" {% if t==current_type %}selected{% endif %}>{{ t }}</option>
-            {% endfor %}
-        </select>
-        <button type="submit">Filter</button>
+{% block page_title %}System Logs{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-1 px-3 py-1.5 bg-green-500/10 text-green-500 rounded-full border border-green-500/20 text-[10px] font-bold uppercase tracking-wider">
+    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+    Live Connection
+</div>
+{% endblock %}
+
+{% block main_content %}
+<!-- Filter Bar -->
+<div class="p-6 bg-background-light dark:bg-background-dark/40 border-b border-primary/5">
+    <form class="flex flex-wrap items-center justify-between gap-4" method="get" action="/logs">
+        <div class="flex flex-wrap items-center gap-3 flex-1">
+            <!-- Search -->
+            <div class="relative w-full max-w-sm">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
+                <input name="q" value="{{ q }}" class="w-full pl-10 pr-4 py-2 bg-white dark:bg-background-dark border border-primary/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400" placeholder="Search logs, events, messages..." type="text"/>
+            </div>
+
+            <!-- Host Dropdown -->
+            <div class="relative inline-block text-left">
+                <select name="host" class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-background-dark border border-primary/20 rounded-lg text-sm font-medium hover:border-primary/50 transition-all text-slate-900 dark:text-slate-100 appearance-none pr-10 focus:ring-primary focus:border-primary">
+                    <option value="">Host: All</option>
+                    {% for h in hosts %}
+                    <option value="{{ h }}" {% if h==current_host %}selected{% endif %}>{{ h }}</option>
+                    {% endfor %}
+                </select>
+                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-[18px]">expand_more</span>
+            </div>
+
+            <!-- Type / Source Dropdown -->
+            <div class="relative inline-block text-left">
+                 <select name="log_type" class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-background-dark border border-primary/20 rounded-lg text-sm font-medium hover:border-primary/50 transition-all text-slate-900 dark:text-slate-100 appearance-none pr-10 focus:ring-primary focus:border-primary">
+                    <option value="">Type: All</option>
+                    {% for t in types %}
+                    <option value="{{ t }}" {% if t==current_type %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-[18px]">expand_more</span>
+            </div>
+
+        </div>
+        
+        <div class="flex items-center gap-2">
+            <a href="/logs" class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-background-dark border border-primary/20 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-primary/10 transition-all">
+                <span class="material-symbols-outlined text-[20px]">refresh</span>
+                <span>Reset</span>
+            </a>
+            <button type="submit" class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-lg shadow-primary/20 hover:opacity-90 transition-all">
+                <span class="material-symbols-outlined text-[20px]">filter_list</span>
+                <span>Filter</span>
+            </button>
+        </div>
     </form>
+</div>
 
-    <table>
-        <thead>
-            <tr>
-                <th width="150">Timestamp</th>
-                <th width="120">Host</th>
-                <th width="80">Type</th>
-                <th>Message</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for log in logs %}
-            <tr>
-                <td style="font-size:12px; color:var(--text-muted);">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
-                </td>
-                <td>{{ log.host }}</td>
-                <td><span style="background:var(--border); padding:2px 6px; border-radius:4px; font-size:11px;">{{
-                        log.log_type }}</span></td>
-                <td style="font-family:monospace; font-size:12px;">{{ log.message[:200] }}</td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="4" style="text-align:center; padding:30px;">No logs found</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <div class="pagination">
-        {% if page > 1 %}
-        <a href="/logs?page={{ page - 1 }}&q={{ q }}&host={{ current_host }}&log_type={{ current_type }}"
-            class="page-link">Prev</a>
-        {% endif %}
-
-        <span style="padding:5px;">Page {{ page }} of {{ total_pages }} ({{ total_count }} total)</span>
-
-        {% if page < total_pages %} <a
-            href="/logs?page={{ page + 1 }}&q={{ q }}&host={{ current_host }}&log_type={{ current_type }}"
-            class="page-link">Next</a>
-            {% endif %}
+<!-- Log Table -->
+<div class="flex-1 overflow-auto custom-scrollbar p-6">
+    <div class="bg-white dark:bg-background-dark/60 rounded-xl border border-primary/10 overflow-hidden shadow-sm">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="border-b border-primary/10 bg-slate-50 dark:bg-primary/5">
+                    <th class="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-primary/70 uppercase tracking-wider">Timestamp</th>
+                    <th class="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-primary/70 uppercase tracking-wider w-32 justify-center flex items-center">Type</th>
+                    <th class="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-primary/70 uppercase tracking-wider">Host</th>
+                    <th class="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-primary/70 uppercase tracking-wider">Message</th>
+                    <th class="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-primary/70 uppercase tracking-wider text-right">Action</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-primary/5">
+                {% for log in logs %}
+                <tr class="hover:bg-primary/5 transition-colors group">
+                    <td class="px-4 py-2.5 text-xs font-mono text-slate-500">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    <td class="px-4 py-2.5">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20 uppercase tracking-tight">{{ log.log_type }}</span>
+                    </td>
+                    <td class="px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300">{{ log.host }}</td>
+                    <td class="px-4 py-2.5 text-[11px] font-mono text-slate-600 dark:text-slate-400 truncate max-w-xl">{{ log.message }}</td>
+                    <td class="px-4 py-2.5 text-right">
+                        <button class="text-slate-400 hover:text-primary p-1 rounded transition-colors opacity-0 group-hover:opacity-100" title="{{ log.message }}">
+                            <span class="material-symbols-outlined text-[18px]">visibility</span>
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                        <div class="flex flex-col items-center gap-2">
+                            <span class="material-symbols-outlined text-4xl opacity-50">search_off</span>
+                            <p>No logs found matching your criteria.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
+
+<!-- Footer Stats & Pagination -->
+<footer class="h-10 px-6 bg-background-light dark:bg-background-dark/80 border-t border-primary/10 flex items-center justify-between text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+    <div class="flex items-center gap-6">
+        <div class="flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+            Total: {{ total_count }} {{ 'Log' if total_count == 1 else 'Logs' }}
+        </div>
+        <div>Page {{ page }} of {{ total_pages }}</div>
+    </div>
+    <div class="flex items-center gap-4">
+        {% if page > 1 %}
+        <a href="/logs?page={{ page - 1 }}&q={{ q }}&host={{ current_host }}&log_type={{ current_type }}" class="flex items-center gap-1 hover:text-primary transition-colors">
+            <span class="material-symbols-outlined text-[14px]">chevron_left</span> Prev
+        </a>
+        {% endif %}
+        
+        {% if page < total_pages %} 
+        <a href="/logs?page={{ page + 1 }}&q={{ q }}&host={{ current_host }}&log_type={{ current_type }}" class="flex items-center gap-1 hover:text-primary transition-colors">
+            Next <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        </a>
+        {% endif %}
+    </div>
+</footer>
 {% endblock %}

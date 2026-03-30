@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f05684",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#221016",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"],
+                        "mono": ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(240, 86, 132, 0.2);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(240, 86, 132, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-64 flex-shrink-0 border-r border-primary/10 bg-background-light dark:bg-background-dark flex flex-col">
+<div class="p-6 flex flex-col gap-1">
+<h1 class="text-primary text-xl font-bold tracking-tight">OVS SIEM</h1>
+<p class="text-slate-500 dark:text-primary/60 text-xs font-medium uppercase tracking-widest">Security Monitor</p>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-primary/10 transition-colors group" href="#">
+<span class="material-symbols-outlined text-[22px]">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary text-white shadow-lg shadow-primary/20 transition-all" href="#">
+<span class="material-symbols-outlined text-[22px] fill-1">description</span>
+<span class="text-sm font-medium">Logs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-primary/10 transition-colors group" href="#">
+<span class="material-symbols-outlined text-[22px]">shield</span>
+<span class="text-sm font-medium">Incidents</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-primary/10 transition-colors group" href="#">
+<span class="material-symbols-outlined text-[22px]">database</span>
+<span class="text-sm font-medium">Assets</span>
+</a>
+<div class="pt-4 mt-4 border-t border-primary/10">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-primary/10 transition-colors group" href="#">
+<span class="material-symbols-outlined text-[22px]">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</div>
+</nav>
+<div class="p-4 border-t border-primary/10 flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs border border-primary/30">
+                    AD
+                </div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-semibold truncate">Admin User</p>
+<p class="text-[10px] text-slate-500 uppercase tracking-tighter">Enterprise Tier</p>
+</div>
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+<!-- Header -->
+<header class="h-16 flex items-center justify-between px-8 border-b border-primary/10 bg-background-light/50 dark:bg-background-dark/50 backdrop-blur-md">
+<div class="flex items-center gap-4">
+<div class="p-2 rounded-lg bg-primary/10 text-primary">
+<span class="material-symbols-outlined text-[24px]">terminal</span>
+</div>
+<h2 class="text-xl font-bold tracking-tight">System Logs</h2>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1 px-3 py-1.5 bg-green-500/10 text-green-500 rounded-full border border-green-500/20 text-[10px] font-bold uppercase tracking-wider">
+<span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                        Live Connection
+                    </div>
+<button class="p-2 rounded-lg text-slate-400 hover:bg-primary/10 hover:text-primary transition-all relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-background-dark"></span>
+</button>
+<button class="p-2 rounded-lg text-slate-400 hover:bg-primary/10 hover:text-primary transition-all">
+<span class="material-symbols-outlined">help</span>
+</button>
+</div>
+</header>
+<!-- Filter Bar -->
+<div class="p-6 bg-background-light dark:bg-background-dark/40 border-b border-primary/5">
+<div class="flex flex-wrap items-center justify-between gap-4">
+<div class="flex flex-wrap items-center gap-3 flex-1">
+<!-- Search -->
+<div class="relative w-full max-w-sm">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-white dark:bg-background-dark border border-primary/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm" placeholder="Search logs, events, messages..." type="text"/>
+</div>
+<!-- Log Source Dropdown -->
+<div class="relative inline-block text-left">
+<button class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-background-dark border border-primary/20 rounded-lg text-sm font-medium hover:border-primary/50 transition-all">
+<span>Log Source: All</span>
+<span class="material-symbols-outlined text-[18px]">expand_more</span>
+</button>
+</div>
+<!-- Severity Filter -->
+<div class="flex gap-1 p-1 bg-white dark:bg-background-dark border border-primary/20 rounded-lg">
+<button class="px-3 py-1 text-xs font-semibold rounded bg-primary text-white">All</button>
+<button class="px-3 py-1 text-xs font-semibold rounded text-slate-500 hover:bg-primary/10">Errors</button>
+<button class="px-3 py-1 text-xs font-semibold rounded text-slate-500 hover:bg-primary/10">Warnings</button>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-background-dark border border-primary/20 rounded-lg text-sm font-medium hover:bg-primary/10 transition-all">
+<span class="material-symbols-outlined text-[20px]">refresh</span>
+<span>Refresh</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-lg shadow-primary/20 hover:opacity-90 transition-all">
+<span class="material-symbols-outlined text-[20px]">download</span>
+<span>Export CSV</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Log Table -->
+<div class="flex-1 overflow-auto custom-scrollbar p-6">
+<div class="bg-white dark:bg-background-dark/60 rounded-xl border border-primary/10 overflow-hidden shadow-sm">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-primary/10 bg-slate-50 dark:bg-primary/5">
+<th class="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-primary/70 uppercase tracking-wider">Timestamp</th>
+<th class="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-primary/70 uppercase tracking-wider w-32">Severity</th>
+<th class="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-primary/70 uppercase tracking-wider">Source</th>
+<th class="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-primary/70 uppercase tracking-wider">Message</th>
+<th class="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-primary/70 uppercase tracking-wider text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-primary/5">
+<!-- Critical Log -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-4 py-2.5 text-xs font-mono text-slate-500">2023-10-24 14:22:01.452</td>
+<td class="px-4 py-2.5">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-500 border border-red-500/20 uppercase tracking-tight">Critical</span>
+</td>
+<td class="px-4 py-2.5 text-sm font-medium">Auth-Service-01</td>
+<td class="px-4 py-2.5 text-xs font-mono text-slate-400 truncate max-w-xl">Failed login attempt from unauthorized IP: 192.168.1.104. Potential brute-force attack detected.</td>
+<td class="px-4 py-2.5 text-right">
+<button class="text-slate-400 hover:text-primary p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</td>
+</tr>
+<!-- Error Log -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-4 py-2.5 text-xs font-mono text-slate-500">2023-10-24 14:21:58.110</td>
+<td class="px-4 py-2.5">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/10 text-orange-500 border border-orange-500/20 uppercase tracking-tight">Error</span>
+</td>
+<td class="px-4 py-2.5 text-sm font-medium">DB-Cluster-Main</td>
+<td class="px-4 py-2.5 text-xs font-mono text-slate-400 truncate max-w-xl">Connection pool limit reached (max_connections=500). Transactions being queued.</td>
+<td class="px-4 py-2.5 text-right">
+<button class="text-slate-400 hover:text-primary p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</td>
+</tr>
+<!-- Warning Log -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-4 py-2.5 text-xs font-mono text-slate-500">2023-10-24 14:21:45.892</td>
+<td class="px-4 py-2.5">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 uppercase tracking-tight">Warning</span>
+</td>
+<td class="px-4 py-2.5 text-sm font-medium">Node-Balancer-02</td>
+<td class="px-4 py-2.5 text-xs font-mono text-slate-400 truncate max-w-xl">SSL Certificate expiring in 14 days for domain: services.internal.ovs.io</td>
+<td class="px-4 py-2.5 text-right">
+<button class="text-slate-400 hover:text-primary p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</td>
+</tr>
+<!-- Info Log -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-4 py-2.5 text-xs font-mono text-slate-500">2023-10-24 14:21:30.221</td>
+<td class="px-4 py-2.5">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20 uppercase tracking-tight">Info</span>
+</td>
+<td class="px-4 py-2.5 text-sm font-medium">System-Kernel</td>
+<td class="px-4 py-2.5 text-xs font-mono text-slate-400 truncate max-w-xl">Backup process completed successfully. Total data moved: 1.4TB.</td>
+<td class="px-4 py-2.5 text-right">
+<button class="text-slate-400 hover:text-primary p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</td>
+</tr>
+<!-- Repeated Info Log -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-4 py-2.5 text-xs font-mono text-slate-500">2023-10-24 14:21:28.005</td>
+<td class="px-4 py-2.5">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20 uppercase tracking-tight">Info</span>
+</td>
+<td class="px-4 py-2.5 text-sm font-medium">Audit-Log</td>
+<td class="px-4 py-2.5 text-xs font-mono text-slate-400 truncate max-w-xl">User 'admin' successfully rotated API keys for 'Production-Main'.</td>
+<td class="px-4 py-2.5 text-right">
+<button class="text-slate-400 hover:text-primary p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</td>
+</tr>
+<!-- Warning Log -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-4 py-2.5 text-xs font-mono text-slate-500">2023-10-24 14:20:55.331</td>
+<td class="px-4 py-2.5">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 uppercase tracking-tight">Warning</span>
+</td>
+<td class="px-4 py-2.5 text-sm font-medium">Compute-Engine</td>
+<td class="px-4 py-2.5 text-xs font-mono text-slate-400 truncate max-w-xl">High CPU usage detected on instance-84 (94.2%). Scaling trigger initiated.</td>
+<td class="px-4 py-2.5 text-right">
+<button class="text-slate-400 hover:text-primary p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</td>
+</tr>
+<!-- Info Log -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-4 py-2.5 text-xs font-mono text-slate-500">2023-10-24 14:20:12.774</td>
+<td class="px-4 py-2.5">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20 uppercase tracking-tight">Info</span>
+</td>
+<td class="px-4 py-2.5 text-sm font-medium">Gateway-External</td>
+<td class="px-4 py-2.5 text-xs font-mono text-slate-400 truncate max-w-xl">Incoming traffic spike detected from region: Asia-Pacific-East.</td>
+<td class="px-4 py-2.5 text-right">
+<button class="text-slate-400 hover:text-primary p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</td>
+</tr>
+<!-- Error Log -->
+<tr class="hover:bg-primary/5 transition-colors group">
+<td class="px-4 py-2.5 text-xs font-mono text-slate-500">2023-10-24 14:19:44.220</td>
+<td class="px-4 py-2.5">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/10 text-orange-500 border border-orange-500/20 uppercase tracking-tight">Error</span>
+</td>
+<td class="px-4 py-2.5 text-sm font-medium">Storage-Node-A</td>
+<td class="px-4 py-2.5 text-xs font-mono text-slate-400 truncate max-w-xl">Disk health check failed on /dev/sdc. Sector corruption detected.</td>
+<td class="px-4 py-2.5 text-right">
+<button class="text-slate-400 hover:text-primary p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Footer Stats -->
+<footer class="h-10 px-6 bg-background-light dark:bg-background-dark/80 border-t border-primary/10 flex items-center justify-between text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                        Showing 50 of 124,592 Logs
+                    </div>
+<div>Page 1 of 2,492</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">speed</span>
+                        Ingestion Rate: 4.2 GB/m
+                    </div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">storage</span>
+                        Retention: 90 Days
+                    </div>
+</div>
+</footer>
+</main>
+</div>
+</body></html>

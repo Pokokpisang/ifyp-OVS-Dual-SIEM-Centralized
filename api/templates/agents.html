@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Agents Management - OVS SIEM{% endblock %}
+{% block page_title %}Agents Management{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 text-[10px] font-bold uppercase tracking-widest border border-green-500/20">
+    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+    Live
+</div>
+{% endblock %}
+
+{% block main_content %}
+<div class="flex-1 overflow-y-auto p-8 space-y-8">
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm">
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-2 rounded-lg bg-primary/10 text-primary">
+                    <span class="material-symbols-outlined">dns</span>
+                </div>
+                <span class="text-xs font-medium text-slate-400">Total</span>
+            </div>
+            <p class="text-3xl font-bold">{{ summary.total }}</p>
+            <p class="text-sm text-slate-500 mt-1">Managed Endpoints</p>
+        </div>
+        <div class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm">
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-2 rounded-lg bg-green-500/10 text-green-500">
+                    <span class="material-symbols-outlined">check_circle</span>
+                </div>
+                <span class="text-xs font-medium text-slate-400">Online</span>
+            </div>
+            <p class="text-3xl font-bold">{{ summary.online }}</p>
+            <p class="text-sm text-green-500 mt-1">Active Now</p>
+        </div>
+        <div class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm">
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-2 rounded-lg bg-red-500/10 text-red-500">
+                    <span class="material-symbols-outlined">error</span>
+                </div>
+                <span class="text-xs font-medium text-slate-400">Offline</span>
+            </div>
+            <p class="text-3xl font-bold">{{ summary.offline }}</p>
+            <p class="text-sm text-slate-500 mt-1">Unresponsive > 5m</p>
+        </div>
+        <div class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm">
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-2 rounded-lg bg-amber-500/10 text-amber-500">
+                    <span class="material-symbols-outlined">monitoring</span>
+                </div>
+                <span class="text-xs font-medium text-slate-400">High Load</span>
+            </div>
+            <p class="text-3xl font-bold">{{ summary.high_load }}</p>
+            <p class="text-sm text-amber-500 mt-1">Needs attention</p>
+        </div>
+    </div>
+
+    <!-- Actions Bar -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <form method="GET" action="/agents" class="flex flex-1 items-center gap-3">
+            <div class="relative flex-1 max-w-sm">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+                <input name="q" value="{{ q }}" class="pl-10 pr-4 py-2.5 w-full bg-white dark:bg-card-dark border border-primary/10 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all" placeholder="Filter agents by hostname..." type="text"/>
+            </div>
+            <div class="relative">
+                <select name="status_filter" onchange="this.form.submit()" class="appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-card-dark border border-primary/10 rounded-lg text-sm font-medium focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <option value="All" {% if status_filter == 'All' %}selected{% endif %}>Status: All</option>
+                    <option value="ONLINE" {% if status_filter == 'ONLINE' %}selected{% endif %}>Online</option>
+                    <option value="OFFLINE" {% if status_filter == 'OFFLINE' %}selected{% endif %}>Offline</option>
+                    <option value="HIGH LOAD" {% if status_filter == 'HIGH LOAD' %}selected{% endif %}>High Load</option>
+                </select>
+                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
+            </div>
+        </form>
+        <button class="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-primary/20">
+            <span class="material-symbols-outlined text-lg">add</span>
+            Register New Agent
+        </button>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white dark:bg-card-dark rounded-xl border border-primary/5 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-primary/10">
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Agent ID</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Hostname / IP</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">CPU Load</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Memory Usage</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-primary/5">
+                    {% for agent in agents %}
+                    <tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                        <td class="px-6 py-5">
+                            <span class="text-sm font-medium">{{ agent.id }}</span>
+                        </td>
+                        <td class="px-6 py-5">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold">{{ agent.hostname }}</span>
+                                <span class="text-xs text-slate-500">{{ agent.ip }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5">
+                            {% if agent.status == 'ONLINE' %}
+                            <span class="px-2.5 py-1 rounded-full bg-green-500/10 text-green-500 text-[11px] font-bold">ONLINE</span>
+                            {% elif agent.status == 'OFFLINE' %}
+                            <span class="px-2.5 py-1 rounded-full bg-red-500/10 text-red-500 text-[11px] font-bold">OFFLINE</span>
+                            {% else %}
+                            <span class="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[11px] font-bold uppercase">HIGH LOAD</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-5">
+                            <div class="flex items-center gap-3 w-32">
+                                <div class="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                    <div class="h-full bg-primary" style="width: {{ agent.cpu }}%"></div>
+                                </div>
+                                <span class="text-xs font-medium {% if agent.cpu > 85 %}text-amber-500{% endif %}">{{ agent.cpu }}%</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5">
+                            <div class="flex items-center gap-3 w-32">
+                                <div class="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                    <div class="h-full bg-primary" style="width: {{ agent.ram }}%"></div>
+                                </div>
+                                <span class="text-xs font-medium {% if agent.ram > 85 %}text-amber-500{% endif %}">{{ agent.ram }}%</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5 text-right">
+                            <button class="text-primary hover:text-primary/70 font-bold text-xs uppercase tracking-widest transition-colors">Edit</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center text-slate-500 text-sm">
+                            No agents found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="px-6 py-4 border-t border-primary/10 flex items-center justify-between bg-slate-50 dark:bg-slate-800/30">
+            <p class="text-xs text-slate-500 font-medium">Showing {{ agents|length }} of {{ total_count }} agents</p>
+            <div class="flex gap-2">
+                <a href="?page={{ page - 1 }}&q={{ q }}&status_filter={{ status_filter }}" class="p-1.5 rounded border border-primary/10 hover:bg-white dark:hover:bg-card-dark transition-colors {% if page <= 1 %}pointer-events-none opacity-50{% endif %}">
+                    <span class="material-symbols-outlined text-sm">chevron_left</span>
+                </a>
+                <a href="?page={{ page + 1 }}&q={{ q }}&status_filter={{ status_filter }}" class="p-1.5 rounded border border-primary/10 hover:bg-white dark:hover:bg-card-dark transition-colors {% if page >= total_pages %}pointer-events-none opacity-50{% endif %}">
+                    <span class="material-symbols-outlined text-sm">chevron_right</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
