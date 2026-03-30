@@ -1,4 +1,4 @@
-# SIEM Prototype (30% MVP)
+# SIEM Prototype (50% MVP)
 
 This is a prototype SIEM system consisting of:
 1.  **Backend**: FastAPI (Python) + PostgreSQL (Dockerized).
