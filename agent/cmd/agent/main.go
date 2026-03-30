@@ -4,6 +4,7 @@ import (
 	"agent/internal/collector"
 	"agent/internal/config"
 	"agent/internal/queue"
+	"agent/internal/rules"
 	"agent/internal/sender"
 	"agent/internal/tailer"
 	"fmt"
@@ -20,6 +21,9 @@ func main() {
 
 	q := queue.New("agent_queue.jsonl")
 	snd := sender.New(cfg, q)
+
+	rm := rules.New(cfg.ServerURL + "/api/agent/rules")
+	rm.StartPoll(5 * time.Minute)
 
 	// Try to drain queue on startup
 	snd.DrainQueue()
@@ -43,10 +47,14 @@ func main() {
 		auditEvents, err := auditTailer.Start()
 		if err == nil {
 			fmt.Printf("Starting Auditd Tailer: %s\n", cfg.AuditdPath)
-			// Merge channels? Or just launch another goroutine.
 			// Launch separate consumer for simplicity
 			go func() {
 				for event := range auditEvents {
+					if matched, rID, rev := rm.Match(event.Message); matched {
+						event.LocalFlag = true
+						event.AgentRuleID = rID
+						event.LocalRuleVersion = rev
+					}
 					// fmt.Printf("Sending AUDIT: %s...\n", event.Message[:min(len(event.Message), 20)])
 					if err := snd.Send(event); err != nil {
 						fmt.Println("Error sending audit:", err)
@@ -61,6 +69,11 @@ func main() {
 	// Main Loop for Primary Logs
 	go func() {
 		for event := range events {
+			if matched, rID, rev := rm.Match(event.Message); matched {
+				event.LocalFlag = true
+				event.AgentRuleID = rID
+				event.LocalRuleVersion = rev
+			}
 			fmt.Printf("Sending log: %s...\n", event.Message[:min(len(event.Message), 20)])
 			if err := snd.Send(event); err != nil {
 				fmt.Println("Error sending log:", err)

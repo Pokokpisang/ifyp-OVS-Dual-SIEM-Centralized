@@ -12,6 +12,9 @@ class Log(Base):
     log_type = Column(String)
     file_path = Column(String)
     message = Column(Text)
+    local_flag = Column(Boolean, default=False)
+    agent_rule_id = Column(Integer, nullable=True)
+    local_rule_version = Column(Integer, nullable=True)
 
 class Metric(Base):
     __tablename__ = "metrics"
@@ -40,6 +43,7 @@ class DetectionRule(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
+    rule_type = Column(String, default="server")
     enabled = Column(Boolean, default=True)
     severity_default = Column(String) # HIGH, MED, LOW
     mitre_technique_id = Column(String) # e.g. T1059
@@ -81,6 +85,9 @@ class LogCreate(BaseModel):
     log_type: str
     file_path: str
     message: str
+    local_flag: bool = False
+    agent_rule_id: int | None = None
+    local_rule_version: int | None = None
 
 class MetricCreate(BaseModel):
     timestamp: datetime

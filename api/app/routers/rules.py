@@ -27,6 +27,7 @@ def view_rules(request: Request, db: Session = Depends(db.get_db)):
         }
         default_rule = models.DetectionRule(
             name="T1059 Suspicious Command Execution",
+            rule_type="server",
             enabled=True,
             severity_default="MED",
             mitre_technique_id="T1059",
@@ -69,6 +70,7 @@ def toggle_rule(id: int, db: Session = Depends(db.get_db)):
 def save_rule(
     id: int = Form(...),
     name: str = Form(...),
+    rule_type: str = Form(...),
     severity: str = Form(...),
     logic: str = Form(...),
     db: Session = Depends(db.get_db)
@@ -76,6 +78,7 @@ def save_rule(
     rule = db.query(models.DetectionRule).filter(models.DetectionRule.id == id).first()
     if rule:
         rule.name = name
+        rule.rule_type = rule_type
         rule.severity_default = severity
         rule.logic_json = logic
         rule.updated_at_utc = datetime.utcnow()
@@ -90,3 +93,28 @@ def save_rule(
         db.add(audit)
         db.commit()
     return RedirectResponse(url="/rules", status_code=303)
+
+@router.get("/api/agent/rules")
+def get_agent_rules(db: Session = Depends(db.get_db)):
+    rules = db.query(models.DetectionRule).filter(
+        models.DetectionRule.rule_type == "agent",
+        models.DetectionRule.enabled == True
+    ).all()
+    
+    agent_rules = []
+    for r in rules:
+        try:
+            logic = json.loads(r.logic_json)
+            # Send a structured representation down to the agent
+            # version is currently just mapped to id for uniqueness or we could use updated_at timestamp
+            agent_rules.append({
+                "id": r.id,
+                "name": r.name,
+                "version": int(r.updated_at_utc.timestamp()),
+                "keywords": logic.get("keywords", []),
+                "patterns": logic.get("patterns", [])
+            })
+        except BaseException:
+            pass
+
+    return agent_rules
