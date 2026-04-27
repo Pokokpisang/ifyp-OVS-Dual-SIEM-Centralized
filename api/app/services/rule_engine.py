@@ -1,5 +1,6 @@
 import json
 import re
+import ipaddress
 from sqlalchemy.orm import Session
 from datetime import datetime
 from .. import models
@@ -19,19 +20,29 @@ class RuleEngine:
     def __init__(self, db: Session):
         self.db = db
 
-    def _run_matching_logic(self, content: str, logic: dict):
-        """
-        Internal helper to apply keyword and pattern matching to a string.
-        Returns: (matched: bool, reason: str, tokens: list, severity: str)
-        """
+    @staticmethod
+    def normalize_logic(logic: dict) -> dict:
+        if "match" not in logic:
+            match_block = {}
+            if "keywords" in logic:
+                match_block["keywords_any"] = logic["keywords"]
+            if "patterns" in logic:
+                match_block["patterns_any"] = logic["patterns"]
+            logic["match"] = match_block
+        if "exclude" not in logic:
+            logic["exclude"] = {}
+        if "alert" not in logic:
+            logic["alert"] = {}
+        return logic
+
+    def _match_conditions(self, content: str, match_logic: dict):
         matched = False
         reason = ""
         tokens = []
         severity = None
 
-        # A. Pattern Matching (All of / Chaining) - specific logic first
-        if "patterns" in logic:
-            for pattern in logic["patterns"]:
+        if "patterns_any" in match_logic:
+            for pattern in match_logic["patterns_any"]:
                 all_found = True
                 temp_tokens = []
                 for part in pattern.get("all_of", []):
@@ -42,7 +53,6 @@ class RuleEngine:
                             opt_text = opt.strip()
                             if not opt_text: continue
                             
-                            # Only use word boundaries if the term starts/ends with word chars
                             regex_parts = []
                             if opt_text[0].isalnum(): regex_parts.append(r'(?<!\w)')
                             regex_parts.append(re.escape(opt_text))
@@ -57,7 +67,6 @@ class RuleEngine:
                             all_found = False
                             break
                     else:
-                        # Only use word boundaries if the term starts/ends with word chars
                         regex_parts = []
                         if part[0].isalnum(): regex_parts.append(r'(?<!\w)')
                         regex_parts.append(re.escape(part))
@@ -77,10 +86,29 @@ class RuleEngine:
                     severity = pattern.get("severity")
                     break
 
-        # B. Keyword Matching (Any of) - general fallback second
-        if not matched and "keywords" in logic:
-            for kw in logic["keywords"]:
-                # Only use word boundaries if the term starts/ends with word chars
+        if not matched and "keywords_all" in match_logic:
+            kws = match_logic["keywords_all"]
+            if kws:
+                all_found = True
+                temp_tokens = []
+                for kw in kws:
+                    regex_parts = []
+                    if kw[0].isalnum(): regex_parts.append(r'(?<!\w)')
+                    regex_parts.append(re.escape(kw))
+                    if kw[-1].isalnum(): regex_parts.append(r'(?!\w)')
+                    regex_str = "".join(regex_parts)
+                    if re.search(regex_str, content, re.IGNORECASE):
+                        temp_tokens.append(kw)
+                    else:
+                        all_found = False
+                        break
+                if all_found:
+                    matched = True
+                    reason = "Keywords ALL match"
+                    tokens = temp_tokens
+
+        if not matched and "keywords_any" in match_logic:
+            for kw in match_logic["keywords_any"]:
                 regex_parts = []
                 if kw[0].isalnum(): regex_parts.append(r'(?<!\w)')
                 regex_parts.append(re.escape(kw))
@@ -89,26 +117,81 @@ class RuleEngine:
                 regex_str = "".join(regex_parts)
                 if re.search(regex_str, content, re.IGNORECASE):
                     matched = True
-                    reason = f"Keyword match: {kw}"
+                    reason = f"Keyword ANY match: {kw}"
                     tokens.append(kw)
                     break
                     
         return matched, reason, tokens, severity
 
+    def _exclude_conditions(self, content: str, raw_log: dict, exclude_logic: dict):
+        if not exclude_logic:
+            return False, ""
+
+        if "keywords_any" in exclude_logic:
+            for kw in exclude_logic["keywords_any"]:
+                if kw.lower() in content.lower():
+                    return True, f"Exclude Keyword ANY: {kw}"
+
+        if "keywords_all" in exclude_logic:
+            kws = exclude_logic["keywords_all"]
+            if kws and all(kw.lower() in content.lower() for kw in kws):
+                return True, "Exclude Keywords ALL match"
+                
+        proc_path = raw_log.get("process_path", raw_log.get("exe", ""))
+        if "process_paths_any" in exclude_logic and proc_path:
+            for p in exclude_logic["process_paths_any"]:
+                if p in proc_path:
+                    return True, f"Exclude Process Path: {p}"
+                    
+        user = raw_log.get("user", raw_log.get("username", ""))
+        if "users_any" in exclude_logic and user:
+            if user in exclude_logic["users_any"]:
+                return True, f"Exclude User: {user}"
+                
+        src_ip = raw_log.get("src_ip", raw_log.get("source_ip", ""))
+        if "source_ips_any" in exclude_logic and src_ip:
+            if src_ip in exclude_logic["source_ips_any"]:
+                return True, f"Exclude Source IP: {src_ip}"
+                
+        dst_ip = raw_log.get("dst_ip", raw_log.get("destination_ip", ""))
+        if "destination_ips_any" in exclude_logic and dst_ip:
+            if dst_ip in exclude_logic["destination_ips_any"]:
+                return True, f"Exclude Dest IP: {dst_ip}"
+                
+        if exclude_logic.get("destination_ips_private") and dst_ip:
+            try:
+                ip_obj = ipaddress.ip_address(dst_ip)
+                if ip_obj.is_private or ip_obj.is_loopback:
+                    return True, "Exclude Dest IP: Private/Loopback"
+            except ValueError:
+                pass
+
+        return False, ""
+
     def evaluate(self, log_entry: models.Log):
         # Fetch enabled rules for this log type
         rules = self.db.query(models.DetectionRule).filter(
             models.DetectionRule.enabled == True,
+            models.DetectionRule.rule_type == "server",
             models.DetectionRule.log_type_scope == log_entry.log_type
         ).all()
 
         for rule in rules:
             try:
-                logic = json.loads(rule.logic_json)
-                matched, reason, tokens, pattern_severity = self._run_matching_logic(log_entry.message, logic)
+                raw_logic = json.loads(rule.logic_json)
+                logic = self.normalize_logic(raw_logic)
+                
+                content = log_entry.message or ""
+                matched, match_reason, tokens, pattern_severity = self._match_conditions(content, logic["match"])
                 
                 if matched:
-                    severity = pattern_severity or rule.severity_default
+                    excluded, exclude_reason = self._exclude_conditions(content, {}, logic["exclude"])
+                    if excluded:
+                        continue
+                        
+                    severity = pattern_severity or logic.get("alert", {}).get("severity") or rule.severity_default
+                    alert_msg = logic.get("alert", {}).get("message")
+                    reason = f"{match_reason}. {alert_msg}" if alert_msg else match_reason
                     self._trigger_match(rule, log_entry, reason, tokens, severity)
 
             except Exception as e:
@@ -160,16 +243,26 @@ class RuleEngine:
         # 4. Dynamic Rule Evaluation
         rules = self.db.query(models.DetectionRule).filter(
             models.DetectionRule.enabled == True,
+            models.DetectionRule.rule_type == "server",
             models.DetectionRule.log_type_scope == "auditd"
         ).all()
 
         for rule in rules:
             try:
-                logic = json.loads(rule.logic_json)
-                matched, reason, tokens, pattern_severity = self._run_matching_logic(content, logic)
+                raw_logic = json.loads(rule.logic_json)
+                logic = self.normalize_logic(raw_logic)
+                
+                matched, match_reason, tokens, pattern_severity = self._match_conditions(content, logic["match"])
 
                 if matched:
-                    severity = pattern_severity or rule.severity_default
+                    excluded, exclude_reason = self._exclude_conditions(content, raw_log, logic["exclude"])
+                    if excluded:
+                        continue
+                        
+                    severity = pattern_severity or logic.get("alert", {}).get("severity") or rule.severity_default
+                    alert_msg = logic.get("alert", {}).get("message")
+                    reason = f"{match_reason}. {alert_msg}" if alert_msg else match_reason
+                    
                     self._trigger_raw_match(
                         rule_name=rule.name,
                         mitre_id=rule.mitre_technique_id,

@@ -7,6 +7,7 @@ from datetime import datetime
 import json
 from typing import Optional
 from .. import models, db
+from ..services.rule_engine import RuleEngine
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -19,13 +20,34 @@ def view_rules(request: Request, db: Session = Depends(db.get_db)):
     # Ensure default rule exists (simple seed check)
     if not rules:
         logic = {
-            "keywords": ["curl", "wget", "base64", "nc", "python", "bash -i", "sh -c", "chmod +x"],
-            "patterns": [
-                {"name": "download_pipe_shell", "all_of": ["curl|wget", "| sh| | bash|chmod +x"], "severity": "HIGH"},
-                {"name": "suspicious_downloader", "all_of": ["curl|wget", ".sh|http://|https://"], "severity": "MED"},
-                {"name": "base64_decode_exec", "all_of": ["base64", "bash|sh|python"], "severity": "HIGH"},
-                {"name": "netcat_shell", "all_of": ["nc", "-e|bash -i|python -c"], "severity": "HIGH"}
-            ]
+            "match": {
+                "keywords_any": ["base64", "nc", "bash -i", "sh -c", "chmod +x"],
+                "patterns_any": [
+                    {"name": "download_pipe_sh", "all_of": ["curl|wget", " sh"], "severity": "HIGH"},
+                    {"name": "download_pipe_bash", "all_of": ["curl|wget", " bash"], "severity": "HIGH"},
+                    {"name": "suspicious_downloader_sh", "all_of": ["curl|wget", ".sh"], "severity": "HIGH"},
+                    {"name": "suspicious_downloader_out", "all_of": ["curl|wget", "http", "-o|-O|--output"], "severity": "MED"},
+                    {"name": "base64_decode_exec", "all_of": ["base64", "bash|sh|python"], "severity": "HIGH"},
+                    {"name": "netcat_shell", "all_of": ["nc", "-e|bash -i|python -c"], "severity": "HIGH"}
+                ]
+            },
+            "exclude": {
+                "keywords_any": [
+                    "localhost", 
+                    "127.0.0.1", 
+                    "/api/agent/rules", 
+                    "/api/ingest", 
+                    "healthcheck", 
+                    "pg_isready", 
+                    "antigravity", 
+                    "cpuUsage.sh", 
+                    "/usr/share/antigravity/"
+                ]
+            },
+            "alert": {
+                "message": "Suspicious command execution detected.",
+                "severity": "MED"
+            }
         }
         default_rule = models.DetectionRule(
             name="T1059 Suspicious Command Execution",
@@ -48,10 +70,10 @@ def new_rule(request: Request):
     class DummyRule:
         id = ""
         name = ""
-        rule_type = "agent"
+        rule_type = "server"
         severity_default = "MED"
         log_type_scope = "auditd"
-        logic_json = '{\n  "keywords": [],\n  "patterns": []\n}'
+        logic_json = '{\n  "match": {\n    "keywords_any": [],\n    "keywords_all": [],\n    "patterns_any": []\n  },\n  "exclude": {\n    "keywords_any": [],\n    "keywords_all": []\n  },\n  "alert": {\n    "message": "",\n    "severity": "MED"\n  }\n}'
     
     return templates.TemplateResponse("rule_edit.html", {"request": request, "rule": DummyRule()})
 
@@ -142,15 +164,14 @@ def get_agent_rules(db: Session = Depends(db.get_db)):
     agent_rules = []
     for r in rules:
         try:
-            logic = json.loads(r.logic_json)
-            # Send a structured representation down to the agent
-            # version is currently just mapped to id for uniqueness or we could use updated_at timestamp
+            raw_logic = json.loads(r.logic_json)
+            logic = RuleEngine.normalize_logic(raw_logic)
             agent_rules.append({
                 "id": r.id,
                 "name": r.name,
                 "version": int(r.updated_at_utc.timestamp()),
-                "keywords": logic.get("keywords", []),
-                "patterns": logic.get("patterns", [])
+                "match": logic["match"],
+                "exclude": logic["exclude"]
             })
         except BaseException:
             pass
