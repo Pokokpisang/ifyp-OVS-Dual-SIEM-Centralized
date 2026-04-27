@@ -30,7 +30,8 @@ class RuleEngine:
                         found_opt = False
                         for opt in options:
                             if opt.strip() == "": continue
-                            if opt.strip().lower() in content.lower():
+                            pattern = r'(?<!\w)' + re.escape(opt.strip()) + r'(?!\w)'
+                            if re.search(pattern, content, re.IGNORECASE):
                                 found_opt = True
                                 temp_tokens.append(opt.strip())
                                 break
@@ -38,7 +39,8 @@ class RuleEngine:
                             all_found = False
                             break
                     else:
-                        if part.lower() not in content.lower():
+                        pattern = r'(?<!\w)' + re.escape(part) + r'(?!\w)'
+                        if not re.search(pattern, content, re.IGNORECASE):
                             all_found = False
                             break
                         else:
@@ -54,7 +56,8 @@ class RuleEngine:
         # B. Keyword Matching (Any of) - general fallback second
         if not matched and "keywords" in logic:
             for kw in logic["keywords"]:
-                if kw.lower() in content.lower():
+                pattern = r'(?<!\w)' + re.escape(kw) + r'(?!\w)'
+                if re.search(pattern, content, re.IGNORECASE):
                     matched = True
                     reason = f"Keyword match: {kw}"
                     tokens.append(kw)
@@ -101,7 +104,7 @@ class RuleEngine:
             host=log.host,
             severity=severity,
             title=f"Detection: {rule.name}",
-            description=f"{reason}. Tokens: {tokens}",
+            description=f"{reason}. Tokens: {tokens}\n\nRAW_LOG: {log.message}",
             source=rule.mitre_technique_id
         )
         self.db.add(alert)
@@ -150,7 +153,7 @@ class RuleEngine:
             host=host,
             severity=severity.upper(),
             title=f"[{mitre_id}] {rule_name}",
-            description=f"{reason}. Command: {cmd_excerpt}",
+            description=f"{reason}. Command: {cmd_excerpt}\n\nRAW_LOG: {raw_log.get('message', cmd_excerpt)}",
             source=mitre_id
         )
         self.db.add(alert)

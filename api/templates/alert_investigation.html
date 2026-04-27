@@ -375,12 +375,12 @@ function renderCorrEvents(events) {
 
     events.forEach(ev => {
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-primary/5 transition-colors';
+        tr.className = ev.is_alert ? 'bg-primary/20 border-l-2 border-primary' : 'hover:bg-primary/5 transition-colors';
         tr.innerHTML = `
-            <td class="px-6 py-3 whitespace-nowrap text-slate-300 font-mono">${ev.ts}</td>
-            <td class="px-6 py-3 text-slate-300">${ev.host || '—'}</td>
-            <td class="px-6 py-3 text-slate-400 max-w-xs truncate" title="${(ev.message||'').replace(/"/g,'&quot;')}">${ev.message || '—'}</td>
-            <td class="px-6 py-3"><span class="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-mono">${ev.log_type || '—'}</span></td>
+            <td class="px-6 py-3 whitespace-nowrap ${ev.is_alert ? 'text-primary font-bold' : 'text-slate-300 font-mono'}">${ev.ts}</td>
+            <td class="px-6 py-3 ${ev.is_alert ? 'text-primary' : 'text-slate-300'}">${ev.host || '—'}</td>
+            <td class="px-6 py-3 ${ev.is_alert ? 'text-primary' : 'text-slate-400'} max-w-xs truncate" title="${(ev.message||'').replace(/"/g,'&quot;')}">${ev.message || '—'}</td>
+            <td class="px-6 py-3"><span class="px-2 py-0.5 rounded ${ev.is_alert ? 'bg-primary text-white' : 'bg-primary/10 text-primary'} text-[10px] font-mono">${ev.log_type || '—'}</span></td>
         `;
         tbody.appendChild(tr);
     });
@@ -427,7 +427,7 @@ function renderTimeline(items) {
 
         // Label
         const label = document.createElement('p');
-        label.className = `text-xs ${isAlert ? 'font-bold text-primary' : isPending ? 'italic text-slate-500' : 'font-medium text-slate-200'}`;
+        label.className = `text-xs ${isAlert ? 'font-bold text-primary whitespace-pre-line' : isPending ? 'italic text-slate-500' : 'font-medium text-slate-200'}`;
         label.textContent = item.label;
         div.appendChild(label);
 

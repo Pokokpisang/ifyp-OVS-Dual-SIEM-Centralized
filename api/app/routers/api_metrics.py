@@ -284,10 +284,13 @@ def get_investigation_data(alert_id: int, db: Session = Depends(db.get_db)):
             "label": (log.message or "")[:120],
             "is_alert": False,
         })
+    alert_desc_full_timeline = alert.description or 'No description'
+    timeline_desc = alert_desc_full_timeline.split("\n\nRAW_LOG: ")[0]
+
     # Insert the alert itself as the highlighted event
     timeline.append({
         "ts": alert.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-        "label": f"Detection Rule triggered: {rule_name}",
+        "label": f"Detection Rule triggered: {rule_name}\nDescription: {timeline_desc}",
         "is_alert": True,
     })
     # Add pending analyst step
@@ -328,6 +331,32 @@ def get_investigation_data(alert_id: int, db: Session = Depends(db.get_db)):
             models.Alert.host == alert.host
         ).scalar() or 0
 
+    correlated_events_data = [
+        {
+            "ts": l.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            "host": l.host,
+            "message": (l.message or "")[:300],
+            "log_type": l.log_type,
+            "is_alert": False,
+        }
+        for l in correlated_logs
+    ]
+    alert_desc_full = alert.description or ""
+    if "\n\nRAW_LOG: " in alert_desc_full:
+        alert_desc, raw_log_msg = alert_desc_full.split("\n\nRAW_LOG: ", 1)
+    else:
+        alert_desc = alert_desc_full
+        raw_log_msg = alert_desc_full
+
+    correlated_events_data.append({
+        "ts": alert.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+        "host": alert.host,
+        "message": raw_log_msg,
+        "log_type": "ALERT",
+        "is_alert": True,
+    })
+    correlated_events_data.sort(key=lambda x: x["ts"])
+
     return {
         "alert": {
             "id": alert.id,
@@ -335,7 +364,7 @@ def get_investigation_data(alert_id: int, db: Session = Depends(db.get_db)):
             "severity": (alert.severity or "").upper(),
             "host": alert.host,
             "timestamp": alert.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-            "description": alert.description,
+            "description": alert_desc,
             "source": source,
             "is_read": alert.is_read,
         },
@@ -347,15 +376,7 @@ def get_investigation_data(alert_id: int, db: Session = Depends(db.get_db)):
             "analyst_notes": assessment.analyst_notes if assessment else "",
             "updated_at": assessment.updated_at.strftime("%Y-%m-%d %H:%M:%S") if assessment else None,
         },
-        "correlated_events": [
-            {
-                "ts": l.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                "host": l.host,
-                "message": (l.message or "")[:300],
-                "log_type": l.log_type,
-            }
-            for l in correlated_logs
-        ],
+        "correlated_events": correlated_events_data,
         "timeline": timeline,
         "endpoint_health": endpoint_health,
         "source_intel": {
