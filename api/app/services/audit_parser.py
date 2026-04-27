@@ -2,24 +2,33 @@ import binascii
 
 class AuditdParser:
     @staticmethod
-    def decode_proctitle(hex_str: str) -> str:
-        """
-        Decodes a hex-encoded proctitle string from auditd.
-        Replaces null bytes with spaces for readability.
-        """
+    def is_hex(s: str) -> bool:
+        """Checks if a string is likely a hex-encoded auditd string."""
+        if not s or len(s) < 2 or len(s) % 2 != 0:
+            return False
+        # Auditd hex strings are usually uppercase or lowercase A-F, 0-9
+        return all(c in "0123456789abcdefABCDEF" for c in s)
+
+    @staticmethod
+    def decode_hex(hex_str: str) -> str:
+        """Decodes any hex-encoded string from auditd."""
         if not hex_str:
             return ""
         try:
-            # Strip potential auditd separators like \x1D
+            # Strip potential auditd separators
             clean_hex = hex_str.strip().replace('\x1d', '').replace('\x1D', '')
-            # Ensure even length for unhexlify
             if len(clean_hex) % 2 != 0:
                 clean_hex = clean_hex[:-1]
             decoded = binascii.unhexlify(clean_hex).decode('utf-8', errors='ignore')
-            # proctitle often uses null bytes to separate args
+            # Replace null bytes with spaces (common in proctitle)
             return decoded.replace('\x00', ' ').strip()
         except Exception:
             return hex_str
+
+    @staticmethod
+    def decode_proctitle(hex_str: str) -> str:
+        """Legacy helper for proctitle."""
+        return AuditdParser.decode_hex(hex_str)
 
     @staticmethod
     def extract_fields(message: str) -> dict:
@@ -45,25 +54,36 @@ class AuditdParser:
         Enriches the raw log with decoded command line info.
         """
         # 1. If key_value didn't run, try to extract from message
-        extracted = cls.extract_fields(raw_log.get("message", ""))
+        message = raw_log.get("message", "")
+        extracted = cls.extract_fields(message)
+        
+        # 2. Decode any hex-encoded fields (proctitle, a0, a1, etc.)
         for k, v in extracted.items():
-            if k not in raw_log:
-                raw_log[k] = v
+            if cls.is_hex(v):
+                v = cls.decode_hex(v)
+            raw_log[k] = v
 
-        # 2. Decode proctitle if present
-        if "proctitle" in raw_log:
-            raw_log["decoded_proctitle"] = cls.decode_proctitle(raw_log["proctitle"])
-            print(f"[AuditParser] Decoded proctitle: {raw_log['decoded_proctitle']}", flush=True)
+        # Special handling for proctitle if it wasn't in extracted or needs re-decoding
+        if "proctitle" in raw_log and cls.is_hex(raw_log["proctitle"]):
+             raw_log["decoded_proctitle"] = cls.decode_hex(raw_log["proctitle"])
         
         # 3. Consolidate into command_line for the Rule Engine
         if raw_log.get("decoded_proctitle"):
             raw_log["command_line"] = raw_log["decoded_proctitle"]
+        elif "a0" in raw_log:
+            # Reconstruct from a0, a1, a2...
+            args = []
+            i = 0
+            while f"a{i}" in raw_log:
+                args.append(raw_log[f"a{i}"])
+                i += 1
+            raw_log["command_line"] = " ".join(args)
         elif raw_log.get("comm"):
              raw_log["command_line"] = raw_log["comm"]
-        elif raw_log.get("exe"):
-             raw_log["command_line"] = raw_log["exe"]
              
         if raw_log.get("command_line"):
-            print(f"[AuditParser] Normalized command_line: {raw_log['command_line']}", flush=True)
-             
+            # Update the message to be more readable for the UI if it was hex-heavy
+            if raw_log.get("decoded_proctitle"):
+                raw_log["message"] = message.replace(raw_log.get("proctitle", "N/A"), f"[{raw_log['decoded_proctitle']}]")
+            
         return raw_log

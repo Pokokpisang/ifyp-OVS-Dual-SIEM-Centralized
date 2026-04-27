@@ -21,18 +21,24 @@
             <div class="h-10 w-10 rounded-lg bg-red-500/20 flex items-center justify-center flex-shrink-0">
                 <span class="material-symbols-outlined text-red-400">gpp_bad</span>
             </div>
-            <div>
+            <div class="flex-1">
                 <p class="text-[10px] font-bold text-red-400/70 uppercase tracking-wider">MITRE Detections</p>
-                <p class="text-2xl font-black text-red-400" id="banner-mitre">-</p>
+                <div class="flex items-center justify-between">
+                    <p class="text-2xl font-black text-red-400" id="banner-mitre">-</p>
+                    <button onclick="markAllRead()" class="px-2 py-0.5 rounded text-[9px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all">MARK READ</button>
+                </div>
             </div>
         </div>
         <div class="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-center gap-4">
             <div class="h-10 w-10 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
                 <span class="material-symbols-outlined text-amber-400">notifications_active</span>
             </div>
-            <div>
+            <div class="flex-1">
                 <p class="text-[10px] font-bold text-amber-400/70 uppercase tracking-wider">High Severity</p>
-                <p class="text-2xl font-black text-amber-400" id="banner-high">-</p>
+                <div class="flex items-center justify-between">
+                    <p class="text-2xl font-black text-amber-400" id="banner-high">-</p>
+                    <button onclick="markAllRead()" class="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all">MARK READ</button>
+                </div>
             </div>
         </div>
         <div class="p-4 rounded-xl border border-violet-500/20 bg-violet-500/5 flex items-center gap-4">
@@ -105,7 +111,10 @@
     <!-- Table Container -->
     <div class="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-primary/5 overflow-hidden shadow-sm">
         <div class="px-6 py-4 border-b border-slate-200 dark:border-primary/10 flex justify-between items-center bg-slate-50/50 dark:bg-primary/5">
-            <h3 class="font-bold text-slate-900 dark:text-slate-100">Live Alert Stream</h3>
+            <div class="flex items-center gap-4">
+                <h3 class="font-bold text-slate-900 dark:text-slate-100">Live Alert Stream</h3>
+                <button onclick="markAllRead()" class="px-3 py-1 rounded-lg text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-all">MARK ALL AS READ</button>
+            </div>
             <div class="flex items-center gap-4">
                 <span class="text-xs text-slate-500 dark:text-slate-400">Showing page {{ page }} of {{ total_pages }} ({{ total_count }} total)</span>
                 
@@ -270,7 +279,21 @@ async function loadAlertStats() {
                 m.textContent = stats.mitre_detections ?? '-';
             }
         }
-        if (h) h.textContent = stats.high_severity ?? '-';
+        if (h) {
+            if (stats.unread_high > 0) {
+                h.innerHTML = `${stats.high_severity} <span class="text-xs font-bold text-white bg-amber-500 px-1.5 py-0.5 rounded ml-2">${stats.unread_high} NEW</span>`;
+            } else {
+                h.textContent = stats.high_severity ?? '-';
+            }
+        }
+    } catch(e) { console.error(e); }
+}
+
+async function markAllRead() {
+    if (!confirm("Are you sure you want to mark all alerts as read?")) return;
+    try {
+        await fetch('/api/alerts/mark-all-read', { method: 'POST' });
+        window.location.reload();
     } catch(e) { console.error(e); }
 }
 

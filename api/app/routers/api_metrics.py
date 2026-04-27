@@ -211,9 +211,14 @@ def get_alert_stats(db: Session = Depends(db.get_db)):
         models.Alert.source.like("T%"),
         models.Alert.is_read == False
     ).scalar() or 0
+    unread_high = db.query(func.count(models.Alert.id)).filter(
+        models.Alert.severity.in_(["HIGH", "CRITICAL", "high", "critical"]),
+        models.Alert.is_read == False
+    ).scalar() or 0
     return {
         "total": total,
         "high_severity": high,
+        "unread_high": unread_high,
         "mitre_detections": mitre,
         "unread_mitre": unread_mitre,
         "last_24h": last_24h,

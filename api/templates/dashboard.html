@@ -91,16 +91,22 @@
                 <span class="material-symbols-outlined text-red-400 text-base">gpp_bad</span>
                 <span class="text-[10px] font-bold text-red-400/80 uppercase tracking-widest">MITRE Detections</span>
             </div>
-            <span class="text-3xl font-black tracking-tight text-red-400" id="kpi-mitre">-</span>
+            <div class="flex items-center justify-between">
+                <span class="text-3xl font-black tracking-tight text-red-400" id="kpi-mitre">-</span>
+                <button onclick="markAllRead()" class="px-2 py-0.5 rounded text-[9px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all">MARK READ</button>
+            </div>
             <span class="text-[10px] text-slate-500">Total MITRE ATT&amp;CK hits</span>
         </div>
         <div class="p-5 rounded-xl bg-amber-500/5 border border-amber-500/20 flex flex-col gap-2">
             <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-amber-400 text-base">notifications_active</span>
-                <span class="text-[10px] font-bold text-amber-400/80 uppercase tracking-widest">Alerts (24h)</span>
+                <span class="text-[10px] font-bold text-amber-400/80 uppercase tracking-widest">High Severity Alerts</span>
             </div>
-            <span class="text-3xl font-black tracking-tight text-amber-400" id="kpi-total-alerts">-</span>
-            <span class="text-[10px] text-slate-500">Alert events last 24 hours</span>
+            <div class="flex items-center justify-between">
+                <span class="text-3xl font-black tracking-tight text-amber-400" id="kpi-high-severity">-</span>
+                <button onclick="markAllRead()" class="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all">MARK READ</button>
+            </div>
+            <span class="text-[10px] text-slate-500">Critical & High events detected</span>
         </div>
         <div class="p-5 rounded-xl bg-violet-500/5 border border-violet-500/20 flex flex-col gap-2 col-span-2">
             <div class="flex items-center gap-2">

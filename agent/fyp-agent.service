@@ -1,0 +1,22 @@
+[Unit]
+Description=FYP SIEM Agent
+After=network.target auditd.service
+Requires=auditd.service
+
+[Service]
+Type=simple
+# Replace <PROJECT_ROOT> with the absolute path to your project folder
+# e.g., /home/pokokpisang/Desktop/FYP/ifyp/prototype/agent
+WorkingDirectory=<PROJECT_ROOT>/agent
+ExecStart=<PROJECT_ROOT>/agent/agent/agent
+Environment=AGENT_SERVER_URL=http://localhost:8000
+Environment=AGENT_LOG_PATH=/var/log/syslog
+Environment=AGENT_LOG_TYPE=syslog
+Environment=AGENT_AUDITD_PATH=/var/log/audit/audit.log
+Environment=AGENT_TAIL_FROM_END=true
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target

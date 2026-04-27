@@ -7,6 +7,7 @@ import httpx
 import os
 import json
 from .. import db, models
+from ..services.rule_engine import RuleEngine
 
 router = APIRouter()
 
@@ -14,6 +15,17 @@ DATA_PREPPER_URL = os.getenv("DATA_PREPPER_URL", "http://data-prepper:2021/log/i
 
 class AgentLog(BaseModel):
     model_config = ConfigDict(extra="allow")
+
+async def process_log_for_alerts(payload: dict):
+    """Background task to run rule evaluation immediately."""
+    db_session = db.SessionLocal()
+    try:
+        engine = RuleEngine(db_session)
+        engine.evaluate_raw(payload)
+    except Exception as e:
+        print(f"Error in real-time rule evaluation: {e}")
+    finally:
+        db_session.close()
 
 async def forward_to_data_prepper(payload: dict):
     async with httpx.AsyncClient() as client:
@@ -53,7 +65,8 @@ async def collect_agent_logs(request: Request, background_tasks: BackgroundTasks
     except Exception as e:
         print(f"Failed to save log to database: {e}")
     
-    # 3. Offload Data Prepper network POST to background task
+    # 3. Offload tasks to background
     background_tasks.add_task(forward_to_data_prepper, payload)
+    background_tasks.add_task(process_log_for_alerts, payload)
     
     return {"status": "accepted"}

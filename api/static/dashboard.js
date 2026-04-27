@@ -145,8 +145,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             
-            const el2 = document.getElementById('kpi-total-alerts');
-            if (el2) el2.innerText = stats.last_24h || 0;
+            const el2 = document.getElementById('kpi-high-severity');
+            if (el2) {
+                if (stats.unread_high > 0) {
+                    el2.innerHTML = `${stats.high_severity} <span class="text-[10px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full ml-2">+${stats.unread_high} NEW</span>`;
+                } else {
+                    el2.innerText = stats.high_severity || 0;
+                }
+            }
         } catch(e) { console.error('Stats error:', e); }
 
         // 3. Timeseries Charts

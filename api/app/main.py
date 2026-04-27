@@ -9,16 +9,17 @@ from .routers import dashboard, api_metrics, rules, collector
 models.Base.metadata.create_all(bind=db.engine)
 
 import asyncio
-from .services.opensearch_poller import poll_opensearch_loop
+# from .services.opensearch_poller import poll_opensearch_loop
 
 app = FastAPI(title="SIEM Ingestion API")
 
-poller_task = None
+# poller_task = None
 
 @app.on_event("startup")
 async def startup_event():
-    global poller_task
-    poller_task = asyncio.create_task(poll_opensearch_loop())
+    print("API Started - Real-time Ingestion Enabled")
+    # OpenSearch poller disabled in favor of real-time collector.py logic
+    pass
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 

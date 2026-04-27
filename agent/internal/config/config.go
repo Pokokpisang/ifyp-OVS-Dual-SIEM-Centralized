@@ -9,6 +9,7 @@ type Config struct {
 	LogPath    string
 	LogType    string
 	AuditdPath string
+	TailFromEnd bool
 }
 
 func Load() *Config {
@@ -17,6 +18,7 @@ func Load() *Config {
 		LogPath:    getEnv("AGENT_LOG_PATH", "/home/pokokpisang/Desktop/FYP/ifyp/prototype/agent/test_auth.log"),
 		LogType:    getEnv("AGENT_LOG_TYPE", "auth"),
 		AuditdPath: getEnv("AGENT_AUDITD_PATH", "/var/log/audit/audit.log"),
+		TailFromEnd: getEnv("AGENT_TAIL_FROM_END", "true") == "true",
 	}
 }
 

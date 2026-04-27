@@ -6,6 +6,16 @@ from .. import models
 from .audit_parser import AuditdParser
 
 class RuleEngine:
+    # Global list of substrings that, if found in a command, will skip alert generation.
+    # Useful for health checks and known SIEM internal processes.
+    GLOBAL_EXCLUSIONS = [
+        "pg_isready",
+        "/_cluster/health",
+        "api/agent/rules",
+        "docker-gen",
+        "container_health_check"
+    ]
+
     def __init__(self, db: Session):
         self.db = db
 
@@ -29,18 +39,32 @@ class RuleEngine:
                         options = part.split("|")
                         found_opt = False
                         for opt in options:
-                            if opt.strip() == "": continue
-                            pattern = r'(?<!\w)' + re.escape(opt.strip()) + r'(?!\w)'
-                            if re.search(pattern, content, re.IGNORECASE):
+                            opt_text = opt.strip()
+                            if not opt_text: continue
+                            
+                            # Only use word boundaries if the term starts/ends with word chars
+                            regex_parts = []
+                            if opt_text[0].isalnum(): regex_parts.append(r'(?<!\w)')
+                            regex_parts.append(re.escape(opt_text))
+                            if opt_text[-1].isalnum(): regex_parts.append(r'(?!\w)')
+                            
+                            regex_str = "".join(regex_parts)
+                            if re.search(regex_str, content, re.IGNORECASE):
                                 found_opt = True
-                                temp_tokens.append(opt.strip())
+                                temp_tokens.append(opt_text)
                                 break
                         if not found_opt:
                             all_found = False
                             break
                     else:
-                        pattern = r'(?<!\w)' + re.escape(part) + r'(?!\w)'
-                        if not re.search(pattern, content, re.IGNORECASE):
+                        # Only use word boundaries if the term starts/ends with word chars
+                        regex_parts = []
+                        if part[0].isalnum(): regex_parts.append(r'(?<!\w)')
+                        regex_parts.append(re.escape(part))
+                        if part[-1].isalnum(): regex_parts.append(r'(?!\w)')
+                        
+                        regex_str = "".join(regex_parts)
+                        if not re.search(regex_str, content, re.IGNORECASE):
                             all_found = False
                             break
                         else:
@@ -56,8 +80,14 @@ class RuleEngine:
         # B. Keyword Matching (Any of) - general fallback second
         if not matched and "keywords" in logic:
             for kw in logic["keywords"]:
-                pattern = r'(?<!\w)' + re.escape(kw) + r'(?!\w)'
-                if re.search(pattern, content, re.IGNORECASE):
+                # Only use word boundaries if the term starts/ends with word chars
+                regex_parts = []
+                if kw[0].isalnum(): regex_parts.append(r'(?<!\w)')
+                regex_parts.append(re.escape(kw))
+                if kw[-1].isalnum(): regex_parts.append(r'(?!\w)')
+                
+                regex_str = "".join(regex_parts)
+                if re.search(regex_str, content, re.IGNORECASE):
                     matched = True
                     reason = f"Keyword match: {kw}"
                     tokens.append(kw)
@@ -120,7 +150,14 @@ class RuleEngine:
         if not content:
             return
 
-        # 3. Dynamic Rule Evaluation
+        # 3. Global Exclusions (Whitelist)
+        content_lower = content.lower()
+        for exclusion in self.GLOBAL_EXCLUSIONS:
+            if exclusion.lower() in content_lower:
+                # print(f"[RuleEngine] Skipping excluded command: {content}")
+                return
+
+        # 4. Dynamic Rule Evaluation
         rules = self.db.query(models.DetectionRule).filter(
             models.DetectionRule.enabled == True,
             models.DetectionRule.log_type_scope == "auditd"
@@ -146,14 +183,18 @@ class RuleEngine:
     
     def _trigger_raw_match(self, rule_name, mitre_id, raw_log, reason, tokens, severity):
         host = raw_log.get("hostname", raw_log.get("host", "unknown"))
-        cmd_excerpt = tokens[0][:200] if tokens else ""
         
+        # Use the enriched command_line if available
+        display_cmd = raw_log.get("command_line", "")
+        if not display_cmd and tokens:
+            display_cmd = tokens[0]
+            
         alert = models.Alert(
             timestamp=datetime.utcnow(),
             host=host,
             severity=severity.upper(),
             title=f"[{mitre_id}] {rule_name}",
-            description=f"{reason}. Command: {cmd_excerpt}\n\nRAW_LOG: {raw_log.get('message', cmd_excerpt)}",
+            description=f"{reason}. Command: {display_cmd}\n\nRAW_LOG: {raw_log.get('message')}",
             source=mitre_id
         )
         self.db.add(alert)
