@@ -3,37 +3,36 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from typing import List
 from . import models, db
-from .routers import dashboard, api_metrics, rules
+from .routers import dashboard, api_metrics, rules, collector
 
 # Create tables
 models.Base.metadata.create_all(bind=db.engine)
 
+import asyncio
+from .services.opensearch_poller import poll_opensearch_loop
+
 app = FastAPI(title="SIEM Ingestion API")
+
+poller_task = None
+
+@app.on_event("startup")
+async def startup_event():
+    global poller_task
+    poller_task = asyncio.create_task(poll_opensearch_loop())
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(dashboard.router)
 app.include_router(api_metrics.router)
 app.include_router(rules.router)
-
+app.include_router(collector.router)
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
 from .services.rule_engine import RuleEngine
 
-@app.post("/ingest/log")
-def ingest_log(log: models.LogCreate, db: Session = Depends(db.get_db)):
-    db_log = models.Log(**log.model_dump())
-    db.add(db_log)
-    db.commit()
-    db.refresh(db_log)
-    
-    # Run Rule Engine
-    engine = RuleEngine(db)
-    engine.evaluate(db_log)
-    
-    return {"status": "ok", "id": db_log.id}
+# Old ingest logic moved to collector.py router
 
 @app.get("/logs/recent", response_model=List[models.LogOut])
 def get_recent_logs(limit: int = 50, db: Session = Depends(db.get_db)):

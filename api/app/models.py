@@ -37,6 +37,7 @@ class Alert(Base):
     title = Column(String)
     description = Column(Text)
     source = Column(String) # Rule name
+    is_read = Column(Boolean, default=False)
 
 class DetectionRule(Base):
     __tablename__ = "detection_rules"
@@ -76,6 +77,16 @@ class ActivityAudit(Base):
     object_type = Column(String)
     object_id = Column(String)
     details = Column(Text) # JSON
+
+class AlertAssessment(Base):
+    __tablename__ = "alert_assessments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    alert_id = Column(Integer, unique=True, index=True, nullable=False)
+    status = Column(String, default="New")  # New | Investigating | Resolved | False Positive
+    analyst_notes = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 # Pydantic Models
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends, Query
+from fastapi import APIRouter, Request, Depends, Query, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -24,6 +24,7 @@ def view_alerts(
     severity: str = "",
     source: str = "",
     host: str = "",
+    read_status: str = "all",
     db: Session = Depends(db.get_db)
 ):
     limit = 50
@@ -37,6 +38,10 @@ def view_alerts(
         query = query.filter(models.Alert.source == source)
     if host:
         query = query.filter(models.Alert.host == host)
+    if read_status == "unread":
+        query = query.filter(models.Alert.is_read == False)
+    elif read_status == "read":
+        query = query.filter(models.Alert.is_read == True)
 
     total_count = query.count()
     alerts = query.order_by(desc(models.Alert.timestamp)).offset(offset).limit(limit).all()
@@ -57,6 +62,7 @@ def view_alerts(
         "current_severity": severity,
         "current_source": source,
         "current_host": host,
+        "current_read_status": read_status,
         "hosts": hosts,
         "sources": sources,
         "severities": severities
@@ -177,4 +183,22 @@ def view_agents(
             "offline": total_offline,
             "high_load": total_high_load
         }
+    })
+
+
+@router.get("/alerts/{alert_id}/investigation", response_class=HTMLResponse)
+def view_investigation(alert_id: int, request: Request, db: Session = Depends(db.get_db)):
+    """HTML page for a single alert investigation."""
+    alert = db.query(models.Alert).filter(models.Alert.id == alert_id).first()
+    if not alert:
+        raise HTTPException(status_code=404, detail=f"Alert #{alert_id} not found")
+
+    assessment = db.query(models.AlertAssessment).filter(
+        models.AlertAssessment.alert_id == alert_id
+    ).first()
+
+    return templates.TemplateResponse("alert_investigation.html", {
+        "request": request,
+        "alert": alert,
+        "assessment": assessment,
     })

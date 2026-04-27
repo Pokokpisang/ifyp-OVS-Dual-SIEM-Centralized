@@ -1,11 +1,27 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from .. import models, db
-from typing import List
+from typing import List, Literal, Optional
 from datetime import datetime, timedelta
+import re
 
 router = APIRouter(prefix="/api")
+
+# ---------------------------------------------------------------------------
+# Shared helper: extract first IPv4 address from arbitrary text
+# ---------------------------------------------------------------------------
+
+_IP_RE = re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
+
+def extract_ip_from_text(text: str) -> Optional[str]:
+    """Return the first IPv4 address found in *text*, or None."""
+    if not text:
+        return None
+    m = _IP_RE.search(text)
+    return m.group(0) if m else None
+
 
 @router.post("/metrics")
 def ingest_metric(metric: models.MetricCreate, db: Session = Depends(db.get_db)):
@@ -142,3 +158,257 @@ def get_recent_alerts(limit: int = 20, host: str = Query(None), db: Session = De
     if host:
         query = query.filter(models.Alert.host == host)
     return query.order_by(desc(models.Alert.timestamp)).limit(limit).all()
+
+@router.get("/alerts/threats")
+def get_threat_alerts(limit: int = 30, db: Session = Depends(db.get_db)):
+    """Returns MITRE-tagged threat alerts (T1059 etc.) for the dedicated threat panel."""
+    mitre_alerts = db.query(models.Alert).filter(
+        models.Alert.source.like("T%")
+    ).order_by(desc(models.Alert.timestamp)).limit(limit).all()
+    return [
+        {
+            "id": a.id,
+            "timestamp": a.timestamp.isoformat(),
+            "host": a.host,
+            "severity": a.severity,
+            "title": a.title,
+            "description": a.description,
+            "mitre_id": a.source,
+            "is_read": a.is_read
+        }
+        for a in mitre_alerts
+    ]
+
+@router.put("/alerts/{alert_id}/read")
+def mark_alert_read(alert_id: int, db: Session = Depends(db.get_db)):
+    alert = db.query(models.Alert).filter(models.Alert.id == alert_id).first()
+    if alert:
+        alert.is_read = True
+        db.commit()
+    return {"status": "ok"}
+
+@router.post("/alerts/mark-all-read")
+def mark_all_read(db: Session = Depends(db.get_db)):
+    db.query(models.Alert).filter(models.Alert.is_read == False).update({models.Alert.is_read: True})
+    db.commit()
+    return {"status": "ok"}
+
+@router.get("/alerts/stats")
+def get_alert_stats(db: Session = Depends(db.get_db)):
+    """Returns aggregated alert counts for dashboard KPI cards."""
+    from sqlalchemy import func
+    total = db.query(func.count(models.Alert.id)).scalar() or 0
+    high = db.query(func.count(models.Alert.id)).filter(
+        models.Alert.severity.in_(["HIGH", "CRITICAL", "high", "critical"])
+    ).scalar() or 0
+    mitre = db.query(func.count(models.Alert.id)).filter(
+        models.Alert.source.like("T%")
+    ).scalar() or 0
+    last_24h = db.query(func.count(models.Alert.id)).filter(
+        models.Alert.timestamp > datetime.utcnow() - timedelta(hours=24)
+    ).scalar() or 0
+    unread_mitre = db.query(func.count(models.Alert.id)).filter(
+        models.Alert.source.like("T%"),
+        models.Alert.is_read == False
+    ).scalar() or 0
+    return {
+        "total": total,
+        "high_severity": high,
+        "mitre_detections": mitre,
+        "unread_mitre": unread_mitre,
+        "last_24h": last_24h,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Alert Investigation — data endpoint
+# ---------------------------------------------------------------------------
+
+@router.get("/alerts/{alert_id}/investigation")
+def get_investigation_data(alert_id: int, db: Session = Depends(db.get_db)):
+    """Return all data needed by the Alert Investigation page as JSON."""
+    # 1. Load alert (validate)
+    alert = db.query(models.Alert).filter(models.Alert.id == alert_id).first()
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    # 2. Load analyst assessment (may not exist yet)
+    assessment = db.query(models.AlertAssessment).filter(
+        models.AlertAssessment.alert_id == alert_id
+    ).first()
+
+    # 3. Determine MITRE technique & rule name (refinements 4 & 5)
+    source = alert.source or ""
+    mitre_technique = source if (source and source.upper().startswith("T")) else "Not mapped"
+    rule_name = alert.title or "Unknown"  # no separate rule_name field — use title
+
+    # 4. Extract source IP from description then from related logs (refinement 1)
+    source_ip = extract_ip_from_text(alert.description or "")
+
+    # 5. Correlated events — host + ±10 min window (refinement 2)
+    window_start = alert.timestamp - timedelta(minutes=10)
+    window_end   = alert.timestamp + timedelta(minutes=10)
+
+    corr_query = db.query(models.Log).filter(
+        models.Log.host == alert.host,
+        models.Log.timestamp >= window_start,
+        models.Log.timestamp <= window_end,
+    )
+    correlated_logs = corr_query.order_by(models.Log.timestamp.asc()).limit(20).all()
+
+    # If we still have no IP, try to extract one from the correlated log messages
+    if not source_ip:
+        for log in correlated_logs:
+            ip = extract_ip_from_text(log.message or "")
+            if ip:
+                source_ip = ip
+                break
+
+    # Also filter correlated events by source IP if available
+    if source_ip:
+        ip_logs = db.query(models.Log).filter(
+            models.Log.message.contains(source_ip),
+            models.Log.timestamp >= window_start,
+            models.Log.timestamp <= window_end,
+        ).order_by(models.Log.timestamp.asc()).limit(10).all()
+        # Merge deduplicating by id
+        existing_ids = {l.id for l in correlated_logs}
+        correlated_logs = correlated_logs + [l for l in ip_logs if l.id not in existing_ids]
+        correlated_logs.sort(key=lambda l: l.timestamp)
+
+    # 6. Build timeline from alert + correlated events
+    timeline = []
+    for log in correlated_logs:
+        timeline.append({
+            "ts": log.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            "label": (log.message or "")[:120],
+            "is_alert": False,
+        })
+    # Insert the alert itself as the highlighted event
+    timeline.append({
+        "ts": alert.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+        "label": f"Detection Rule triggered: {rule_name}",
+        "is_alert": True,
+    })
+    # Add pending analyst step
+    timeline.append({
+        "ts": "PENDING",
+        "label": "Waiting for analyst action...",
+        "is_alert": False,
+        "is_pending": True,
+    })
+    timeline.sort(key=lambda x: (x["ts"] == "PENDING", x["ts"]))
+
+    # 7. Endpoint health from metrics table (refinement 6)
+    latest_metric = db.query(models.Metric).filter(
+        models.Metric.host == alert.host
+    ).order_by(desc(models.Metric.timestamp)).first()
+
+    if latest_metric:
+        endpoint_health = {
+            "available": True,
+            "cpu": round(float(latest_metric.cpu_percent), 1),
+            "ram": round(float(latest_metric.ram_percent), 1),
+            "net_in":  str(latest_metric.net_in_bytes),
+            "net_out": str(latest_metric.net_out_bytes),
+            "last_seen": latest_metric.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+    else:
+        endpoint_health = {"available": False}
+
+    # 8. Source intelligence counts (refinement 3)
+    if source_ip:
+        alert_count_label = "Alerts from Same Source IP"
+        alert_count = db.query(func.count(models.Alert.id)).filter(
+            models.Alert.description.contains(source_ip)
+        ).scalar() or 0
+    else:
+        alert_count_label = "Alerts from Same Host"
+        alert_count = db.query(func.count(models.Alert.id)).filter(
+            models.Alert.host == alert.host
+        ).scalar() or 0
+
+    return {
+        "alert": {
+            "id": alert.id,
+            "title": alert.title,
+            "severity": (alert.severity or "").upper(),
+            "host": alert.host,
+            "timestamp": alert.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            "description": alert.description,
+            "source": source,
+            "is_read": alert.is_read,
+        },
+        "rule_name": rule_name,
+        "mitre_technique": mitre_technique,
+        "source_ip": source_ip,
+        "assessment": {
+            "status": assessment.status if assessment else "New",
+            "analyst_notes": assessment.analyst_notes if assessment else "",
+            "updated_at": assessment.updated_at.strftime("%Y-%m-%d %H:%M:%S") if assessment else None,
+        },
+        "correlated_events": [
+            {
+                "ts": l.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                "host": l.host,
+                "message": (l.message or "")[:300],
+                "log_type": l.log_type,
+            }
+            for l in correlated_logs
+        ],
+        "timeline": timeline,
+        "endpoint_health": endpoint_health,
+        "source_intel": {
+            "source_ip": source_ip,
+            "geolocation": "Not available",
+            "asn": "Not available",
+            "alert_count": alert_count,
+            "alert_count_label": alert_count_label,
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# Alert Investigation — assessment upsert endpoint (refinement 8: validated)
+# ---------------------------------------------------------------------------
+
+_ALLOWED_STATUSES = {"New", "Investigating", "Resolved", "False Positive"}
+
+from pydantic import BaseModel as _BaseModel
+
+class AssessmentIn(_BaseModel):
+    status: str
+    analyst_notes: str = ""
+
+@router.put("/alerts/{alert_id}/assessment")
+def save_assessment(alert_id: int, payload: AssessmentIn, db: Session = Depends(db.get_db)):
+    # Validate alert exists
+    alert = db.query(models.Alert).filter(models.Alert.id == alert_id).first()
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    # Validate status (refinement 8)
+    if payload.status not in _ALLOWED_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid status. Must be one of: {', '.join(sorted(_ALLOWED_STATUSES))}"
+        )
+
+    assessment = db.query(models.AlertAssessment).filter(
+        models.AlertAssessment.alert_id == alert_id
+    ).first()
+
+    if assessment:
+        assessment.status = payload.status
+        assessment.analyst_notes = payload.analyst_notes
+        assessment.updated_at = datetime.utcnow()
+    else:
+        assessment = models.AlertAssessment(
+            alert_id=alert_id,
+            status=payload.status,
+            analyst_notes=payload.analyst_notes,
+        )
+        db.add(assessment)
+
+    db.commit()
+    return {"status": "ok", "assessment_status": assessment.status}

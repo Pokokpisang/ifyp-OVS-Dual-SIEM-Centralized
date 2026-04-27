@@ -84,6 +84,39 @@
         </div>
     </div>
 
+    <!-- Threat KPI Row -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="p-5 rounded-xl bg-red-500/5 border border-red-500/20 flex flex-col gap-2">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-red-400 text-base">gpp_bad</span>
+                <span class="text-[10px] font-bold text-red-400/80 uppercase tracking-widest">MITRE Detections</span>
+            </div>
+            <span class="text-3xl font-black tracking-tight text-red-400" id="kpi-mitre">-</span>
+            <span class="text-[10px] text-slate-500">Total MITRE ATT&amp;CK hits</span>
+        </div>
+        <div class="p-5 rounded-xl bg-amber-500/5 border border-amber-500/20 flex flex-col gap-2">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-amber-400 text-base">notifications_active</span>
+                <span class="text-[10px] font-bold text-amber-400/80 uppercase tracking-widest">Alerts (24h)</span>
+            </div>
+            <span class="text-3xl font-black tracking-tight text-amber-400" id="kpi-total-alerts">-</span>
+            <span class="text-[10px] text-slate-500">Alert events last 24 hours</span>
+        </div>
+        <div class="p-5 rounded-xl bg-violet-500/5 border border-violet-500/20 flex flex-col gap-2 col-span-2">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-violet-400 text-base">shield</span>
+                <span class="text-[10px] font-bold text-violet-400/80 uppercase tracking-widest">Active Coverage</span>
+            </div>
+            <div class="flex items-center gap-3 mt-1">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-violet-500/10 text-violet-300 border border-violet-500/20">
+                    <span class="material-symbols-outlined text-[12px]">shield</span>T1059.004
+                </span>
+                <span class="text-[11px] text-slate-400">Command &amp; Scripting Interpreter — Unix Shell</span>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1">Detection via OpenSearch Data Prepper pipeline + rule engine</p>
+        </div>
+    </div>
+
     <!-- Dashboard Panels -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Charts -->
@@ -111,19 +144,21 @@
             </div>
         </div>
 
-        <!-- Security Alerts Feed -->
-        <div class="lg:col-span-1 p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col h-full max-h-[800px]">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-sm font-bold">Live Security Alerts</h3>
-                <a href="/alerts" class="text-xs font-bold text-primary hover:underline">View All Alerts</a>
+        <!-- Security Alerts / Threat Feed -->
+        <div class="lg:col-span-1 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col h-full max-h-[800px] overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-primary/10">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-violet-400 text-base">gpp_bad</span>
+                    <h3 class="text-sm font-bold">MITRE Threat Feed</h3>
+                    <button onclick="markAllRead()" class="ml-2 px-2 py-0.5 rounded text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-colors">MARK ALL READ</button>
+                </div>
+                <a href="/alerts?source=T1059.004" class="text-xs font-bold text-primary hover:underline">View All →</a>
             </div>
-            <div class="flex-1 overflow-y-auto pr-2 space-y-4" id="alert-container">
-                <!-- Alerts injected by JS -->
-                <div class="p-4 rounded-lg bg-background-dark border border-slate-200 dark:border-primary/5">
-                     <p class="text-sm text-slate-400 text-center py-4">Waiting for alerts...</p>
+            <div class="flex-1 overflow-y-auto p-3 space-y-2" id="alert-container">
+                <div class="p-4 rounded-lg bg-slate-800/30 border border-slate-700/30">
+                     <p class="text-xs text-slate-400 text-center py-4">Waiting for MITRE detections...</p>
                 </div>
             </div>
-            <!-- Alert template (hidden, used by JS if we want to build it in HTML, but let's keep JS logic the "same" for now. We might need to adjust `dashboard.js` later if it generates hardcoded HTML) -->
         </div>
     </div>
 </div>

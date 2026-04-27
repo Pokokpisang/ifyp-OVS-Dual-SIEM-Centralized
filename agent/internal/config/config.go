@@ -14,7 +14,7 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		ServerURL:  getEnv("AGENT_SERVER_URL", "http://localhost:8000"),
-		LogPath:    getEnv("AGENT_LOG_PATH", "/home/pokokpisang/Desktop/FYP/ifyp/prototype/agent/agent/test_auth.log"),
+		LogPath:    getEnv("AGENT_LOG_PATH", "/home/pokokpisang/Desktop/FYP/ifyp/prototype/agent/test_auth.log"),
 		LogType:    getEnv("AGENT_LOG_TYPE", "auth"),
 		AuditdPath: getEnv("AGENT_AUDITD_PATH", "/var/log/audit/audit.log"),
 	}

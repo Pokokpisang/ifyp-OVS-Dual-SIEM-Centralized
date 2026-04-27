@@ -46,7 +46,7 @@ func main() {
 		auditTailer := tailer.New(&auditCfg)
 		auditEvents, err := auditTailer.Start()
 		if err == nil {
-			fmt.Printf("Starting Auditd Tailer: %s\n", cfg.AuditdPath)
+			fmt.Printf("Successfully started Auditd Tailer: %s\n", cfg.AuditdPath)
 			// Launch separate consumer for simplicity
 			go func() {
 				for event := range auditEvents {
@@ -55,14 +55,15 @@ func main() {
 						event.AgentRuleID = rID
 						event.LocalRuleVersion = rev
 					}
-					// fmt.Printf("Sending AUDIT: %s...\n", event.Message[:min(len(event.Message), 20)])
+					fmt.Printf("Sending AUDIT log: %s...\n", event.Message[:min(len(event.Message), 20)])
 					if err := snd.Send(event); err != nil {
-						fmt.Println("Error sending audit:", err)
+						fmt.Printf("Error sending audit log: %v\n", err)
 					}
 				}
 			}()
 		} else {
-			fmt.Printf("Failed to start auditd tailer (ignore if file missing): %v\n", err)
+			fmt.Printf("Warning: Auditd tailer could not start (path: %s). Error: %v\n", cfg.AuditdPath, err)
+			fmt.Println("This is expected if Auditd is not installed or configured on this system.")
 		}
 	}
 	
