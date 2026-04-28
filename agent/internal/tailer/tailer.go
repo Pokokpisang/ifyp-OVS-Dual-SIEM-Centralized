@@ -11,12 +11,16 @@ import (
 )
 
 type Tailer struct {
-	cfg *config.Config
+	cfg     *config.Config
+	path    string
+	logType string
 }
 
-func New(cfg *config.Config) *Tailer {
+func New(cfg *config.Config, path string, logType string) *Tailer {
 	return &Tailer{
-		cfg: cfg,
+		cfg:     cfg,
+		path:    path,
+		logType: logType,
 	}
 }
 
@@ -25,19 +29,16 @@ func (t *Tailer) Start(handler func(string)) {
 	for {
 		err := t.tailLoop(handler)
 		if err != nil {
-			log.Printf("[%s] Tailer error: %v", t.cfg.LogType, err)
+			log.Printf("[%s] Tailer error: %v", t.logType, err)
 		}
-		log.Printf("[%s] Tailer stopped for %s. Restarting in 5s...", t.cfg.LogType, t.cfg.LogPath)
+		log.Printf("[%s] Tailer stopped for %s. Restarting in 5s...", t.logType, t.path)
 		time.Sleep(5 * time.Second)
 	}
 }
 
 func (t *Tailer) tailLoop(handler func(string)) error {
-	// 1. Setup SeekInfo based on config
-	var seek *tail.SeekInfo
-	if t.cfg.TailFromEnd {
-		seek = &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}
-	}
+	// 1. Setup SeekInfo - always from end for now to avoid massive backlogs
+	seek := &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}
 
 	tailConfig := tail.Config{
 		ReOpen:    true,
@@ -48,21 +49,21 @@ func (t *Tailer) tailLoop(handler func(string)) error {
 	}
 
 	// Verify file existence before starting
-	if _, err := os.Stat(t.cfg.LogPath); os.IsNotExist(err) {
-		return fmt.Errorf("file %s does not exist", t.cfg.LogPath)
+	if _, err := os.Stat(t.path); os.IsNotExist(err) {
+		return fmt.Errorf("file %s does not exist", t.path)
 	}
 
-	tf, err := tail.TailFile(t.cfg.LogPath, tailConfig)
+	tf, err := tail.TailFile(t.path, tailConfig)
 	if err != nil {
 		return err
 	}
 
 	// 2. Heartbeat Ticker
-	heartbeat := time.NewTicker(30 * time.Second)
+	heartbeat := time.NewTicker(5 * time.Minute) // Reduced logging frequency
 	defer heartbeat.Stop()
 
 	// 3. Line processing loop
-	log.Printf("[%s] Tailer active: %s (start_from_end=%v)", t.cfg.LogType, t.cfg.LogPath, t.cfg.TailFromEnd)
+	log.Printf("[%s] Tailer active: %s", t.logType, t.path)
 
 	for {
 		select {
@@ -76,7 +77,7 @@ func (t *Tailer) tailLoop(handler func(string)) error {
 			handler(line.Text)
 
 		case <-heartbeat.C:
-			log.Printf("[%s] tailer alive: %s", t.cfg.LogType, t.cfg.LogPath)
+			log.Printf("[%s] tailer alive: %s", t.logType, t.path)
 		}
 	}
 }

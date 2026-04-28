@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+
+{% block title %}Register New Agent - OVS SIEM{% endblock %}
+{% block page_title %}Register New Agent{% endblock %}
+
+{% block head %}
+<style>
+  /* Toggle switch */
+  .toggle-input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .toggle-track {
+    display: inline-flex; align-items: center;
+    width: 2.5rem; height: 1.25rem;
+    background: #e2e8f0; border-radius: 9999px;
+    cursor: pointer; transition: background 0.2s;
+    position: relative; flex-shrink: 0;
+  }
+  .dark .toggle-track { background: #334155; }
+  .toggle-thumb {
+    position: absolute; left: 0.15rem;
+    width: 0.95rem; height: 0.95rem;
+    background: white; border-radius: 9999px;
+    transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .toggle-input:checked + .toggle-track { background: #f05684; }
+  .toggle-input:checked + .toggle-track .toggle-thumb { transform: translateX(1.25rem); }
+
+  /* Code block scrollbar */
+  #install-command-block::-webkit-scrollbar { height: 4px; }
+  #install-command-block::-webkit-scrollbar-thumb { background: #f05684; border-radius: 2px; }
+
+  /* Success section animation */
+  #success-section { animation: fadeSlideIn 0.4s ease-out; }
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<a href="/agents" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/20 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors">
+  <span class="material-symbols-outlined text-sm">arrow_back</span>
+  Back to Agents
+</a>
+{% endblock %}
+
+{% block main_content %}
+<div class="flex-1 overflow-y-auto p-8">
+  <div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- Page heading -->
+    <div class="mb-2">
+      <h1 class="text-2xl font-bold">Register New Agent</h1>
+      <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+        Deploy a monitoring agent to a Linux server. Fill in the details below to generate your installation command.
+      </p>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- Localhost Warning Banner                                          -->
+    <!-- ================================================================= -->
+    {% if localhost_warning %}
+    <div id="localhost-warning"
+         class="flex items-start gap-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+      <span class="material-symbols-outlined text-amber-500 mt-0.5 shrink-0">warning</span>
+      <div>
+        <p class="font-semibold text-sm">Localhost Detected</p>
+        <p class="text-xs mt-0.5">{{ localhost_warning }}</p>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ================================================================= -->
+    <!-- Success + Install Command (shown only after form POST)           -->
+    <!-- ================================================================= -->
+    {% if created_agent and install_command %}
+    <div id="success-section"
+         class="bg-white dark:bg-card-dark rounded-xl border border-green-500/30 shadow-sm overflow-hidden">
+      <!-- Header -->
+      <div class="flex items-center gap-3 px-6 py-4 border-b border-green-500/20 bg-green-500/5">
+        <div class="p-2 rounded-lg bg-green-500/10 text-green-500">
+          <span class="material-symbols-outlined">check_circle</span>
+        </div>
+        <div>
+          <p class="font-bold text-green-600 dark:text-green-400">Agent "{{ created_agent.agent_name }}" registered!</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            ID: <code class="font-mono text-primary">{{ created_agent.agent_id }}</code>
+            &nbsp;·&nbsp;
+            Token expires in <span class="font-semibold text-amber-500">{{ created_agent.token_expires_in }}</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Command block -->
+      <div class="p-6 space-y-4">
+        <div>
+          <p class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-base">terminal</span>
+            Run this command on your target server as root:
+          </p>
+          <div class="relative group">
+            <pre id="install-command-block"
+                 class="bg-slate-900 dark:bg-black rounded-xl p-4 font-mono text-sm text-green-400 overflow-x-auto whitespace-pre leading-relaxed border border-slate-700">{{ install_command }}</pre>
+            <button onclick="copyCommand()"
+                    id="copy-btn"
+                    class="absolute top-3 right-3 p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all flex items-center gap-1.5 text-xs font-semibold">
+              <span class="material-symbols-outlined text-sm" id="copy-icon">content_copy</span>
+              <span id="copy-label">Copy</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex flex-col sm:flex-row gap-3">
+          <button onclick="copyCommand()"
+                  class="flex-1 bg-primary hover:bg-primary/90 text-white py-2.5 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-lg shadow-primary/20">
+            <span class="material-symbols-outlined text-base">content_copy</span>
+            Copy Command
+          </button>
+          <a href="/install.sh" download="install.sh"
+             class="flex-1 bg-primary/10 hover:bg-primary/20 text-primary py-2.5 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors">
+            <span class="material-symbols-outlined text-base">download</span>
+            Download install.sh
+          </a>
+          <a href="/health" target="_blank"
+             class="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg border border-primary/20 text-primary text-sm font-semibold hover:bg-primary/5 transition-colors">
+            <span class="material-symbols-outlined text-base">network_check</span>
+            Test Connection
+          </a>
+        </div>
+
+        <p class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-amber-500 text-sm">info</span>
+          The registration token is valid for <strong>{{ created_agent.token_expires_in }}</strong> and can only be used once.
+          After registration, check the <a href="/agents" class="text-primary underline">Agents page</a> for status.
+        </p>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ================================================================= -->
+    <!-- Registration Form                                                 -->
+    <!-- ================================================================= -->
+    <form method="POST" action="/agents/new" id="register-form">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- ============================================================= -->
+        <!-- Agent Information                                             -->
+        <!-- ============================================================= -->
+        <section class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm flex flex-col gap-4">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="p-1.5 rounded-lg bg-primary/10 text-primary">
+              <span class="material-symbols-outlined text-[18px]">badge</span>
+            </span>
+            <h3 class="font-bold text-base">Agent Information</h3>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label for="agent_name" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                Agent Name <span class="text-primary">*</span>
+              </label>
+              <input id="agent_name" name="agent_name" type="text" required
+                     placeholder="e.g. prod-web-01"
+                     value=""
+                     class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
+            </div>
+
+            <div>
+              <label for="group" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                Agent Group
+              </label>
+              <div class="relative">
+                <select id="group" name="group"
+                        class="w-full appearance-none bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all">
+                  <option value="Default Group">Default Group</option>
+                  <option value="Production Servers">Production Servers</option>
+                  <option value="Staging">Staging</option>
+                  <option value="Development">Development</option>
+                </select>
+                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-sm">expand_more</span>
+              </div>
+            </div>
+
+            <div>
+              <label for="tags" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                Tags
+              </label>
+              <input id="tags" name="tags" type="text"
+                     placeholder="web, production, nginx (comma-separated)"
+                     class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- Target Server                                                 -->
+        <!-- ============================================================= -->
+        <section class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm flex flex-col gap-4">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="p-1.5 rounded-lg bg-primary/10 text-primary">
+              <span class="material-symbols-outlined text-[18px]">dns</span>
+            </span>
+            <h3 class="font-bold text-base">Target Server</h3>
+          </div>
+
+          <div class="space-y-4">
+            <!-- OS (locked to Linux) -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                Operating System
+              </label>
+              <div class="flex items-center gap-2 bg-slate-100 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5 opacity-70 cursor-not-allowed">
+                <span class="material-symbols-outlined text-sm text-slate-500">terminal</span>
+                <span class="text-sm font-medium">Linux</span>
+                <span class="ml-auto text-xs text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">Only supported OS</span>
+              </div>
+            </div>
+
+            <div>
+              <label for="distribution" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                Distribution
+              </label>
+              <div class="relative">
+                <select id="distribution" name="distribution"
+                        class="w-full appearance-none bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all">
+                  <option value="Ubuntu">Ubuntu</option>
+                  <option value="Debian">Debian</option>
+                  <option value="Rocky Linux">Rocky Linux</option>
+                  <option value="AlmaLinux">AlmaLinux</option>
+                  <option value="CentOS">CentOS</option>
+                </select>
+                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-sm">expand_more</span>
+              </div>
+            </div>
+
+            <div>
+              <label for="architecture" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                Architecture
+              </label>
+              <div class="relative">
+                <select id="architecture" name="architecture"
+                        class="w-full appearance-none bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all">
+                  <option value="x86_64">x86_64 (AMD64)</option>
+                  <option value="arm64">ARM64 (AArch64)</option>
+                </select>
+                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-sm">expand_more</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- Connection Configuration (full width)                         -->
+        <!-- ============================================================= -->
+        <section class="md:col-span-2 bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm flex flex-col gap-4">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="p-1.5 rounded-lg bg-primary/10 text-primary">
+              <span class="material-symbols-outlined text-[18px]">hub</span>
+            </span>
+            <h3 class="font-bold text-base">Connection Configuration</h3>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="md:col-span-2">
+              <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                SIEM Server Address
+              </label>
+              <div class="flex items-center gap-2 bg-slate-100 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5">
+                <span class="material-symbols-outlined text-sm text-primary">cloud</span>
+                <span class="text-sm font-mono text-slate-700 dark:text-slate-200">{{ siem_server_address }}</span>
+                <span class="ml-auto text-xs text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">Auto-detected</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">
+                Set <code class="text-primary">SIEM_SERVER_ADDRESS</code> in <code>.env</code> to override.
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                API Port
+              </label>
+              <div class="flex items-center gap-2 bg-slate-100 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5">
+                <span class="material-symbols-outlined text-sm text-slate-400">settings_ethernet</span>
+                <span class="text-sm font-mono">{{ siem_port }}</span>
+              </div>
+            </div>
+
+            <div class="md:col-span-3">
+              <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                Registration Token
+              </label>
+              <div class="flex items-center gap-2 bg-slate-100 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5">
+                <span class="material-symbols-outlined text-sm text-slate-400">key</span>
+                <span class="text-sm text-slate-500 italic">Generated automatically when you click "Register Agent"</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- Optional Monitoring Features                                  -->
+        <!-- ============================================================= -->
+        <section class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm flex flex-col gap-4">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="p-1.5 rounded-lg bg-primary/10 text-primary">
+              <span class="material-symbols-outlined text-[18px]">toggle_on</span>
+            </span>
+            <h3 class="font-bold text-base">Optional Monitoring Features</h3>
+          </div>
+
+          <div class="space-y-3">
+            <!-- Enable Logs -->
+            <label class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-background-dark border border-transparent hover:border-primary/10 cursor-pointer transition-colors">
+              <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-slate-400 text-[20px]">description</span>
+                <div>
+                  <p class="text-sm font-semibold">Log Collection</p>
+                  <p class="text-xs text-slate-500">Collect system & application logs</p>
+                </div>
+              </div>
+              <div>
+                <input type="checkbox" id="enable_logs" name="enable_logs" value="true" class="toggle-input" checked />
+                <label for="enable_logs" class="toggle-track">
+                  <span class="toggle-thumb"></span>
+                </label>
+              </div>
+            </label>
+
+            <!-- Enable FIM -->
+            <label class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-background-dark border border-transparent hover:border-primary/10 cursor-pointer transition-colors">
+              <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-slate-400 text-[20px]">lock_reset</span>
+                <div>
+                  <p class="text-sm font-semibold">File Integrity Monitoring</p>
+                  <p class="text-xs text-slate-500">Detect unauthorized file changes</p>
+                </div>
+              </div>
+              <div>
+                <input type="checkbox" id="enable_fim" name="enable_fim" value="true" class="toggle-input" />
+                <label for="enable_fim" class="toggle-track">
+                  <span class="toggle-thumb"></span>
+                </label>
+              </div>
+            </label>
+
+            <!-- Enable Metrics -->
+            <label class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-background-dark border border-transparent hover:border-primary/10 cursor-pointer transition-colors">
+              <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-slate-400 text-[20px]">monitoring</span>
+                <div>
+                  <p class="text-sm font-semibold">System Metrics</p>
+                  <p class="text-xs text-slate-500">CPU, memory, and network telemetry</p>
+                </div>
+              </div>
+              <div>
+                <input type="checkbox" id="enable_metrics" name="enable_metrics" value="true" class="toggle-input" checked />
+                <label for="enable_metrics" class="toggle-track">
+                  <span class="toggle-thumb"></span>
+                </label>
+              </div>
+            </label>
+          </div>
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- Quick Reference                                               -->
+        <!-- ============================================================= -->
+        <section class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm flex flex-col gap-3">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="p-1.5 rounded-lg bg-primary/10 text-primary">
+              <span class="material-symbols-outlined text-[18px]">help_outline</span>
+            </span>
+            <h3 class="font-bold text-base">What happens next?</h3>
+          </div>
+          <ol class="space-y-3">
+            <li class="flex items-start gap-3 text-sm">
+              <span class="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">1</span>
+              <span class="text-slate-600 dark:text-slate-300">Click <strong>Register Agent</strong> to generate a one-time installation token.</span>
+            </li>
+            <li class="flex items-start gap-3 text-sm">
+              <span class="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
+              <span class="text-slate-600 dark:text-slate-300">Copy the curl command and paste it into your target server terminal as root.</span>
+            </li>
+            <li class="flex items-start gap-3 text-sm">
+              <span class="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
+              <span class="text-slate-600 dark:text-slate-300">The script installs the agent, registers it, and starts a systemd service automatically.</span>
+            </li>
+            <li class="flex items-start gap-3 text-sm">
+              <span class="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">4</span>
+              <span class="text-slate-600 dark:text-slate-300">The agent appears in <a href="/agents" class="text-primary underline">Agents</a> as <strong>active</strong> within seconds.</span>
+            </li>
+          </ol>
+          <div class="mt-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-start gap-2">
+            <span class="material-symbols-outlined text-amber-500 text-sm mt-0.5 shrink-0">schedule</span>
+            <p class="text-xs text-amber-600 dark:text-amber-400">
+              The token expires in <strong>1 hour</strong>. If it expires, delete this agent and register a new one.
+            </p>
+          </div>
+        </section>
+
+      </div><!-- /grid -->
+
+      <!-- ============================================================= -->
+      <!-- Form Actions                                                   -->
+      <!-- ============================================================= -->
+      <div class="mt-6 flex items-center justify-end gap-4 pb-8">
+        <a href="/agents"
+           class="px-6 py-2.5 rounded-lg border border-slate-200 dark:border-primary/10 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-card-dark transition-colors">
+          Cancel
+        </a>
+        <button type="submit" id="register-btn"
+                {% if localhost_warning %}
+                class="bg-amber-500 hover:bg-amber-600 text-white px-8 py-2.5 rounded-lg font-bold text-sm shadow-lg transition-all flex items-center gap-2"
+                {% else %}
+                class="bg-primary hover:bg-primary/90 text-white px-8 py-2.5 rounded-lg font-bold text-sm shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
+                {% endif %}>
+          <span class="material-symbols-outlined text-base">add_circle</span>
+          Register Agent
+          {% if localhost_warning %}
+            <span class="text-xs opacity-75">(localhost)</span>
+          {% endif %}
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function copyCommand() {
+    const block = document.getElementById('install-command-block');
+    if (!block) return;
+    navigator.clipboard.writeText(block.innerText).then(() => {
+      const icon  = document.getElementById('copy-icon');
+      const label = document.getElementById('copy-label');
+      icon.innerText  = 'check';
+      label.innerText = 'Copied!';
+      setTimeout(() => {
+        icon.innerText  = 'content_copy';
+        label.innerText = 'Copy';
+      }, 2500);
+    });
+  }
+
+  // Scroll to success section after form submission
+  const shouldScroll = "{{ 'true' if created_agent else 'false' }}" === "true";
+  if (shouldScroll) {
+    document.addEventListener('DOMContentLoaded', () => {
+      const el = document.getElementById('success-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+</script>
+{% endblock %}

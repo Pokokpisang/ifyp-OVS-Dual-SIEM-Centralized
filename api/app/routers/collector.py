@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Request, Depends
+from fastapi import APIRouter, BackgroundTasks, Request, Depends, Header
 from pydantic import BaseModel, ConfigDict
 from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
@@ -8,6 +8,7 @@ import os
 import json
 from .. import db, models
 from ..services.rule_engine import RuleEngine
+from ..services.agent_service import update_last_seen
 
 router = APIRouter()
 
@@ -37,7 +38,16 @@ async def forward_to_data_prepper(payload: dict):
             print(f"Failed to forward log to Data Prepper: {e}")
 
 @router.post("/ingest/log")
-async def collect_agent_logs(request: Request, background_tasks: BackgroundTasks, database: Session = Depends(db.get_db)):
+async def collect_agent_logs(
+    request: Request, 
+    background_tasks: BackgroundTasks, 
+    database: Session = Depends(db.get_db),
+    x_agent_key: Optional[str] = Header(None, alias="X-Agent-Key")
+):
+    # 0. Update Last Seen if key provided
+    if x_agent_key:
+        update_last_seen(agent_key=x_agent_key, db=database)
+
     # 1. Read Raw JSON
     try:
         payload = await request.json()

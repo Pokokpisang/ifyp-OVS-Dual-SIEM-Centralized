@@ -27,8 +27,9 @@ up: build-agent
 
 build-agent:
 	@echo "🔨 Building Go Agent..."
-	@cd agent && go build -o agent ./cmd/agent/main.go
-	@echo "✅ Agent built successfully."
+	@mkdir -p api/downloads
+	@cd agent && GOOS=linux GOARCH=amd64 go build -o ../api/downloads/ovs-agent-linux-amd64 ./cmd/agent/main.go
+	@echo "✅ Agent built and copied to api/downloads/ovs-agent-linux-amd64"
 
 down:
 	@echo "🛑 Stopping SIEM infrastructure..."

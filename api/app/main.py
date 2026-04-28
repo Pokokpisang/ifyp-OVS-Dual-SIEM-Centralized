@@ -3,7 +3,8 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from typing import List
 from . import models, db
-from .routers import dashboard, api_metrics, rules, collector
+from .routers import dashboard, api_metrics, rules, collector, agents
+import pathlib
 
 # Create tables
 models.Base.metadata.create_all(bind=db.engine)
@@ -23,10 +24,16 @@ async def startup_event():
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Serve agent binary downloads — create dir if missing so the app doesn't crash
+_downloads_dir = pathlib.Path("downloads")
+_downloads_dir.mkdir(exist_ok=True)
+app.mount("/downloads", StaticFiles(directory="downloads"), name="downloads")
+
 app.include_router(dashboard.router)
 app.include_router(api_metrics.router)
 app.include_router(rules.router)
 app.include_router(collector.router)
+app.include_router(agents.router)
 @app.get("/health")
 def health_check():
     return {"status": "ok"}

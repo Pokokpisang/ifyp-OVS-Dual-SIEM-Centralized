@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}Agent Detail | {{ agent.agent_name }}{% endblock %}
+
+{% block head %}
+<style>
+    .hatch-pattern {
+        background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(240, 84, 132, 0.1) 5px, rgba(240, 84, 132, 0.1) 10px);
+    }
+    .sketch-box { border: 1.5px solid #F05484; box-shadow: 2px 2px 0px rgba(240, 84, 132, 0.2); }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #18161a; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #F05484; }
+</style>
+{% endblock %}
+
+{% block page_title %}Agent Detail{% endblock %}
+
+{% block main_content %}
+<div class="flex-1 overflow-y-auto custom-scrollbar p-8 bg-[#18161a] text-[#ededed]">
+    
+    <!-- Section 1: Agent Header -->
+    <header class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div>
+            <div class="flex items-center gap-3 mb-2">
+                <span class="text-3xl font-bold tracking-tight">{{ agent.agent_name }}</span>
+                
+                {% if status == 'active' %}
+                <span class="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-widest border border-green-500/30">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                    ONLINE
+                </span>
+                {% elif status == 'offline' %}
+                <span class="flex items-center gap-1.5 px-3 py-1 bg-red-500/10 text-red-400 text-[10px] font-bold uppercase tracking-widest border border-red-500/30">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                    OFFLINE
+                </span>
+                {% else %}
+                <span class="flex items-center gap-1.5 px-3 py-1 bg-yellow-500/10 text-yellow-400 text-[10px] font-bold uppercase tracking-widest border border-yellow-500/30">
+                    <span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>
+                    PENDING
+                </span>
+                {% endif %}
+
+                <span class="text-xs text-[#ededed]/40 uppercase tracking-wider font-medium">
+                    Last seen: {{ agent.last_seen.strftime('%Y-%m-%d %H:%M UTC') if agent.last_seen else 'Never' }}
+                </span>
+            </div>
+            <div class="flex flex-wrap gap-x-8 gap-y-2 text-xs text-[#ededed]/60">
+                <div class="flex items-center gap-2"><span class="text-[#F05484] font-bold uppercase">Hostname:</span> {{ agent.hostname or '—' }}</div>
+                <div class="flex items-center gap-2"><span class="text-[#F05484] font-bold uppercase">IP:</span> {{ agent.ip_address or '—' }}</div>
+                <div class="flex items-center gap-2"><span class="text-[#F05484] font-bold uppercase">OS:</span> {{ agent.os_type }} {{ agent.distribution }} ({{ agent.architecture }})</div>
+                <div class="flex items-center gap-2"><span class="text-[#F05484] font-bold uppercase">Group:</span> {{ agent.group }}</div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[#F05484] font-bold uppercase">Tags:</span>
+                    {% if agent.tags %}
+                        {% for tag in agent.tags.split(',') %}
+                        <span class="bg-[#ededed]/5 px-2 py-0.5 border border-[#ededed]/10">{{ tag.strip() }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="text-[#ededed]/30">No tags</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Actions Panel -->
+        <div class="flex flex-wrap gap-3">
+            <button class="px-4 py-2 bg-[#F05484]/10 text-[#F05484] text-[10px] font-bold uppercase tracking-widest border border-[#F05484] opacity-50 cursor-not-allowed" title="Coming Soon">Restart Agent</button>
+            <a href="?reinstall=true" class="px-4 py-2 bg-transparent text-[#ededed]/60 text-[10px] font-bold uppercase tracking-widest border border-[#ededed]/20 hover:border-[#ededed]/50 transition-all">Reinstall</a>
+            
+            <form action="/agents/{{ agent.agent_id }}/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this agent? This action cannot be undone.')">
+                <button type="submit" class="px-4 py-2 bg-[#ce2e46]/10 text-[#ce2e46] text-[10px] font-bold uppercase tracking-widest border border-[#ce2e46] hover:bg-[#ce2e46] hover:text-white transition-all">Delete Agent</button>
+            </form>
+        </div>
+    </header>
+    
+    {% if reinstall_command %}
+    <!-- Reinstall Command Display -->
+    <div class="mb-10 bg-[#F05484]/5 border border-[#F05484]/30 p-6 relative">
+        <div class="absolute top-0 right-0 hatch-pattern w-20 h-full opacity-20"></div>
+        <h3 class="text-[#F05484] font-black text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">terminal</span>
+            REINSTALLATION_COMMAND_GENERATED
+        </h3>
+        <p class="text-xs text-[#ededed]/60 mb-4">Run this one-liner on your VPS. It will cleanly uninstall the current agent and install the new version with a fresh registration token.</p>
+        <div class="bg-[#18161a] p-4 font-mono text-[11px] border border-[#F05484]/20 flex justify-between items-center group">
+            <code class="text-[#F05484] break-all">{{ reinstall_command }}</code>
+            <button class="ml-4 p-2 hover:bg-[#F05484]/10 text-[#F05484] transition-all" onclick="navigator.clipboard.writeText('{{ reinstall_command }}'); alert('Reinstall command copied!')">
+                <span class="material-symbols-outlined text-sm">content_copy</span>
+            </button>
+        </div>
+        <div class="mt-4 flex gap-4 text-[9px] uppercase font-bold tracking-widest text-[#ededed]/30">
+            <span>Token expires in 1 hour</span>
+            <a href="/agents/{{ agent.agent_id }}" class="hover:text-[#F05484] transition-colors underline">Cancel / Hide</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="mb-10 bg-[#ededed]/5 border border-[#ededed]/10 p-6">
+        <h3 class="text-[#ededed]/60 font-bold text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">delete_forever</span>
+            CLEAN_UNINSTALL_PROCEDURE
+        </h3>
+        <p class="text-xs text-[#ededed]/40 mb-4">If you want to remove the agent from the VPS without reinstalling, run the command below before deleting the record from this dashboard.</p>
+        <div class="bg-[#18161a] p-4 font-mono text-[11px] border border-[#ededed]/10 flex justify-between items-center">
+            <code class="text-[#ededed]/60 break-all">{{ uninstall_command }}</code>
+            <button class="ml-4 p-2 hover:bg-[#ededed]/10 text-[#ededed]/40 transition-all" onclick="navigator.clipboard.writeText('{{ uninstall_command }}'); alert('Uninstall command copied!')">
+                <span class="material-symbols-outlined text-sm">content_copy</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <!-- Metric: CPU -->
+        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">CPU Usage</span>
+            <div class="flex items-end justify-between">
+                <span class="text-3xl font-bold tracking-tight" id="kpi-cpu">
+                    {% if metrics and metrics.cpu_percent %}{{ "%.1f"|format(metrics.cpu_percent|float) }}%{% else %}-{% endif %}
+                </span>
+            </div>
+        </div>
+        
+        <!-- Metric: Memory -->
+        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">RAM Usage</span>
+            <div class="flex items-end justify-between">
+                <span class="text-3xl font-bold tracking-tight text-severity-warning" id="kpi-ram">
+                    {% if metrics and metrics.ram_percent %}{{ "%.1f"|format(metrics.ram_percent|float) }}%{% else %}-{% endif %}
+                </span>
+            </div>
+        </div>
+        
+        <!-- Metric: Net In -->
+        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Net In</span>
+            <div class="flex items-end justify-between">
+                <span class="text-3xl font-bold tracking-tight" id="kpi-net-in">
+                    {% if metrics and metrics.net_in_bytes %}{{ "%.2f"|format(metrics.net_in_bytes|float / 1024 / 1024) }} MB/s{% else %}-{% endif %}
+                </span>
+            </div>
+        </div>
+
+        <!-- Metric: Net Out -->
+        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Net Out</span>
+            <div class="flex items-end justify-between">
+                <span class="text-3xl font-bold tracking-tight" id="kpi-net-out">
+                    {% if metrics and metrics.net_out_bytes %}{{ "%.2f"|format(metrics.net_out_bytes|float / 1024 / 1024) }} MB/s{% else %}-{% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monitoring Modules Toggle Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-10">
+
+        
+        <div class="bg-slate-100 dark:bg-card-dark p-6 border border-slate-200 dark:border-primary/5 rounded-xl">
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">MONITORING_MODULES</h3>
+
+            <ul class="space-y-4">
+                <li class="flex justify-between items-center">
+                    <span class="text-xs font-medium uppercase text-[#ededed]/70">Log Collection</span>
+                    {% if agent.enable_logs %}
+                    <div class="w-8 h-4 bg-[#F05484]/20 border border-[#F05484] relative flex items-center px-0.5">
+                        <div class="w-2.5 h-2.5 bg-[#F05484] absolute right-0.5"></div>
+                    </div>
+                    {% else %}
+                    <div class="w-8 h-4 bg-[#ededed]/10 border border-[#ededed]/20 relative flex items-center px-0.5">
+                        <div class="w-2.5 h-2.5 bg-[#ededed]/20"></div>
+                    </div>
+                    {% endif %}
+                </li>
+                <li class="flex justify-between items-center {% if not agent.enable_fim %}opacity-50{% endif %}">
+                    <span class="text-xs font-medium uppercase text-[#ededed]/70">FIM <span class="text-[8px] text-[#f59b00] border border-[#f59b00]/30 px-1 ml-1">Coming Soon</span></span>
+                    {% if agent.enable_fim %}
+                    <div class="w-8 h-4 bg-[#F05484]/20 border border-[#F05484] relative flex items-center px-0.5">
+                        <div class="w-2.5 h-2.5 bg-[#F05484] absolute right-0.5"></div>
+                    </div>
+                    {% else %}
+                    <div class="w-8 h-4 bg-[#ededed]/10 border border-[#ededed]/20 relative flex items-center px-0.5">
+                        <div class="w-2.5 h-2.5 bg-[#ededed]/20"></div>
+                    </div>
+                    {% endif %}
+                </li>
+                <li class="flex justify-between items-center">
+                    <span class="text-xs font-medium uppercase text-[#ededed]/70">System Metrics</span>
+                    {% if agent.enable_metrics %}
+                    <div class="w-8 h-4 bg-[#F05484]/20 border border-[#F05484] relative flex items-center px-0.5">
+                        <div class="w-2.5 h-2.5 bg-[#F05484] absolute right-0.5"></div>
+                    </div>
+                    {% else %}
+                    <div class="w-8 h-4 bg-[#ededed]/10 border border-[#ededed]/20 relative flex items-center px-0.5">
+                        <div class="w-2.5 h-2.5 bg-[#ededed]/20"></div>
+                    </div>
+                    {% endif %}
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Section 3: Alerts & Configuration -->
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10">
+        <!-- Alerts Table -->
+        <div class="xl:col-span-2">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-[#F05484] text-sm uppercase tracking-widest flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">report</span>
+                    Active_Alerts
+                </h3>
+                <a class="text-[10px] text-[#ededed]/40 hover:text-[#F05484] uppercase font-bold tracking-widest transition-all" href="/alerts">View all history</a>
+            </div>
+            <div class="bg-[#232126] border border-[#F05484]/10 overflow-hidden">
+                <table class="w-full text-left border-collapse table-fixed">
+                    <thead>
+                        <tr class="bg-[#18161a] text-[10px] text-[#ededed]/40 uppercase tracking-widest border-b border-[#F05484]/10">
+                            <th class="w-24 px-4 py-3 font-bold">Timestamp</th>
+                            <th class="px-4 py-3 font-bold">Alert Name</th>
+                            <th class="w-24 px-4 py-3 font-bold">Severity</th>
+                            <th class="w-32 px-4 py-3 font-bold">Source</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-xs font-medium">
+                        {% if alerts %}
+                            {% for alert in alerts %}
+                            <tr class="border-b border-[#ededed]/5 hover:bg-[#F05484]/5 transition-colors cursor-pointer" onclick="window.location='/alerts/{{ alert.id }}/investigation'">
+                                <td class="px-4 py-4 font-mono text-[#ededed]/60">{{ alert.timestamp.strftime('%H:%M:%S') }}</td>
+                                <td class="px-4 py-4 font-bold truncate" title="{{ alert.title }}">{{ alert.title }}</td>
+                                <td class="px-4 py-4">
+                                    {% if alert.severity == 'HIGH' or alert.severity == 'CRITICAL' %}
+                                    <span class="bg-[#ce2e46]/20 text-[#ce2e46] px-2 py-0.5 border border-[#ce2e46]/30 uppercase text-[9px] font-black">Critical</span>
+                                    {% elif alert.severity == 'MED' or alert.severity == 'MEDIUM' or alert.severity == 'WARNING' %}
+                                    <span class="bg-[#f59b00]/20 text-[#f59b00] px-2 py-0.5 border border-[#f59b00]/30 uppercase text-[9px] font-black">Warning</span>
+                                    {% else %}
+                                    <span class="bg-[#ededed]/10 text-[#ededed]/40 px-2 py-0.5 border border-[#ededed]/20 uppercase text-[9px] font-black">Info</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-4 font-mono text-[#ededed]/40 truncate" title="{{ alert.source or '—' }}">{{ alert.source or '—' }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="px-4 py-8 text-center text-[#ededed]/20 italic">No alerts linked to this agent yet.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Configuration Panel -->
+        <div class="xl:col-span-1">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-[#F05484] text-sm uppercase tracking-widest flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">terminal</span>
+                    AGENT_CONFIG
+                </h3>
+            </div>
+            <div class="bg-[#232126] border border-[#F05484]/10 p-6">
+                <div class="space-y-6">
+                    <div>
+                        <label class="text-[9px] text-[#ededed]/40 uppercase tracking-[0.2em] block mb-1">Agent Identity</label>
+                        <div class="flex justify-between items-center">
+                            <span class="font-mono text-xs">{{ agent.agent_id }}</span>
+                            <span class="material-symbols-outlined text-xs text-[#F05484] cursor-pointer hover:scale-110 transition-transform" onclick="navigator.clipboard.writeText('{{ agent.agent_id }}')" title="Copy ID">content_copy</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-[#ededed]/40 uppercase tracking-[0.2em] block mb-1">Registration Date</label>
+                        <span class="font-mono text-xs block text-[#ededed]/70">{{ agent.created_at.strftime('%Y-%m-%d %H:%M UTC') }}</span>
+                    </div>
+                    <div class="pt-4 border-t border-[#F05484]/5">
+                        <details class="group">
+                            <summary class="flex items-center justify-between cursor-pointer list-none">
+                                <span class="text-[10px] font-bold text-[#ededed]/40 uppercase">Advanced JSON Config</span>
+                                <span class="material-symbols-outlined text-sm transition-transform group-open:rotate-180">expand_more</span>
+                            </summary>
+                            <div class="mt-4">
+                                <pre class="text-[10px] font-mono text-[#ededed]/30 bg-[#18161a] p-3 border border-[#F05484]/10 overflow-x-auto">{"agent_id":"{{ agent.agent_id }}","name":"{{ agent.agent_name }}","group":"{{ agent.group }}","modules":{"logs":{{ 'true' if agent.enable_logs else 'false' }},"fim":{{ 'true' if agent.enable_fim else 'false' }},"metrics":{{ 'true' if agent.enable_metrics else 'false' }}}}</pre>
+                            </div>
+                        </details>
+                    </div>
+                    <button class="w-full bg-[#F05484] text-white text-[10px] font-black uppercase tracking-widest py-3 sketch-box hover:brightness-110 active:scale-[0.98] transition-all" onclick="navigator.clipboard.writeText('{{ reinstall_command or install_command }}'); alert('Command copied to clipboard!')">
+                        Copy Registration Command
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 4: Log Stream -->
+    <div class="w-full">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+            <h3 class="font-bold text-[#F05484] text-sm uppercase tracking-widest flex items-center gap-2 self-start md:self-auto">
+                <span class="material-symbols-outlined text-sm">view_list</span>
+                REALTIME_LOG_STREAM
+            </h3>
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <div class="relative flex-1 md:w-64">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#ededed]/30">search</span>
+                    <input class="w-full bg-[#18161a] border border-[#F05484]/20 text-xs px-9 py-2 focus:ring-0 focus:border-[#F05484] placeholder-[#ededed]/20" placeholder="Filter logs..." type="text"/>
+                </div>
+                <select class="bg-[#18161a] border border-[#F05484]/20 text-[10px] px-3 py-2 text-[#ededed]/70 font-bold uppercase tracking-widest focus:ring-0">
+                    <option>Level: All</option>
+                    <option>Error</option>
+                    <option>Warning</option>
+                </select>
+            </div>
+        </div>
+        <div class="bg-[#121014] border-2 border-[#F05484]/10 p-4 font-mono text-[11px] h-80 overflow-y-auto custom-scrollbar shadow-inner">
+            <div class="space-y-1.5">
+                {% if logs %}
+                    {% for log in logs %}
+                    <div class="flex gap-4">
+                        <span class="text-[#ededed]/30">{{ log.timestamp.strftime('%H:%M:%S') }}</span>
+                        <span class="{% if 'ERR' in log.message or 'FAIL' in log.message %}text-[#ce2e46]{% elif 'WARN' in log.message %}text-[#f59b00]{% else %}text-green-500{% endif %}">
+                            [{{ log.log_type or 'INFO' }}]
+                        </span>
+                        <span class="text-[#ededed]/60">{{ log.message }}</span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-[#ededed]/20 italic py-10 text-center">No logs linked to this agent yet.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Apply dynamic widths to bypass IDE CSS parsing errors in templates
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.dynamic-width').forEach(function(el) {
+            const width = el.getAttribute('data-width');
+            if (width) {
+                el.style.width = width;
+            }
+        });
+
+        // Live Metrics Update (Same as Dashboard)
+        const host = "{{ agent.hostname or agent.agent_name }}";
+        
+        async function updateMetrics() {
+            try {
+                const res = await fetch(`/api/metrics/summary?host=${host}`);
+                const data = await res.json();
+                if (data.cpu_percent !== undefined) {
+                    document.getElementById('kpi-cpu').innerText = data.cpu_percent.toFixed(1) + '%';
+                    document.getElementById('kpi-ram').innerText = data.ram_percent.toFixed(1) + '%';
+                    document.getElementById('kpi-net-in').innerText = (data.net_in_rate / 1024 / 1024).toFixed(2) + ' MB/s';
+                    document.getElementById('kpi-net-out').innerText = (data.net_out_rate / 1024 / 1024).toFixed(2) + ' MB/s';
+                }
+            } catch (e) { console.error('Metrics update error:', e); }
+        }
+
+        setInterval(updateMetrics, 5000);
+        updateMetrics(); // Initial call
+    });
+</script>
+{% endblock %}

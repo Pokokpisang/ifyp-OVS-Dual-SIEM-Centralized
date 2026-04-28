@@ -11,6 +11,8 @@ services:
       - DATABASE_URL=postgresql://user:password@db:5432/siemdb
       - DATA_PREPPER_URL=http://data-prepper:2021/log/ingest
       - OPENSEARCH_URL=http://opensearch:9200
+    env_file:
+      - ./api/.env
     depends_on:
       db:
         condition: service_healthy
@@ -18,6 +20,8 @@ services:
         condition: service_started
     networks:
       - siem-network
+    volumes:
+      - ./api/downloads:/app/downloads
 
   db:
     image: postgres:13

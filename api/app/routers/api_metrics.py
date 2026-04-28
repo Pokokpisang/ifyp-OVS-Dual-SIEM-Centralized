@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Header
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
@@ -6,6 +6,7 @@ from .. import models, db
 from typing import List, Literal, Optional
 from datetime import datetime, timedelta
 import re
+from ..services.agent_service import update_last_seen
 
 router = APIRouter(prefix="/api")
 
@@ -24,7 +25,15 @@ def extract_ip_from_text(text: str) -> Optional[str]:
 
 
 @router.post("/metrics")
-def ingest_metric(metric: models.MetricCreate, db: Session = Depends(db.get_db)):
+def ingest_metric(
+    metric: models.MetricCreate, 
+    db: Session = Depends(db.get_db),
+    x_agent_key: Optional[str] = Header(None, alias="X-Agent-Key")
+):
+    # 0. Update Last Seen if key provided
+    if x_agent_key:
+        update_last_seen(agent_key=x_agent_key, db=db)
+
     db_metric = models.Metric(
         timestamp=metric.timestamp,
         host=metric.host,
