@@ -17,6 +17,12 @@ class ShadowDetectionRunner:
         self.enabled = os.getenv("YAML_DETECTION_SHADOW_MODE", "false").lower() == "true"
         self.include_suppressed = os.getenv("YAML_DETECTION_INCLUDE_SUPPRESSED", "true").lower() == "true"
         self.return_unmatched = os.getenv("YAML_DETECTION_RETURN_UNMATCHED", "false").lower() == "true"
+        
+        if self.enabled:
+            print(f"[*] ShadowDetectionRunner initialized (ENABLED=true, include_suppressed={self.include_suppressed})")
+        else:
+            # Add a one-time print if initialized but disabled to help debugging
+            print("[!] ShadowDetectionRunner initialized (DISABLED)")
 
     def run(self, normalized_event: Dict[str, Any]):
         """
@@ -65,6 +71,7 @@ class ShadowDetectionRunner:
             log_msg += f" | errors: {', '.join(c.errors)}"
 
         logger.info(log_msg)
+        print(log_msg)
 
 # Singleton instance for easy integration
 _runner_instance = None

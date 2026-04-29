@@ -81,9 +81,28 @@ class AuditdParser:
         elif raw_log.get("comm"):
              raw_log["command_line"] = raw_log["comm"]
              
+        # 4. ECS Mapping (for YAMLDetectionEngine compatibility)
+        if "process" not in raw_log:
+            raw_log["process"] = {}
+        
+        # Map command line
         if raw_log.get("command_line"):
-            # Update the message to be more readable for the UI if it was hex-heavy
-            if raw_log.get("decoded_proctitle"):
-                raw_log["message"] = message.replace(raw_log.get("proctitle", "N/A"), f"[{raw_log['decoded_proctitle']}]")
-            
+            raw_log["process"]["command_line"] = raw_log["command_line"]
+        elif raw_log.get("cmdline"):
+             raw_log["process"]["command_line"] = raw_log["cmdline"]
+             
+        # Map process name
+        if raw_log.get("process_name"):
+            raw_log["process"]["name"] = raw_log["process_name"]
+        elif raw_log.get("comm"):
+            raw_log["process"]["name"] = raw_log["comm"]
+        elif raw_log.get("exe"):
+             raw_log["process"]["name"] = raw_log["exe"].split("/")[-1]
+
+        # Map user
+        if "user" not in raw_log:
+            raw_log["user"] = {}
+        if raw_log.get("username"):
+            raw_log["user"]["name"] = raw_log["username"]
+
         return raw_log

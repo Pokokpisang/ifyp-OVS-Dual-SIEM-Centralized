@@ -99,6 +99,7 @@ class RuleEngine:
             raw_log = AuditdParser.normalize_log(raw_log)
 
         # 1b. Shadow Mode YAML Evaluation (Non-invasive)
+        print(f"[*] Shadow Mode debug: evaluating event on host {raw_log.get('hostname', 'unknown')}")
         get_shadow_runner().run(raw_log)
 
         # 2. Content extraction
