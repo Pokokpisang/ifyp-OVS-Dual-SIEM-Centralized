@@ -6,6 +6,7 @@ from .. import models, db
 from typing import List, Literal, Optional
 from datetime import datetime, timedelta
 import re
+import json
 from ..services.agent_service import update_last_seen
 
 router = APIRouter(prefix="/api")
@@ -381,9 +382,17 @@ def get_investigation_data(alert_id: int, db: Session = Depends(db.get_db)):
             "description": alert_desc,
             "source": source,
             "is_read": alert.is_read,
+            # v2.0.0 Fields
+            "rule_id": alert.rule_id,
+            "rule_name": alert.rule_name,
+            "risk_score": alert.risk_score,
+            "mitre_tactic": alert.mitre_tactic,
+            "mitre_technique": alert.mitre_technique,
+            "detection_engine": alert.detection_engine,
+            "detection_metadata": json.loads(alert.detection_metadata) if alert.detection_metadata else {},
         },
-        "rule_name": rule_name,
-        "mitre_technique": mitre_technique,
+        "rule_name": alert.rule_name or rule_name,
+        "mitre_technique": alert.mitre_technique or mitre_technique,
         "source_ip": source_ip,
         "assessment": {
             "status": assessment.status if assessment else "New",

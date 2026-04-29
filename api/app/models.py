@@ -36,8 +36,17 @@ class Alert(Base):
     severity = Column(String) # HIGH, MED, LOW
     title = Column(String)
     description = Column(Text)
-    source = Column(String) # Rule name
+    source = Column(String) # MITRE technique ID or legacy source
     is_read = Column(Boolean, default=False)
+
+    # v2.0.0 Generic Metadata Fields
+    rule_id = Column(String, index=True, nullable=True)
+    rule_name = Column(String, nullable=True)
+    risk_score = Column(Integer, default=0)
+    mitre_tactic = Column(String, nullable=True)
+    mitre_technique = Column(String, nullable=True)
+    detection_engine = Column(String, default="LEGACY") # YAML, LEGACY
+    detection_metadata = Column(Text, nullable=True) # JSON match reasons/details
 
 class DetectionRule(Base):
     __tablename__ = "detection_rules"

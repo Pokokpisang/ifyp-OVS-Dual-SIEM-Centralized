@@ -17,6 +17,8 @@ from .audit_parser import AuditdParser
 from .rule_evaluator import normalize_logic, match_conditions, exclude_conditions
 from .suppressions import GLOBAL_EXCLUSIONS
 from .shadow_runner import get_shadow_runner
+from .active_runner import ActiveDetectionRunner
+import os
 
 class RuleEngine:
     """
@@ -98,10 +100,27 @@ class RuleEngine:
         if raw_log.get("log_type") == "auditd" or "type=" in raw_log.get("message", ""):
             raw_log = AuditdParser.normalize_log(raw_log)
 
-        # 1b. Shadow Mode YAML Evaluation (Non-invasive)
-        print(f"[*] Shadow Mode debug: evaluating event on host {raw_log.get('hostname', 'unknown')}")
-        get_shadow_runner().run(raw_log)
+        mode = os.getenv("DETECTION_ENGINE_MODE", "YAML").upper()
 
+        # Mode Selection Logic
+        if mode == "YAML":
+            # Primary mode for v2.0.0
+            ActiveDetectionRunner(self.db).run(raw_log)
+            return
+
+        if mode == "SHADOW":
+            # Run legacy + log YAML results
+            get_shadow_runner().run(raw_log)
+            # Continue to legacy logic below
+        elif mode == "LEGACY":
+            # Run only legacy
+            pass
+        else:
+            # Default to YAML if unknown mode
+            ActiveDetectionRunner(self.db).run(raw_log)
+            return
+
+        # Legacy Detection Logic (Fallback/Rollback/Shadow)
         # 2. Content extraction
         content = raw_log.get("command_line") or raw_log.get("cmdline") or raw_log.get("message", "")
         if not content:
