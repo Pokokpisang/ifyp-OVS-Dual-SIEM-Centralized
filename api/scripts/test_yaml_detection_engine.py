@@ -46,6 +46,7 @@ def main():
     parser = argparse.ArgumentParser(description="Test YAML Detection Engine against an event.")
     parser.add_argument("event_file", nargs="?", help="Path to a JSON file containing the event.")
     parser.add_argument("--unmatched", action="store_true", help="Include unmatched rules in results.")
+    parser.add_argument("--disabled", action="store_true", help="Include disabled rules in results.")
     args = parser.parse_args()
 
     if args.event_file:
@@ -66,7 +67,7 @@ def main():
     print("[*] Evaluating event against YAML rules...")
     candidates = engine.evaluate_event(
         event,
-        include_disabled=True,
+        include_disabled=args.disabled,
         return_unmatched=args.unmatched,
         include_suppressed=True
     )

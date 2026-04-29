@@ -1,0 +1,85 @@
+id: linux_t1059_shell_network_tool
+name: Suspicious Shell With Network Tool
+description: Detects Unix shell execution combined with network-capable tools such as curl, wget, nc, ncat, socat, or openssl.
+enabled: true
+platform:
+  - linux
+log_source:
+  product: linux
+  service: auditd
+severity: medium
+risk_score: 47
+mitre:
+  tactic:
+    id: TA0002
+    name: Execution
+  technique:
+    id: T1059
+    name: Command and Scripting Interpreter
+  subtechnique:
+    id: T1059.004
+    name: Unix Shell
+tags:
+  - Linux
+  - T1059
+  - T1059.004
+  - Rule-Based Detection
+required_fields:
+  - process.name
+  - process.command_line
+  - process.parent.name
+  - user.name
+  - host.name
+condition:
+  all:
+    - field: process.name
+      operator: in
+      value:
+        - sh
+        - bash
+        - dash
+        - zsh
+    - field: process.command_line
+      operator: contains_any
+      value:
+        - curl
+        - wget
+        - nc
+        - ncat
+        - socat
+        - openssl
+risk_adjustment:
+  increase_if:
+    - field: process.command_line
+      operator: contains_any
+      value:
+        - "| sh"
+        - "| bash"
+        - "/tmp/"
+        - "/dev/shm/"
+        - "chmod"
+        - "base64"
+      add_score: 20
+      reason: Shell command contains high-risk execution indicators
+  decrease_if:
+    - field: process.parent.name
+      operator: in
+      value:
+        - npm
+        - pnpm
+        - make
+        - node-gyp
+      subtract_score: 20
+      reason: Likely package/build workflow
+false_positives:
+  - Legitimate package installation scripts
+  - Build scripts using curl or wget
+  - System administrator maintenance scripts
+investigation_guide: |
+  1. Review the full command line and parent process hierarchy.
+  2. Determine if the network tool was used to download and execute code (e.g., pipes to shell).
+  3. Investigate the reputation of the destination domain or IP address.
+  4. Check for any dropped files in temporary directories like /tmp or /dev/shm.
+  5. Verify the user context and whether this activity is typical for this host.
+references:
+  - https://github.com/elastic/detection-rules
