@@ -113867,3 +113867,123 @@ Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp
 Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:54352->127.0.0.1:8000: read: connection reset by peer
 2026/04/29 23:06:42 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:54352->127.0.0.1:8000: read: connection reset by peer
 2026/04/29 23:06:54 [heartbeat] Error: server returned 422
+2026/04/29 23:07:54 [heartbeat] Error: server returned 422
+2026/04/29 23:08:54 [heartbeat] Error: server returned 422
+2026/04/29 23:09:54 [heartbeat] Error: server returned 422
+2026/04/29 23:09:54 [auditd] tailer alive: /var/log/audit/audit.log
+2026/04/29 23:09:54 [syslog] tailer alive: /var/log/syslog
+2026/04/29 23:09:54 [auth] tailer alive: /var/log/syslog
+2026/04/29 23:10:54 [heartbeat] Error: server returned 422
+2026/04/29 23:11:54 [heartbeat] Error: server returned 422
+2026/04/29 23:12:54 [heartbeat] Error: server returned 422
+2026/04/29 23:13:54 [heartbeat] Error: server returned 422
+2026/04/29 23:14:54 [heartbeat] Error: server returned 422
+2026/04/29 23:14:54 [syslog] tailer alive: /var/log/syslog
+2026/04/29 23:14:54 [auth] tailer alive: /var/log/syslog
+2026/04/29 23:14:54 [auditd] tailer alive: /var/log/audit/audit.log
+2026/04/29 23:15:54 [heartbeat] Error: server returned 422
+2026/04/29 23:16:54 [heartbeat] Error: server returned 422
+2026/04/29 23:17:54 [heartbeat] Error: server returned 422
+2026/04/29 23:18:54 [heartbeat] Error: server returned 422
+2026/04/29 23:19:54 [heartbeat] Error: server returned 422
+2026/04/29 23:19:54 [auditd] tailer alive: /var/log/audit/audit.log
+2026/04/29 23:19:54 [auth] tailer alive: /var/log/syslog
+2026/04/29 23:19:54 [syslog] tailer alive: /var/log/syslog
+2026/04/29 23:20:54 [heartbeat] Error: server returned 422
+2026/04/29 23:21:54 [heartbeat] Error: server returned 422
+2026/04/29 23:22:54 [heartbeat] Error: server returned 422
+2026/04/29 23:23:54 [heartbeat] Error: server returned 422
+2026/04/29 23:24:54 [heartbeat] Error: server returned 422
+2026/04/29 23:24:54 [auth] tailer alive: /var/log/syslog
+2026/04/29 23:24:54 [syslog] tailer alive: /var/log/syslog
+2026/04/29 23:24:54 [auditd] tailer alive: /var/log/audit/audit.log
+2026/04/29 23:25:54 [heartbeat] Error: server returned 422
+2026/04/29 23:26:54 [heartbeat] Error: server returned 422
+2026/04/29 23:27:54 [heartbeat] Error: server returned 422
+2026/04/29 23:28:54 [heartbeat] Error: server returned 422
+2026/04/29 23:29:54 [heartbeat] Error: server returned 422
+2026/04/29 23:29:54 [auditd] tailer alive: /var/log/audit/audit.log
+2026/04/29 23:29:54 [auth] tailer alive: /var/log/syslog
+2026/04/29 23:29:54 [syslog] tailer alive: /var/log/syslog
+2026/04/29 23:30:54 [heartbeat] Error: server returned 422
+2026/04/29 23:31:54 [heartbeat] Error: server returned 422
+2026/04/29 23:32:54 [heartbeat] Error: server returned 422
+2026/04/29 23:33:54 [heartbeat] Error: server returned 422
+2026/04/29 23:34:54 [heartbeat] Error: server returned 422
+2026/04/29 23:34:54 [syslog] tailer alive: /var/log/syslog
+2026/04/29 23:34:54 [auditd] tailer alive: /var/log/audit/audit.log
+2026/04/29 23:34:54 [auth] tailer alive: /var/log/syslog
+2026/04/29 23:35:54 [heartbeat] Error: server returned 422
+2026/04/29 23:36:54 [heartbeat] Error: server returned 422
+2026/04/29 23:37:54 [heartbeat] Error: server returned 422
+2026/04/29 23:38:54 [heartbeat] Error: server returned 422
+2026/04/29 23:39:54 [heartbeat] Error: server returned 422
+2026/04/29 23:39:54 [auth] tailer alive: /var/log/syslog
+2026/04/29 23:39:54 [syslog] tailer alive: /var/log/syslog
+2026/04/29 23:39:54 [auditd] tailer alive: /var/log/audit/audit.log
+2026/04/29 23:40:54 [heartbeat] Error: server returned 422
+2026/04/29 23:41:54 [heartbeat] Error: server returned 422
+2026/04/29 23:42:54 [heartbeat] Error: server returned 422
+2026/04/29 23:43:54 [heartbeat] Error: server returned 422
+2026/04/29 23:44:54 [heartbeat] Error: server returned 422
+2026/04/29 23:44:54 [syslog] tailer alive: /var/log/syslog
+2026/04/29 23:44:54 [auth] tailer alive: /var/log/syslog
+2026/04/29 23:44:54 [auditd] tailer alive: /var/log/audit/audit.log
+2026/04/29 23:45:54 [heartbeat] Error: server returned 422
+2026/04/29 23:46:54 [heartbeat] Error: server returned 422
+2026/04/29 23:47:54 [heartbeat] Error: server returned 422
+2026/04/29 23:48:54 [heartbeat] Error: server returned 422
+2026/04/29 23:49:54 [heartbeat] Error: server returned 422
+2026/04/29 23:49:54 [auditd] tailer alive: /var/log/audit/audit.log
+2026/04/29 23:49:54 [syslog] tailer alive: /var/log/syslog
+2026/04/29 23:49:54 [auth] tailer alive: /var/log/syslog
+2026/04/29 23:50:54 [heartbeat] Error: server returned 422
+2026/04/29 23:51:54 [heartbeat] Error: server returned 422
+2026/04/29 23:52:54 [heartbeat] Error: server returned 422
+2026/04/29 23:53:54 [heartbeat] Error: server returned 422
+2026/04/29 23:54:54 [heartbeat] Error: server returned 422
+2026/04/29 23:54:54 [auth] tailer alive: /var/log/syslog
+2026/04/29 23:54:54 [auditd] tailer alive: /var/log/audit/audit.log
+2026/04/29 23:54:54 [syslog] tailer alive: /var/log/syslog
+2026/04/29 23:55:54 [heartbeat] Error: server returned 422
+2026/04/29 23:56:54 [heartbeat] Error: server returned 422
+2026/04/29 23:57:54 [heartbeat] Error: server returned 422
+2026/04/29 23:58:54 [heartbeat] Error: server returned 422
+2026/04/29 23:59:54 [heartbeat] Error: server returned 422
+2026/04/29 23:59:54 [syslog] tailer alive: /var/log/syslog
+2026/04/29 23:59:54 [auth] tailer alive: /var/log/syslog
+2026/04/29 23:59:54 [auditd] tailer alive: /var/log/audit/audit.log
+2026/04/30 00:00:54 [heartbeat] Error: server returned 422
+2026/04/30 00:01:54 [heartbeat] Error: server returned 422
+2026/04/30 00:02:54 [heartbeat] Error: server returned 422
+2026/04/30 00:03:54 [heartbeat] Error: server returned 422
+2026/04/30 00:04:54 [heartbeat] Error: server returned 422
+2026/04/30 00:04:54 [auth] tailer alive: /var/log/syslog
+2026/04/30 00:04:54 [syslog] tailer alive: /var/log/syslog
+2026/04/30 00:04:54 [auditd] tailer alive: /var/log/audit/audit.log
+2026/04/30 00:05:54 [heartbeat] Error: server returned 422
+2026/04/30 00:06:54 [heartbeat] Error: server returned 422
+2026/04/30 00:07:54 [heartbeat] Error: server returned 422
+2026/04/30 00:08:54 [heartbeat] Error: server returned 422
+2026/04/30 00:09:54 [heartbeat] Error: server returned 422
+2026/04/30 00:09:54 [auth] tailer alive: /var/log/syslog
+2026/04/30 00:09:54 [syslog] tailer alive: /var/log/syslog
+2026/04/30 00:09:54 [auditd] tailer alive: /var/log/audit/audit.log
+2026/04/30 00:10:54 [heartbeat] Error: server returned 422
+2026/04/30 00:11:54 [heartbeat] Error: server returned 422
+2026/04/30 00:12:54 [heartbeat] Error: server returned 422
+2026/04/30 00:13:54 [heartbeat] Error: server returned 422
+2026/04/30 00:14:54 [heartbeat] Error: server returned 422
+2026/04/30 00:14:54 [auditd] tailer alive: /var/log/audit/audit.log
+2026/04/30 00:14:54 [auth] tailer alive: /var/log/syslog
+2026/04/30 00:14:54 [syslog] tailer alive: /var/log/syslog
+2026/04/30 00:15:54 [heartbeat] Error: server returned 422
+2026/04/30 00:16:54 [heartbeat] Error: server returned 422
+2026/04/30 00:17:54 [heartbeat] Error: server returned 422
+2026/04/30 00:18:54 [heartbeat] Error: server returned 422
+2026/04/30 00:19:54 [heartbeat] Error: server returned 422
+2026/04/30 00:19:54 [auth] tailer alive: /var/log/syslog
+2026/04/30 00:19:54 [syslog] tailer alive: /var/log/syslog
+2026/04/30 00:19:54 [auditd] tailer alive: /var/log/audit/audit.log
+2026/04/30 00:20:54 [heartbeat] Error: server returned 422
+2026/04/30 00:21:54 [heartbeat] Error: server returned 422
