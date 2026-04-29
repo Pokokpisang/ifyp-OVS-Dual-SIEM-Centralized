@@ -1,0 +1,21 @@
+{
+  "event": {
+    "category": "process",
+    "type": "start",
+    "action": "execve"
+  },
+  "process": {
+    "name": "sh",
+    "command_line": "ls -la /build/artifacts",
+    "parent": {
+      "name": "pnpm"
+    }
+  },
+  "user": {
+    "name": "builduser"
+  },
+  "host": {
+    "name": "ci-runner-01"
+  },
+  "platform": "linux"
+}
