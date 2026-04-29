@@ -1,0 +1,30 @@
+global_suppressions:
+  - id: benign_build_workflow_low_risk
+    description: Suppress common build/package workflow when no high-risk indicators exist.
+    enabled: true
+    allow_high_risk: false
+    scope:
+      platform:
+        - linux
+    conditions:
+      all:
+        - field: process.parent.name
+          operator: in
+          value:
+            - npm
+            - pnpm
+            - make
+            - node-gyp
+        - field: process.command_line
+          operator: not_contains_any
+          value:
+            - curl
+            - wget
+            - nc
+            - ncat
+            - socat
+            - /tmp/
+            - /dev/shm/
+            - base64
+            - chmod
+    reason: Benign package/build workflow without high-risk indicators.

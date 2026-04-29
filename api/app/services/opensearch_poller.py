@@ -3,7 +3,7 @@ import os
 import json
 from datetime import datetime, timedelta
 import httpx
-from .rule_engine import RuleEngine
+from ..detection.engine.detection_engine import RuleEngine
 from .. import db as database
 
 OPENSEARCH_URL = os.getenv("OPENSEARCH_URL", "http://opensearch:9200")

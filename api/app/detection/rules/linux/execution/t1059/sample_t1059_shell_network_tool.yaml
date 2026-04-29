@@ -1,0 +1,86 @@
+id: linux_t1059_shell_network_tool_sample
+name: Suspicious Shell With Network Tool Sample
+description: Sample rule for detecting Unix shell execution combined with network-capable tools.
+enabled: false
+
+platform:
+  - linux
+
+log_source:
+  product: linux
+  service: auditd
+  category: process_creation
+
+severity: medium
+risk_score: 47
+
+mitre:
+  tactic:
+    id: TA0002
+    name: Execution
+  technique:
+    id: T1059
+    name: Command and Scripting Interpreter
+  subtechnique:
+    id: T1059.004
+    name: Unix Shell
+
+tags:
+  - Linux
+  - T1059
+  - T1059.004
+  - Rule-Based Detection
+  - FYP
+
+required_fields:
+  - process.name
+  - process.command_line
+  - process.parent.name
+  - user.name
+  - host.name
+
+condition:
+  all:
+    - field: process.name
+      operator: in
+      value:
+        - sh
+        - bash
+        - dash
+        - zsh
+    - field: process.command_line
+      operator: contains_any
+      value:
+        - curl
+        - wget
+        - nc
+        - ncat
+        - socat
+        - openssl
+
+risk_adjustment:
+  increase_if:
+    - field: process.command_line
+      operator: contains_any
+      value:
+        - "| sh"
+        - "| bash"
+        - "/tmp/"
+        - "/dev/shm/"
+        - "chmod"
+        - "base64"
+      add_score: 20
+      reason: Shell command contains high-risk execution indicators
+
+false_positives:
+  - Legitimate package installation scripts
+  - Build scripts using curl or wget
+  - System administrator maintenance scripts
+
+investigation_guide: |
+  Review the command line, parent process, user, working directory, and related network activity.
+  Check whether this was expected administrative or build activity.
+  If unexpected, investigate downloaded files, outbound destination, and persistence attempts.
+
+references:
+  - https://github.com/elastic/detection-rules

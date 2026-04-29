@@ -38,7 +38,7 @@ app.include_router(agents.router)
 def health_check():
     return {"status": "ok"}
 
-from .services.rule_engine import RuleEngine
+from .detection.engine.detection_engine import RuleEngine
 
 # Old ingest logic moved to collector.py router
 

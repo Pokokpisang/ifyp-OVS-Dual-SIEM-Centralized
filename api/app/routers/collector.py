@@ -7,7 +7,7 @@ import httpx
 import os
 import json
 from .. import db, models
-from ..services.rule_engine import RuleEngine
+from ..detection.engine.detection_engine import RuleEngine
 from ..services.agent_service import update_last_seen
 
 router = APIRouter()
