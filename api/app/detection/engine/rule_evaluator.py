@@ -182,4 +182,167 @@ class RuleEvaluator:
 
         return False, ""
 
-# TODO: Add RiskScorer integration in detection_engine.py
+
+# ---------------------------------------------------------------------------
+# Legacy module-level functions — kept for backward compatibility with
+# detection_engine.py (legacy RuleEngine). Do NOT remove until the full
+# migration to YAMLDetectionEngine is complete.
+# ---------------------------------------------------------------------------
+
+def normalize_logic(logic: dict) -> dict:
+    """Normalize legacy rule logic JSON to a consistent structure."""
+    if "match" not in logic:
+        match_block = {}
+        if "keywords" in logic:
+            match_block["keywords_any"] = logic["keywords"]
+        if "patterns" in logic:
+            match_block["patterns_any"] = logic["patterns"]
+        logic["match"] = match_block
+    if "exclude" not in logic:
+        logic["exclude"] = {}
+    if "alert" not in logic:
+        logic["alert"] = {}
+    return logic
+
+
+def match_conditions(content: str, match_logic: dict):
+    """
+    Legacy match function for DB-based rule evaluation.
+    Returns (matched, reason, tokens, severity).
+    """
+    matched = False
+    reason = ""
+    tokens = []
+    severity = None
+
+    if "patterns_any" in match_logic:
+        for pattern in match_logic["patterns_any"]:
+            all_found = True
+            temp_tokens = []
+            for part in pattern.get("all_of", []):
+                if "|" in part:
+                    options = part.split("|")
+                    found_opt = False
+                    for opt in options:
+                        opt_text = opt.strip()
+                        if not opt_text:
+                            continue
+                        regex_parts = []
+                        if opt_text[0].isalnum():
+                            regex_parts.append(r'(?<!\w)')
+                        regex_parts.append(re.escape(opt_text))
+                        if opt_text[-1].isalnum():
+                            regex_parts.append(r'(?!\w)')
+                        if re.search("".join(regex_parts), content, re.IGNORECASE):
+                            found_opt = True
+                            temp_tokens.append(opt_text)
+                            break
+                    if not found_opt:
+                        all_found = False
+                        break
+                else:
+                    regex_parts = []
+                    if part[0].isalnum():
+                        regex_parts.append(r'(?<!\w)')
+                    regex_parts.append(re.escape(part))
+                    if part[-1].isalnum():
+                        regex_parts.append(r'(?!\w)')
+                    if not re.search("".join(regex_parts), content, re.IGNORECASE):
+                        all_found = False
+                        break
+                    else:
+                        temp_tokens.append(part)
+
+            if all_found and len(pattern.get("all_of", [])) > 0:
+                matched = True
+                reason = f"Pattern match: {pattern.get('name', 'unnamed')}"
+                tokens = temp_tokens
+                severity = pattern.get("severity")
+                break
+
+    if not matched and "keywords_all" in match_logic:
+        kws = match_logic["keywords_all"]
+        if kws:
+            all_found = True
+            temp_tokens = []
+            for kw in kws:
+                regex_parts = []
+                if kw[0].isalnum():
+                    regex_parts.append(r'(?<!\w)')
+                regex_parts.append(re.escape(kw))
+                if kw[-1].isalnum():
+                    regex_parts.append(r'(?!\w)')
+                if re.search("".join(regex_parts), content, re.IGNORECASE):
+                    temp_tokens.append(kw)
+                else:
+                    all_found = False
+                    break
+            if all_found:
+                matched = True
+                reason = "Keywords ALL match"
+                tokens = temp_tokens
+
+    if not matched and "keywords_any" in match_logic:
+        for kw in match_logic["keywords_any"]:
+            regex_parts = []
+            if kw[0].isalnum():
+                regex_parts.append(r'(?<!\w)')
+            regex_parts.append(re.escape(kw))
+            if kw[-1].isalnum():
+                regex_parts.append(r'(?!\w)')
+            if re.search("".join(regex_parts), content, re.IGNORECASE):
+                matched = True
+                reason = f"Keyword ANY match: {kw}"
+                tokens.append(kw)
+                break
+
+    return matched, reason, tokens, severity
+
+
+import ipaddress
+
+def exclude_conditions(content: str, raw_log: dict, exclude_logic: dict):
+    """Legacy exclude function for DB-based rule evaluation."""
+    if not exclude_logic:
+        return False, ""
+
+    if "keywords_any" in exclude_logic:
+        for kw in exclude_logic["keywords_any"]:
+            if kw.lower() in content.lower():
+                return True, f"Exclude Keyword ANY: {kw}"
+
+    if "keywords_all" in exclude_logic:
+        kws = exclude_logic["keywords_all"]
+        if kws and all(kw.lower() in content.lower() for kw in kws):
+            return True, "Exclude Keywords ALL match"
+
+    proc_path = raw_log.get("process_path", raw_log.get("exe", ""))
+    if "process_paths_any" in exclude_logic and proc_path:
+        for p in exclude_logic["process_paths_any"]:
+            if p in proc_path:
+                return True, f"Exclude Process Path: {p}"
+
+    user = raw_log.get("user", raw_log.get("username", ""))
+    if "users_any" in exclude_logic and user:
+        if user in exclude_logic["users_any"]:
+            return True, f"Exclude User: {user}"
+
+    src_ip = raw_log.get("src_ip", raw_log.get("source_ip", ""))
+    if "source_ips_any" in exclude_logic and src_ip:
+        if src_ip in exclude_logic["source_ips_any"]:
+            return True, f"Exclude Source IP: {src_ip}"
+
+    dst_ip = raw_log.get("dst_ip", raw_log.get("destination_ip", ""))
+    if "destination_ips_any" in exclude_logic and dst_ip:
+        if dst_ip in exclude_logic["destination_ips_any"]:
+            return True, f"Exclude Dest IP: {dst_ip}"
+
+    if exclude_logic.get("destination_ips_private") and dst_ip:
+        try:
+            ip_obj = ipaddress.ip_address(dst_ip)
+            if ip_obj.is_private or ip_obj.is_loopback:
+                return True, "Exclude Dest IP: Private/Loopback"
+        except ValueError:
+            pass
+
+    return False, ""
