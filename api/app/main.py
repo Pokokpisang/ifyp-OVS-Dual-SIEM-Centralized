@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from typing import List
 from . import models, db
-from .routers import dashboard, api_metrics, rules, collector, agents
+from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules
 import pathlib
 
 # Create tables
@@ -13,14 +13,6 @@ import asyncio
 # from .services.opensearch_poller import poll_opensearch_loop
 
 app = FastAPI(title="SIEM Ingestion API")
-
-# poller_task = None
-
-@app.on_event("startup")
-async def startup_event():
-    print("API Started - Real-time Ingestion Enabled")
-    # OpenSearch poller disabled in favor of real-time collector.py logic
-    pass
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -34,6 +26,57 @@ app.include_router(api_metrics.router)
 app.include_router(rules.router)
 app.include_router(collector.router)
 app.include_router(agents.router)
+app.include_router(system_health_rules.router)
+
+def seed_health_rules():
+    database = db.SessionLocal()
+    try:
+        existing = database.query(models.SystemHealthRule).count()
+        if existing == 0:
+            print("🌱 Seeding default System Health Rules...")
+            rules = [
+                models.SystemHealthRule(
+                    rule_id="metric_high_cpu",
+                    rule_name="High CPU Usage",
+                    metric_name="cpu",
+                    threshold_value=80.0,
+                    operator=">",
+                    severity="MEDIUM"
+                ),
+                models.SystemHealthRule(
+                    rule_id="metric_high_ram",
+                    rule_name="High RAM Usage",
+                    metric_name="ram",
+                    threshold_value=85.0,
+                    operator=">",
+                    severity="MEDIUM"
+                ),
+                models.SystemHealthRule(
+                    rule_id="metric_high_network_in",
+                    rule_name="High Network Ingress",
+                    metric_name="net_in",
+                    threshold_value=100000000.0, # 100MB/s
+                    operator=">",
+                    severity="LOW"
+                ),
+                models.SystemHealthRule(
+                    rule_id="metric_high_network_out",
+                    rule_name="High Network Egress",
+                    metric_name="net_out",
+                    threshold_value=100000000.0, # 100MB/s
+                    operator=">",
+                    severity="LOW"
+                ),
+            ]
+            database.add_all(rules)
+            database.commit()
+    finally:
+        database.close()
+
+@app.on_event("startup")
+async def startup_event():
+    print("API Started - Real-time Ingestion Enabled")
+    seed_health_rules()
 @app.get("/health")
 def health_check():
     return {"status": "ok"}

@@ -134,6 +134,22 @@ class AgentRecord(Base):
     last_seen = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class SystemHealthRule(Base):
+    __tablename__ = "system_health_rules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    rule_id = Column(String, unique=True, index=True)
+    rule_name = Column(String)
+    metric_name = Column(String) # cpu, ram, net_in, net_out
+    threshold_value = Column(Float)
+    operator = Column(String, default=">")
+    severity = Column(String, default="MEDIUM")
+    enabled = Column(Boolean, default=True)
+    detection_engine = Column(String, default="MetricEngine")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_triggered = Column(DateTime, nullable=True)
+
 
 # Pydantic Models
 
@@ -168,3 +184,25 @@ class LogOut(LogCreate):
 
     class Config:
         from_attributes = True
+
+class SystemHealthRuleBase(BaseModel):
+    rule_id: str
+    rule_name: str
+    metric_name: str
+    threshold_value: float
+    operator: str
+    severity: str
+    enabled: bool
+
+class SystemHealthRuleOut(SystemHealthRuleBase):
+    id: int
+    detection_engine: str
+    last_triggered: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+class SystemHealthRuleUpdate(BaseModel):
+    enabled: bool | None = None
+    threshold_value: float | None = None
+    severity: str | None = None

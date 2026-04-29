@@ -23,6 +23,10 @@ def view_dashboard(request: Request, db: Session = Depends(db.get_db)):
     hosts = db.query(models.Metric.host).distinct().all()
     host_list = [h[0] for h in hosts]
     return templates.TemplateResponse("dashboard.html", {"request": request, "hosts": host_list})
+@router.get("/system-health-rules", response_class=HTMLResponse)
+def view_system_health_rules(request: Request, db: Session = Depends(db.get_db)):
+    rules = db.query(models.SystemHealthRule).all()
+    return templates.TemplateResponse("system_health_rules.html", {"request": request, "rules": rules})
 
 @router.get("/alerts", response_class=HTMLResponse)
 def view_alerts(
