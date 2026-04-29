@@ -7,7 +7,7 @@ from datetime import datetime
 import json
 from typing import Optional
 from .. import models, db
-from ..services.rule_engine import RuleEngine
+from ..detection.engine.detection_engine import RuleEngine
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")

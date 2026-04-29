@@ -1,0 +1,25 @@
+linux_suppressions:
+  - id: benign_lsof_check
+    description: Suppress normal lsof availability checks.
+    enabled: true
+    allow_high_risk: false
+    scope:
+      platform:
+        - linux
+    conditions:
+      all:
+        - field: process.command_line
+          operator: contains_any
+          value:
+            - which lsof
+            - lsof -nP
+        - field: process.command_line
+          operator: not_contains_any
+          value:
+            - curl
+            - wget
+            - /tmp/
+            - /dev/shm/
+            - base64
+            - chmod
+    reason: Normal lsof check without suspicious indicators.

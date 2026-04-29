@@ -1,0 +1,27 @@
+rule_exceptions:
+  - id: t1059_low_risk_build_parent_exception
+    description: Suppress specific T1059 low-risk build workflow events.
+    enabled: true
+    allow_high_risk: false
+    rule_id: linux_t1059_shell_network_tool_sample
+    conditions:
+      all:
+        - field: process.parent.name
+          operator: in
+          value:
+            - npm
+            - pnpm
+            - make
+        - field: process.command_line
+          operator: not_contains_any
+          value:
+            - curl
+            - wget
+            - nc
+            - ncat
+            - socat
+            - /tmp/
+            - /dev/shm/
+            - base64
+            - chmod
+    reason: Rule-specific exception for low-risk build workflow.
