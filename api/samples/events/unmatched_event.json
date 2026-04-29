@@ -1,0 +1,15 @@
+{
+  "event": {
+    "category": "file",
+    "type": "change"
+  },
+  "file": {
+    "path": "/home/user/notes.txt"
+  },
+  "user": {
+    "name": "user"
+  },
+  "host": {
+    "name": "workstation"
+  }
+}

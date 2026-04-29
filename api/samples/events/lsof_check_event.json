@@ -1,0 +1,20 @@
+{
+  "event": {
+    "category": "process",
+    "type": "start"
+  },
+  "process": {
+    "name": "which",
+    "command_line": "which lsof",
+    "parent": {
+      "name": "health-check-script"
+    }
+  },
+  "user": {
+    "name": "system"
+  },
+  "host": {
+    "name": "prod-web-01"
+  },
+  "platform": "linux"
+}
