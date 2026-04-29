@@ -16,6 +16,7 @@ from ... import models
 from .audit_parser import AuditdParser
 from .rule_evaluator import normalize_logic, match_conditions, exclude_conditions
 from .suppressions import GLOBAL_EXCLUSIONS
+from .shadow_runner import get_shadow_runner
 
 class RuleEngine:
     """
@@ -96,6 +97,9 @@ class RuleEngine:
         # 1. Normalize auditd logs
         if raw_log.get("log_type") == "auditd" or "type=" in raw_log.get("message", ""):
             raw_log = AuditdParser.normalize_log(raw_log)
+
+        # 1b. Shadow Mode YAML Evaluation (Non-invasive)
+        get_shadow_runner().run(raw_log)
 
         # 2. Content extraction
         content = raw_log.get("command_line") or raw_log.get("cmdline") or raw_log.get("message", "")
