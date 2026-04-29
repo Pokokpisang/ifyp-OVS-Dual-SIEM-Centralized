@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/hpcloud/tail v1.0.0
 	github.com/shirou/gopsutil/v3 v3.24.5
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

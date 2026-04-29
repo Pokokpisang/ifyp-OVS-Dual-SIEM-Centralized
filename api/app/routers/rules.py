@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from datetime import datetime
 import json
+from typing import Optional
 from .. import models, db
+from ..services.rule_engine import RuleEngine
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -18,15 +20,38 @@ def view_rules(request: Request, db: Session = Depends(db.get_db)):
     # Ensure default rule exists (simple seed check)
     if not rules:
         logic = {
-            "keywords": ["curl", "wget", "base64", "nc", "python", "bash -i", "sh -c", "chmod +x"],
-            "patterns": [
-                {"name": "download_pipe_shell", "all_of": ["curl|wget", "| sh| | bash|chmod +x"], "severity": "HIGH"},
-                {"name": "base64_decode_exec", "all_of": ["base64", "bash|sh|python"], "severity": "HIGH"},
-                {"name": "netcat_shell", "all_of": ["nc", "-e|bash -i|python -c"], "severity": "HIGH"}
-            ]
+            "match": {
+                "keywords_any": ["base64", "nc", "bash -i", "sh -c", "chmod +x"],
+                "patterns_any": [
+                    {"name": "download_pipe_sh", "all_of": ["curl|wget", " sh"], "severity": "HIGH"},
+                    {"name": "download_pipe_bash", "all_of": ["curl|wget", " bash"], "severity": "HIGH"},
+                    {"name": "suspicious_downloader_sh", "all_of": ["curl|wget", ".sh"], "severity": "HIGH"},
+                    {"name": "suspicious_downloader_out", "all_of": ["curl|wget", "http", "-o|-O|--output"], "severity": "MED"},
+                    {"name": "base64_decode_exec", "all_of": ["base64", "bash|sh|python"], "severity": "HIGH"},
+                    {"name": "netcat_shell", "all_of": ["nc", "-e|bash -i|python -c"], "severity": "HIGH"}
+                ]
+            },
+            "exclude": {
+                "keywords_any": [
+                    "localhost", 
+                    "127.0.0.1", 
+                    "/api/agent/rules", 
+                    "/api/ingest", 
+                    "healthcheck", 
+                    "pg_isready", 
+                    "antigravity", 
+                    "cpuUsage.sh", 
+                    "/usr/share/antigravity/"
+                ]
+            },
+            "alert": {
+                "message": "Suspicious command execution detected.",
+                "severity": "MED"
+            }
         }
         default_rule = models.DetectionRule(
             name="T1059 Suspicious Command Execution",
+            rule_type="server",
             enabled=True,
             severity_default="MED",
             mitre_technique_id="T1059",
@@ -39,6 +64,18 @@ def view_rules(request: Request, db: Session = Depends(db.get_db)):
         rules = [default_rule]
 
     return templates.TemplateResponse("rules.html", {"request": request, "rules": rules})
+
+@router.get("/rules/new", response_class=HTMLResponse)
+def new_rule(request: Request):
+    class DummyRule:
+        id = ""
+        name = ""
+        rule_type = "server"
+        severity_default = "MED"
+        log_type_scope = "auditd"
+        logic_json = '{\n  "match": {\n    "keywords_any": [],\n    "keywords_all": [],\n    "patterns_any": []\n  },\n  "exclude": {\n    "keywords_any": [],\n    "keywords_all": []\n  },\n  "alert": {\n    "message": "",\n    "severity": "MED"\n  }\n}'
+    
+    return templates.TemplateResponse("rule_edit.html", {"request": request, "rule": DummyRule()})
 
 @router.get("/rules/{id}", response_class=HTMLResponse)
 def edit_rule(id: int, request: Request, db: Session = Depends(db.get_db)):
@@ -67,26 +104,76 @@ def toggle_rule(id: int, db: Session = Depends(db.get_db)):
 
 @router.post("/rules/save")
 def save_rule(
-    id: int = Form(...),
     name: str = Form(...),
+    rule_type: str = Form(...),
     severity: str = Form(...),
     logic: str = Form(...),
+    id: Optional[str] = Form(None),
     db: Session = Depends(db.get_db)
 ):
-    rule = db.query(models.DetectionRule).filter(models.DetectionRule.id == id).first()
-    if rule:
-        rule.name = name
-        rule.severity_default = severity
-        rule.logic_json = logic
-        rule.updated_at_utc = datetime.utcnow()
+    if id and id.strip():
+        rule = db.query(models.DetectionRule).filter(models.DetectionRule.id == int(id)).first()
+        if rule:
+            rule.name = name
+            rule.rule_type = rule_type
+            rule.severity_default = severity
+            rule.logic_json = logic
+            rule.updated_at_utc = datetime.utcnow()
+            
+            audit = models.ActivityAudit(
+                actor="admin",
+                action="RULE_UPDATED",
+                object_type="rule",
+                object_id=str(rule.id),
+                details=f"Updated logic"
+            )
+            db.add(audit)
+    else:
+        rule = models.DetectionRule(
+            name=name,
+            rule_type=rule_type,
+            enabled=True,
+            severity_default=severity,
+            mitre_technique_id="Custom",
+            mitre_technique_name="Custom User Rule",
+            log_type_scope="syslog",
+            logic_json=logic
+        )
+        db.add(rule)
+        db.commit()
         
         audit = models.ActivityAudit(
             actor="admin",
-            action="RULE_UPDATED",
+            action="RULE_CREATED",
             object_type="rule",
             object_id=str(rule.id),
-            details=f"Updated logic"
+            details=f"Created custom rule"
         )
         db.add(audit)
-        db.commit()
+
+    db.commit()
     return RedirectResponse(url="/rules", status_code=303)
+
+@router.get("/api/agent/rules")
+def get_agent_rules(db: Session = Depends(db.get_db)):
+    rules = db.query(models.DetectionRule).filter(
+        models.DetectionRule.rule_type == "agent",
+        models.DetectionRule.enabled == True
+    ).all()
+    
+    agent_rules = []
+    for r in rules:
+        try:
+            raw_logic = json.loads(r.logic_json)
+            logic = RuleEngine.normalize_logic(raw_logic)
+            agent_rules.append({
+                "id": r.id,
+                "name": r.name,
+                "version": int(r.updated_at_utc.timestamp()),
+                "match": logic["match"],
+                "exclude": logic["exclude"]
+            })
+        except BaseException:
+            pass
+
+    return agent_rules

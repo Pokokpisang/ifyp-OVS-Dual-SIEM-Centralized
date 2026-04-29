@@ -7,5 +7,8 @@ type LogEvent struct {
 	Host      string    `json:"host"`
 	LogType   string    `json:"log_type"`
 	FilePath  string    `json:"file_path"`
-	Message   string    `json:"message"`
+	Message          string    `json:"message"`
+	LocalFlag        bool      `json:"local_flag"`
+	AgentRuleID      *int      `json:"agent_rule_id,omitempty"`
+	LocalRuleVersion *int      `json:"local_rule_version,omitempty"`
 }

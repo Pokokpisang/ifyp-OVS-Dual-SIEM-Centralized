@@ -3,17 +3,30 @@ version: '3.8'
 services:
   api:
     build: ./api
+    container_name: siem_api
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/siemdb
+      - DATA_PREPPER_URL=http://data-prepper:2021/log/ingest
+      - OPENSEARCH_URL=http://opensearch:9200
+    env_file:
+      - ./api/.env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      data-prepper:
+        condition: service_started
     networks:
       - siem-network
+    volumes:
+      - ./api/downloads:/app/downloads
 
   db:
     image: postgres:13
+    container_name: siem_db
+    restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
@@ -30,9 +43,61 @@ services:
       timeout: 5s
       retries: 5
 
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: opensearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - DISABLE_SECURITY_PLUGIN=true
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    networks:
+      - siem-network
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'status'"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+
+  data-prepper:
+    image: opensearchproject/data-prepper:2.7.0
+    container_name: data-prepper
+    restart: unless-stopped
+    volumes:
+      - ./data-prepper/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml
+      - ./data-prepper/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
+    ports:
+      - "2021:2021"
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    networks:
+      - siem-network
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.11.0
+    container_name: opensearch-dashboards
+    restart: unless-stopped
+    ports:
+      - "5601:5601"
+    environment:
+      - OPENSEARCH_HOSTS=http://opensearch:9200
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    depends_on:
+      - opensearch
+    networks:
+      - siem-network
+
 networks:
   siem-network:
     driver: bridge
 
 volumes:
   postgres_data:
+  opensearch-data:

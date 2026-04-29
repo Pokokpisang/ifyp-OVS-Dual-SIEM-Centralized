@@ -1,0 +1,526 @@
+{% extends "base.html" %}
+
+{% block title %}Alert #{{ alert.id }} — Investigation | OVS SIEM{% endblock %}
+
+{% block head %}
+<style>
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .timeline-line::before {
+        content: '';
+        position: absolute;
+        left: 7px;
+        top: 20px;
+        bottom: -24px;
+        width: 2px;
+        background: rgba(240,86,132,0.2);
+    }
+    .timeline-item:last-child .timeline-line::before { display: none; }
+    .fade-in { animation: fadeIn .4s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .status-btn { transition: all .2s; }
+    .status-btn.active {
+        background: rgba(240,86,132,0.2);
+        border-color: #f05684;
+        color: #f05684;
+    }
+    .health-bar-fill { transition: width .6s ease; }
+</style>
+{% endblock %}
+
+{% block page_title %}Alert Investigation{% endblock %}
+
+{% block header_actions %}
+<a href="/alerts" class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors">
+    <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+    Back to Alerts
+</a>
+{% endblock %}
+
+{% block main_content %}
+<div id="inv-loading" class="flex-1 flex items-center justify-center min-h-[60vh]">
+    <div class="flex flex-col items-center gap-4 text-slate-400">
+        <span class="material-symbols-outlined text-5xl animate-spin text-primary">progress_activity</span>
+        <p class="text-sm font-medium">Loading investigation data…</p>
+    </div>
+</div>
+
+<!-- Main investigation content (hidden until data loads) -->
+<div id="inv-content" class="hidden flex-1 overflow-y-auto scrollbar-hide p-8 space-y-8 fade-in">
+
+    <!-- Alert Header Row -->
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+        <div>
+            <div class="flex items-center gap-3 mb-2">
+                <span id="hdr-severity-badge" class="px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider"></span>
+                <span class="text-slate-400 text-sm">ID: #{{ alert.id }}</span>
+                <span id="hdr-mitre" class="hidden px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-mono font-bold border border-primary/20"></span>
+            </div>
+            <h3 id="hdr-title" class="text-2xl lg:text-3xl font-bold">{{ alert.title }}</h3>
+        </div>
+        <div class="flex gap-2 shrink-0">
+            <button disabled title="Not implemented — backend action required"
+                class="px-4 py-2 bg-primary/20 text-primary/40 rounded-lg text-sm font-bold cursor-not-allowed border border-primary/10 flex items-center gap-2">
+                <span class="material-symbols-outlined text-[16px]">shield_lock</span>Isolate Host
+            </button>
+            <button disabled title="Not implemented — backend action required"
+                class="px-4 py-2 bg-slate-700/50 text-slate-400/40 rounded-lg text-sm font-bold cursor-not-allowed border border-slate-600/10 flex items-center gap-2">
+                <span class="material-symbols-outlined text-[16px]">block</span>Block IP
+            </button>
+        </div>
+    </div>
+
+    <!-- 3-column grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        <!-- ─── LEFT COLUMN (2 spans) ───────────────────────────── -->
+        <div class="lg:col-span-2 space-y-8">
+
+            <!-- Card: Alert Details -->
+            <section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+                <h4 class="text-sm font-bold text-primary mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">info</span>Alert Details
+                </h4>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+                    <div>
+                        <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Severity</p>
+                        <div class="flex items-center gap-2">
+                            <div id="sev-dot" class="w-2 h-2 rounded-full animate-pulse"></div>
+                            <p id="det-severity" class="text-sm font-medium">—</p>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Rule Name</p>
+                        <p id="det-rule" class="text-sm font-medium break-words">—</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">MITRE Technique</p>
+                        <p id="det-mitre" class="text-sm font-medium text-primary">—</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Affected Agent</p>
+                        <p id="det-host" class="text-sm font-medium">—</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Source IP</p>
+                        <p id="det-ip" class="text-sm font-medium font-mono">—</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Timestamp</p>
+                        <p id="det-ts" class="text-sm font-medium">—</p>
+                    </div>
+                    <div class="col-span-2 md:col-span-3">
+                        <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Description</p>
+                        <p id="det-desc" class="text-sm text-slate-300 break-words">—</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Card: Analyst Assessment -->
+            <section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+                <h4 class="text-sm font-bold text-primary mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">rate_review</span>Analyst Assessment
+                </h4>
+                <div class="space-y-6">
+                    <div>
+                        <p class="text-slate-400 text-[10px] uppercase font-bold mb-3">Status Update</p>
+                        <div class="flex flex-wrap gap-3" id="status-btns">
+                            {% for s in ['New', 'Investigating', 'Resolved', 'False Positive'] %}
+                            <button onclick="setStatus('{{ s }}')" data-status="{{ s }}"
+                                class="status-btn px-4 py-2 rounded-full border border-primary/30 text-xs font-bold hover:bg-primary/10 transition-all">
+                                {{ s }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-slate-400 text-[10px] uppercase font-bold mb-3">Investigation Notes</p>
+                        <textarea id="analyst-notes" rows="5"
+                            class="w-full bg-background-dark border border-primary/20 rounded-lg p-4 text-sm focus:ring-1 focus:ring-primary outline-none resize-none placeholder-slate-600"
+                            placeholder="Enter findings, evidence, or next steps…"></textarea>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <p id="assessment-saved-msg" class="text-xs text-emerald-400 hidden flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm">check_circle</span>Assessment saved
+                        </p>
+                        <p id="assessment-err-msg" class="text-xs text-red-400 hidden"></p>
+                        <button onclick="saveAssessment()"
+                            class="ml-auto px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/80 transition-colors shadow-lg shadow-primary/20 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px]">save</span>Save Assessment
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Card: Correlated Events -->
+            <section class="bg-primary/5 border border-primary/10 rounded-xl overflow-hidden">
+                <div class="p-6 border-b border-primary/10 flex justify-between items-center">
+                    <h4 class="text-sm font-bold text-primary uppercase flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">timeline</span>Correlated Events
+                        <span id="corr-count" class="ml-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold"></span>
+                    </h4>
+                    <button id="export-btn" onclick="exportCSV()"
+                        class="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition-colors">
+                        <span class="material-symbols-outlined text-sm">download</span>Export CSV
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-primary/10 text-slate-400 uppercase font-bold">
+                            <tr>
+                                <th class="px-6 py-3">Timestamp</th>
+                                <th class="px-6 py-3">Host</th>
+                                <th class="px-6 py-3">Message</th>
+                                <th class="px-6 py-3">Type</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corr-events-body" class="divide-y divide-primary/10">
+                            <!-- filled by JS -->
+                        </tbody>
+                    </table>
+                    <div id="corr-empty" class="hidden p-8 text-center text-slate-500 text-sm">
+                        No correlated events found in the ±10 minute window.
+                    </div>
+                </div>
+            </section>
+
+        </div><!-- end left column -->
+
+        <!-- ─── RIGHT COLUMN ────────────────────────────────────── -->
+        <div class="space-y-8">
+
+            <!-- Card: Timeline -->
+            <section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+                <h4 class="text-sm font-bold text-primary mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">schedule</span>Timeline
+                </h4>
+                <div id="timeline-container" class="relative space-y-6"></div>
+                <div id="timeline-empty" class="hidden text-sm text-slate-500">No timeline data available.</div>
+            </section>
+
+            <!-- Card: Source Intelligence -->
+            <section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+                <h4 class="text-sm font-bold text-primary mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">travel_explore</span>Source Intelligence
+                </h4>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center text-xs border-b border-primary/10 pb-2">
+                        <span class="text-slate-400 font-medium">IP Address</span>
+                        <span id="si-ip" class="font-mono text-slate-200">—</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs border-b border-primary/10 pb-2">
+                        <span class="text-slate-400 font-medium">Geolocation</span>
+                        <span id="si-geo" class="text-slate-400 italic text-[10px]">Not available</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs border-b border-primary/10 pb-2">
+                        <span class="text-slate-400 font-medium">ASN</span>
+                        <span id="si-asn" class="text-slate-400 italic text-[10px]">Not available</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs pt-1">
+                        <span id="si-count-label" class="text-slate-400 font-medium">Alert Count</span>
+                        <span id="si-count" class="text-primary font-bold text-sm">—</span>
+                    </div>
+                </div>
+                <div class="mt-4 w-full h-20 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/10">
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-primary/60">Map View Unavailable</span>
+                </div>
+            </section>
+
+            <!-- Card: Endpoint Health -->
+            <section id="endpoint-health-card" class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+                <h4 class="text-sm font-bold text-primary mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">monitor_heart</span>Endpoint Health
+                </h4>
+                <div id="health-data" class="space-y-4"></div>
+                <div id="health-unavailable" class="hidden text-sm text-slate-500 text-center py-4">
+                    <span class="material-symbols-outlined text-3xl text-slate-600 block mb-2">sensors_off</span>
+                    No metrics available for this host.
+                </div>
+            </section>
+
+            <!-- Card: Active Responses (all disabled) -->
+            <section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+                <h4 class="text-sm font-bold text-primary mb-4 uppercase flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">crisis_alert</span>Active Responses
+                </h4>
+                <p class="text-[10px] text-slate-500 mb-4">Backend actions not yet implemented.</p>
+                <div class="grid grid-cols-1 gap-2">
+                    <button disabled class="w-full py-2 bg-primary/5 text-primary/30 text-xs font-bold rounded flex items-center justify-center gap-2 border border-primary/10 cursor-not-allowed">
+                        <span class="material-symbols-outlined text-sm">shield_lock</span>Isolate Host
+                    </button>
+                    <button disabled class="w-full py-2 bg-primary/5 text-primary/30 text-xs font-bold rounded flex items-center justify-center gap-2 border border-primary/10 cursor-not-allowed">
+                        <span class="material-symbols-outlined text-sm">block</span>Block IP
+                    </button>
+                    <button disabled class="w-full py-2 bg-primary/5 text-red-400/20 text-xs font-bold rounded flex items-center justify-center gap-2 border border-red-500/10 cursor-not-allowed">
+                        <span class="material-symbols-outlined text-sm">key_off</span>Revoke Credentials
+                    </button>
+                </div>
+            </section>
+
+        </div><!-- end right column -->
+    </div><!-- end grid -->
+</div><!-- end inv-content -->
+
+<!-- Error state -->
+<div id="inv-error" class="hidden flex-1 flex items-center justify-center min-h-[60vh]">
+    <div class="flex flex-col items-center gap-4 text-center">
+        <span class="material-symbols-outlined text-5xl text-severity-critical">error</span>
+        <p class="text-lg font-bold">Failed to load investigation data</p>
+        <p id="inv-error-msg" class="text-sm text-slate-400"></p>
+        <a href="/alerts" class="mt-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/80">
+            Return to Alerts
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ALERT_ID = {{ alert.id }};
+const ALLOWED_STATUSES = ["New", "Investigating", "Resolved", "False Positive"];
+let currentStatus = "New";
+let corrData = [];
+
+// ── Severity helpers ───────────────────────────────────────────────────────
+const SEV_MAP = {
+    critical: { cls: "bg-red-500/20 text-red-400 border border-red-500/30", dot: "bg-red-400" },
+    high:     { cls: "bg-orange-500/20 text-orange-400 border border-orange-500/30", dot: "bg-orange-400" },
+    med:      { cls: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30", dot: "bg-yellow-400" },
+    medium:   { cls: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30", dot: "bg-yellow-400" },
+    low:      { cls: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30", dot: "bg-emerald-400" },
+    info:     { cls: "bg-blue-500/20 text-blue-400 border border-blue-500/30", dot: "bg-blue-400" },
+};
+function sevStyle(sev) {
+    return SEV_MAP[(sev || "").toLowerCase()] || SEV_MAP.info;
+}
+
+// ── Fetch & render investigation data ─────────────────────────────────────
+async function loadInvestigation() {
+    try {
+        const res = await fetch(`/api/alerts/${ALERT_ID}/investigation`);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        const d = await res.json();
+
+        // Header
+        const ss = sevStyle(d.alert.severity);
+        const badge = document.getElementById('hdr-severity-badge');
+        badge.className = `px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${ss.cls}`;
+        badge.textContent = d.alert.severity || 'UNKNOWN';
+
+        document.getElementById('hdr-title').textContent = d.alert.title || 'Untitled Alert';
+
+        if (d.mitre_technique && d.mitre_technique !== 'Not mapped') {
+            const el = document.getElementById('hdr-mitre');
+            el.textContent = d.mitre_technique;
+            el.classList.remove('hidden');
+        }
+
+        // Alert Details
+        document.getElementById('sev-dot').className = `w-2 h-2 rounded-full animate-pulse ${ss.dot}`;
+        document.getElementById('det-severity').textContent = d.alert.severity || '—';
+        document.getElementById('det-rule').textContent = d.rule_name || '—';
+        document.getElementById('det-mitre').textContent = d.mitre_technique || '—';
+        document.getElementById('det-host').textContent = d.alert.host || '—';
+        document.getElementById('det-ip').textContent = d.source_ip || 'Not available';
+        document.getElementById('det-ts').textContent = d.alert.timestamp || '—';
+        document.getElementById('det-desc').textContent = d.alert.description || 'No description available.';
+
+        // Assessment
+        currentStatus = d.assessment.status || 'New';
+        document.getElementById('analyst-notes').value = d.assessment.analyst_notes || '';
+        setStatus(currentStatus);
+
+        // Correlated Events
+        corrData = d.correlated_events || [];
+        renderCorrEvents(corrData);
+
+        // Timeline
+        renderTimeline(d.timeline || []);
+
+        // Source Intelligence
+        document.getElementById('si-ip').textContent = d.source_intel.source_ip || 'Not available';
+        document.getElementById('si-count-label').textContent = d.source_intel.alert_count_label;
+        document.getElementById('si-count').textContent = d.source_intel.alert_count ?? '—';
+
+        // Endpoint Health
+        renderHealth(d.endpoint_health);
+
+        // Show content
+        document.getElementById('inv-loading').classList.add('hidden');
+        document.getElementById('inv-content').classList.remove('hidden');
+
+    } catch (e) {
+        document.getElementById('inv-loading').classList.add('hidden');
+        document.getElementById('inv-error').classList.remove('hidden');
+        document.getElementById('inv-error-msg').textContent = e.message;
+    }
+}
+
+// ── Correlated Events ──────────────────────────────────────────────────────
+function renderCorrEvents(events) {
+    const tbody = document.getElementById('corr-events-body');
+    const empty = document.getElementById('corr-empty');
+    const countEl = document.getElementById('corr-count');
+
+    tbody.innerHTML = '';
+    countEl.textContent = events.length;
+
+    if (!events.length) {
+        empty.classList.remove('hidden');
+        return;
+    }
+    empty.classList.add('hidden');
+
+    events.forEach(ev => {
+        const tr = document.createElement('tr');
+        tr.className = ev.is_alert ? 'bg-primary/20 border-l-2 border-primary' : 'hover:bg-primary/5 transition-colors';
+        tr.innerHTML = `
+            <td class="px-6 py-3 whitespace-nowrap ${ev.is_alert ? 'text-primary font-bold' : 'text-slate-300 font-mono'}">${ev.ts}</td>
+            <td class="px-6 py-3 ${ev.is_alert ? 'text-primary' : 'text-slate-300'}">${ev.host || '—'}</td>
+            <td class="px-6 py-3 ${ev.is_alert ? 'text-primary' : 'text-slate-400'} max-w-xs truncate" title="${(ev.message||'').replace(/"/g,'&quot;')}">${ev.message || '—'}</td>
+            <td class="px-6 py-3"><span class="px-2 py-0.5 rounded ${ev.is_alert ? 'bg-primary text-white' : 'bg-primary/10 text-primary'} text-[10px] font-mono">${ev.log_type || '—'}</span></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ── Timeline ───────────────────────────────────────────────────────────────
+function renderTimeline(items) {
+    const container = document.getElementById('timeline-container');
+    const empty     = document.getElementById('timeline-empty');
+    container.innerHTML = '';
+
+    if (!items.length) {
+        container.classList.add('hidden');
+        empty.classList.remove('hidden');
+        return;
+    }
+
+    items.forEach((item, i) => {
+        const isAlert   = item.is_alert;
+        const isPending = item.is_pending;
+        const isLast    = i === items.length - 1;
+
+        const div = document.createElement('div');
+        div.className = `relative pl-8 ${isLast ? '' : 'pb-6'}`;
+
+        // Vertical connector line
+        if (!isLast) {
+            const line = document.createElement('div');
+            line.className = 'absolute left-[7px] top-4 bottom-0 w-0.5 bg-primary/20';
+            div.appendChild(line);
+        }
+
+        // Dot
+        const dot = document.createElement('div');
+        dot.className = `absolute left-0 top-1 h-4 w-4 rounded-full border-2 
+            ${isAlert ? 'border-primary bg-primary/30' : isPending ? 'border-slate-600 bg-background-dark' : 'border-primary/60 bg-background-dark'}`;
+        div.appendChild(dot);
+
+        // Timestamp
+        const ts = document.createElement('p');
+        ts.className = `text-[10px] font-bold mb-0.5 ${isAlert ? 'text-primary' : 'text-slate-400'}`;
+        ts.textContent = item.ts;
+        div.appendChild(ts);
+
+        // Label
+        const label = document.createElement('p');
+        label.className = `text-xs ${isAlert ? 'font-bold text-primary whitespace-pre-line' : isPending ? 'italic text-slate-500' : 'font-medium text-slate-200'}`;
+        label.textContent = item.label;
+        div.appendChild(label);
+
+        container.appendChild(div);
+    });
+}
+
+// ── Endpoint Health ────────────────────────────────────────────────────────
+function renderHealth(health) {
+    const dataEl   = document.getElementById('health-data');
+    const emptyEl  = document.getElementById('health-unavailable');
+
+    if (!health || !health.available) {
+        dataEl.classList.add('hidden');
+        emptyEl.classList.remove('hidden');
+        return;
+    }
+
+    emptyEl.classList.add('hidden');
+    dataEl.classList.remove('hidden');
+
+    const metrics = [
+        { label: 'CPU Utilization', value: health.cpu, color: health.cpu > 80 ? 'bg-severity-critical' : 'bg-primary' },
+        { label: 'RAM Usage',       value: health.ram, color: health.ram > 80 ? 'bg-orange-400' : 'bg-primary/60' },
+    ];
+
+    dataEl.innerHTML = '';
+    metrics.forEach(m => {
+        dataEl.innerHTML += `
+        <div>
+            <div class="flex justify-between text-[10px] font-bold mb-1 uppercase">
+                <span>${m.label}</span>
+                <span class="${m.value > 80 ? 'text-severity-critical' : 'text-primary'}">${m.value}%</span>
+            </div>
+            <div class="w-full h-1.5 bg-primary/10 rounded-full overflow-hidden">
+                <div class="h-full ${m.color} rounded-full health-bar-fill" style="width:${m.value}%"></div>
+            </div>
+        </div>`;
+    });
+
+    if (health.last_seen) {
+        dataEl.innerHTML += `
+        <p class="text-[10px] text-slate-500 mt-2">Last seen: ${health.last_seen}</p>`;
+    }
+}
+
+// ── Analyst Assessment ─────────────────────────────────────────────────────
+function setStatus(status) {
+    currentStatus = status;
+    document.querySelectorAll('#status-btns .status-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.status === status);
+    });
+}
+
+async function saveAssessment() {
+    const notes  = document.getElementById('analyst-notes').value;
+    const savedEl = document.getElementById('assessment-saved-msg');
+    const errEl   = document.getElementById('assessment-err-msg');
+    savedEl.classList.add('hidden');
+    errEl.classList.add('hidden');
+
+    try {
+        const res = await fetch(`/api/alerts/${ALERT_ID}/assessment`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: currentStatus, analyst_notes: notes }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+
+        savedEl.classList.remove('hidden');
+        setTimeout(() => savedEl.classList.add('hidden'), 3000);
+    } catch (e) {
+        errEl.textContent = `Error: ${e.message}`;
+        errEl.classList.remove('hidden');
+    }
+}
+
+// ── CSV Export ─────────────────────────────────────────────────────────────
+function exportCSV() {
+    if (!corrData.length) return;
+    const header = 'Timestamp,Host,Message,Type\n';
+    const rows = corrData.map(e =>
+        `"${e.ts}","${e.host}","${(e.message||'').replace(/"/g,'""')}","${e.log_type}"`
+    ).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `alert_${ALERT_ID}_events.csv`;
+    a.click();
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+loadInvestigation();
+</script>
+{% endblock %}

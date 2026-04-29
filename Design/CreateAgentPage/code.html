@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OVS SIEM - Register New Agent</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f05684",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#18161a",
+                        "surface-dark": "#252129",
+                        "border-dark": "#3d3644",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased">
+<div class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="w-64 border-r border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark flex flex-col fixed h-full">
+<div class="p-6 flex flex-col gap-6">
+<div class="flex items-center gap-3">
+<div class="bg-primary rounded-lg p-2 flex items-center justify-center">
+<span class="material-symbols-outlined text-white">shield</span>
+</div>
+<div>
+<h1 class="text-slate-900 dark:text-white text-base font-bold leading-none">OVS SIEM</h1>
+<p class="text-slate-500 dark:text-slate-400 text-xs mt-1">Cybersecurity Dashboard</p>
+</div>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">engineering</span>
+<span class="text-sm font-medium">Agents</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors" href="#">
+<span class="material-symbols-outlined">warning</span>
+<span class="text-sm font-medium">Threats</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors" href="#">
+<span class="material-symbols-outlined">fact_check</span>
+<span class="text-sm font-medium">Compliance</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 ml-64 flex flex-col">
+<!-- Header -->
+<header class="h-16 border-b border-slate-200 dark:border-border-dark flex items-center justify-between px-8 bg-white dark:bg-background-dark sticky top-0 z-10">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">add_circle</span>
+<h2 class="text-lg font-bold tracking-tight">Register New Agent</h2>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+<input class="pl-9 pr-4 py-2 text-sm rounded-lg bg-slate-100 dark:bg-surface-dark border-none focus:ring-1 focus:ring-primary w-64 text-slate-200" placeholder="Search resources..." type="text"/>
+</div>
+<button class="p-2 rounded-lg bg-slate-100 dark:bg-surface-dark text-slate-500 dark:text-slate-400 hover:text-primary transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2.5 w-2 h-2 bg-primary rounded-full border-2 border-white dark:border-background-dark"></span>
+</button>
+<div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-surface-dark border border-slate-300 dark:border-border-dark overflow-hidden">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="User profile avatar icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWZjLxr28rmKy0qWJPrTmQpJ8B5zgDMHNn2ddTbX5J1dOeTbo9Brt46fYsDPCA25KzshAm5MiZqudh33zzRNPtja796X7KX-9x8N9oenz1Uc9AkDzfpRJyFpJBnCFNHrsvyTZi9CxXPrE1iVMtP_wEJCsud4jZmyLyPjQZ4n8rxtvPrj8XGpXKu37vqZv_hQizUgEK3cv3hn_DSO6V1US2NBNyFsIYIzWR-aKs640FAIZjqF043nRqugRvGdBHfzyTUu2W376HY1aK"/>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<div class="p-8 max-w-5xl mx-auto w-full">
+<div class="mb-8">
+<h1 class="text-3xl font-bold mb-2">Register New Agent</h1>
+<p class="text-slate-500 dark:text-slate-400">Deploy a monitoring agent to a Linux VPS to start collecting telemetry and security logs.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Agent Information -->
+<section class="bg-white dark:bg-surface-dark p-6 rounded-xl border border-slate-200 dark:border-border-dark flex flex-col gap-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary">badge</span>
+<h3 class="font-bold text-lg">Agent Information</h3>
+</div>
+<div class="space-y-4">
+<div>
+<label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Agent Name</label>
+<input class="w-full bg-slate-50 dark:bg-background-dark border-slate-200 dark:border-border-dark rounded-lg px-4 py-2.5 text-sm focus:ring-primary focus:border-primary" placeholder="e.g. prod-web-01" type="text"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Agent Group</label>
+<select class="w-full bg-slate-50 dark:bg-background-dark border-slate-200 dark:border-border-dark rounded-lg px-4 py-2.5 text-sm focus:ring-primary focus:border-primary">
+<option>Default Group</option>
+<option>Production Servers</option>
+<option>Staging</option>
+</select>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Tags</label>
+<input class="w-full bg-slate-50 dark:bg-background-dark border-slate-200 dark:border-border-dark rounded-lg px-4 py-2.5 text-sm focus:ring-primary focus:border-primary" placeholder="Add tags separated by comma" type="text"/>
+</div>
+</div>
+</section>
+<!-- Target Server -->
+<section class="bg-white dark:bg-surface-dark p-6 rounded-xl border border-slate-200 dark:border-border-dark flex flex-col gap-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary">dns</span>
+<h3 class="font-bold text-lg">Target Server</h3>
+</div>
+<div class="space-y-4">
+<div>
+<label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Operating System</label>
+<div class="flex items-center gap-2 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-lg px-4 py-2.5 opacity-60">
+<span class="material-symbols-outlined text-sm">terminal</span>
+<span class="text-sm font-medium">Linux</span>
+</div>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Distribution</label>
+<select class="w-full bg-slate-50 dark:bg-background-dark border-slate-200 dark:border-border-dark rounded-lg px-4 py-2.5 text-sm focus:ring-primary focus:border-primary">
+<option>Ubuntu</option>
+<option>Debian</option>
+<option>CentOS</option>
+<option>Rocky Linux</option>
+<option>AlmaLinux</option>
+</select>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Architecture</label>
+<select class="w-full bg-slate-50 dark:bg-background-dark border-slate-200 dark:border-border-dark rounded-lg px-4 py-2.5 text-sm focus:ring-primary focus:border-primary">
+<option>x86_64</option>
+<option>ARM64</option>
+</select>
+</div>
+</div>
+</section>
+<!-- Connection Configuration -->
+<section class="bg-white dark:bg-surface-dark p-6 rounded-xl border border-slate-200 dark:border-border-dark md:col-span-2 flex flex-col gap-4">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">hub</span>
+<h3 class="font-bold text-lg">Connection Configuration</h3>
+</div>
+<button class="text-primary text-sm font-semibold hover:underline flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">network_check</span>
+                            Test Connection
+                        </button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div>
+<label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">SIEM Server Address</label>
+<input class="w-full bg-slate-50 dark:bg-background-dark border-slate-200 dark:border-border-dark rounded-lg px-4 py-2.5 text-sm focus:ring-primary focus:border-primary" type="text" value="siem-cluster-01.ovs-sec.io"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Port</label>
+<input class="w-full bg-slate-50 dark:bg-background-dark border-slate-200 dark:border-border-dark rounded-lg px-4 py-2.5 text-sm focus:ring-primary focus:border-primary" type="number" value="1514"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Registration Token</label>
+<div class="relative">
+<input class="w-full bg-slate-50 dark:bg-background-dark border-slate-200 dark:border-border-dark rounded-lg px-4 py-2.5 text-sm focus:ring-primary focus:border-primary" type="password" value="••••••••••••••••"/>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer text-sm">visibility</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Optional Monitoring Features -->
+<section class="bg-white dark:bg-surface-dark p-6 rounded-xl border border-slate-200 dark:border-border-dark flex flex-col gap-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary">toggle_on</span>
+<h3 class="font-bold text-lg">Optional Monitoring Features</h3>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-background-dark">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-slate-400">description</span>
+<span class="text-sm font-medium">Enable Log Collection</span>
+</div>
+<div class="relative inline-flex items-center cursor-pointer">
+<div class="w-10 h-5 bg-primary rounded-full"></div>
+<div class="absolute left-5.5 w-4 h-4 bg-white rounded-full transition translate-x-5"></div>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-background-dark">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-slate-400">lock_reset</span>
+<span class="text-sm font-medium">Enable File Integrity Monitoring</span>
+</div>
+<div class="relative inline-flex items-center cursor-pointer">
+<div class="w-10 h-5 bg-slate-300 dark:bg-slate-700 rounded-full"></div>
+<div class="absolute left-1 w-4 h-4 bg-white rounded-full transition"></div>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-background-dark">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-slate-400">monitoring</span>
+<span class="text-sm font-medium">Enable System Metrics</span>
+</div>
+<div class="relative inline-flex items-center cursor-pointer">
+<div class="w-10 h-5 bg-primary rounded-full"></div>
+<div class="absolute left-5.5 w-4 h-4 bg-white rounded-full transition translate-x-5"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Installation Command Generator -->
+<section class="bg-white dark:bg-surface-dark p-6 rounded-xl border border-slate-200 dark:border-border-dark flex flex-col gap-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary">terminal</span>
+<h3 class="font-bold text-lg">Agent Installation Command</h3>
+</div>
+<p class="text-sm text-slate-500 dark:text-slate-400">Copy and run this command on your target server as root or with sudo privileges.</p>
+<div class="relative group">
+<div class="bg-slate-900 dark:bg-black rounded-lg p-4 font-mono text-sm text-primary/90 overflow-x-auto whitespace-nowrap">
+                            curl -s https://agent.ovs-siem/install.sh | sudo bash
+                        </div>
+<button class="absolute top-2 right-2 p-2 rounded-md bg-white/10 text-white hover:bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-sm">content_copy</span>
+</button>
+</div>
+<div class="flex flex-col sm:flex-row gap-3 mt-2">
+<button class="flex-1 bg-primary text-white py-2.5 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
+<span class="material-symbols-outlined text-base">content_copy</span>
+                            Copy Command
+                        </button>
+<button class="flex-1 bg-primary/10 text-primary py-2.5 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-base">download</span>
+                            Download Script
+                        </button>
+</div>
+</section>
+</div>
+<div class="mt-8 flex items-center justify-end gap-4 pb-12">
+<button class="px-6 py-2.5 rounded-lg border border-slate-200 dark:border-border-dark font-semibold text-sm hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors">
+                    Cancel
+                </button>
+<button class="bg-primary text-white px-8 py-2.5 rounded-lg font-bold text-sm shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
+                    Register Agent
+                </button>
+</div>
+</div>
+</main>
+</div>
+</body></html>

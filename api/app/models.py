@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, Float
 from .db import Base
 from pydantic import BaseModel
 from datetime import datetime
@@ -12,6 +12,9 @@ class Log(Base):
     log_type = Column(String)
     file_path = Column(String)
     message = Column(Text)
+    local_flag = Column(Boolean, default=False)
+    agent_rule_id = Column(Integer, nullable=True)
+    local_rule_version = Column(Integer, nullable=True)
 
 class Metric(Base):
     __tablename__ = "metrics"
@@ -34,12 +37,14 @@ class Alert(Base):
     title = Column(String)
     description = Column(Text)
     source = Column(String) # Rule name
+    is_read = Column(Boolean, default=False)
 
 class DetectionRule(Base):
     __tablename__ = "detection_rules"
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
+    rule_type = Column(String, default="server")
     enabled = Column(Boolean, default=True)
     severity_default = Column(String) # HIGH, MED, LOW
     mitre_technique_id = Column(String) # e.g. T1059
@@ -73,6 +78,54 @@ class ActivityAudit(Base):
     object_id = Column(String)
     details = Column(Text) # JSON
 
+class AlertAssessment(Base):
+    __tablename__ = "alert_assessments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    alert_id = Column(Integer, unique=True, index=True, nullable=False)
+    status = Column(String, default="New")  # New | Investigating | Resolved | False Positive
+    analyst_notes = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class AgentRecord(Base):
+    """
+    Represents a registered (or pending) monitoring agent.
+    Tokens are stored as SHA-256 hashes — raw values are never persisted.
+    """
+    __tablename__ = "agent_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    agent_name = Column(String, nullable=False)
+    agent_id = Column(String, unique=True, index=True, nullable=False)  # UUID
+
+    # One-time registration token (hashed). Nulled after first use.
+    registration_token_hash = Column(String, nullable=True)
+    registration_token_expires_at = Column(DateTime, nullable=True)
+
+    # Permanent agent key (hashed). Set on first registration.
+    agent_key_hash = Column(String, nullable=True)
+
+    # Grouping / metadata
+    group = Column(String, default="Default Group")
+    tags = Column(String, default="")  # comma-separated
+    os_type = Column(String, default="Linux")
+    distribution = Column(String, default="Ubuntu")
+    architecture = Column(String, default="x86_64")
+
+    # Feature flags
+    enable_logs = Column(Boolean, default=True)
+    enable_fim = Column(Boolean, default=False)
+    enable_metrics = Column(Boolean, default=True)
+
+    # Lifecycle
+    status = Column(String, default="pending")  # pending | active | offline
+    hostname = Column(String, nullable=True)    # filled on registration
+    ip_address = Column(String, nullable=True)  # filled on registration
+    last_seen = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 # Pydantic Models
 
 class LogCreate(BaseModel):
@@ -81,6 +134,9 @@ class LogCreate(BaseModel):
     log_type: str
     file_path: str
     message: str
+    local_flag: bool = False
+    agent_rule_id: int | None = None
+    local_rule_version: int | None = None
 
 class MetricCreate(BaseModel):
     timestamp: datetime

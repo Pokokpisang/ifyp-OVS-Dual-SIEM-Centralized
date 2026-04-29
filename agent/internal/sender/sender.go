@@ -36,13 +36,31 @@ func (s *Sender) SendMetric(metric collector.Metrics) error {
 	return s.post("/api/metrics", metric)
 }
 
+func (s *Sender) SendHeartbeat() error {
+	return s.post("/api/agents/heartbeat", nil)
+}
+
 func (s *Sender) post(endpoint string, data interface{}) error {
-	payload, err := json.Marshal(data)
+	var payload []byte
+	var err error
+	if data != nil {
+		payload, err = json.Marshal(data)
+		if err != nil {
+			return err
+		}
+	}
+
+	req, err := http.NewRequest("POST", s.cfg.ServerURL+endpoint, bytes.NewBuffer(payload))
 	if err != nil {
 		return err
 	}
 
-	resp, err := s.client.Post(s.cfg.ServerURL+endpoint, "application/json", bytes.NewBuffer(payload))
+	req.Header.Set("Content-Type", "application/json")
+	if s.cfg.AgentKey != "" {
+		req.Header.Set("X-Agent-Key", s.cfg.AgentKey)
+	}
+
+	resp, err := s.client.Do(req)
 	if err != nil {
 		fmt.Printf("Failed to send to %s: %v\n", endpoint, err)
 		return err

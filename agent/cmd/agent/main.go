@@ -3,7 +3,9 @@ package main
 import (
 	"agent/internal/collector"
 	"agent/internal/config"
+	"agent/internal/model"
 	"agent/internal/queue"
+	"agent/internal/rules"
 	"agent/internal/sender"
 	"agent/internal/tailer"
 	"fmt"
@@ -16,82 +18,130 @@ import (
 
 func main() {
 	cfg := config.Load()
-	fmt.Printf("Starting Agent... URL=%s Log=%s\n", cfg.ServerURL, cfg.LogPath)
+	
+	fmt.Println("========================================")
+	fmt.Println("       FYP SIEM AGENT STARTED")
+	fmt.Println("========================================")
+	fmt.Printf("Detected OS   : %s\n", cfg.DetectedOS)
+	fmt.Printf("Agent Name    : %s\n", cfg.AgentName)
+	fmt.Printf("Server URL    : %s\n", cfg.ServerURL)
+	fmt.Printf("Logs Enabled  : %v\n", cfg.EnableLogs)
+	fmt.Printf("Metrics Enabled: %v\n", cfg.EnableMetrics)
+	fmt.Printf("FIM Enabled    : %v\n", cfg.EnableFIM)
+	fmt.Println("========================================")
+
+	if cfg.EnableLogs {
+		fmt.Println("Using Log Paths:")
+		fmt.Printf("  - Auth   : %s\n", cfg.LogPaths.Auth)
+		fmt.Printf("  - Syslog : %s\n", cfg.LogPaths.Syslog)
+		fmt.Printf("  - Auditd : %s\n", cfg.LogPaths.Auditd)
+	}
+
+	if cfg.EnableFIM {
+		fmt.Println("[FIM] Implementation pending. Watcher skipped.")
+	}
 
 	q := queue.New("agent_queue.jsonl")
 	snd := sender.New(cfg, q)
 
+	// Start Heartbeat Loop (60s)
+	go func() {
+		fmt.Println("Starting heartbeat loop (60s interval)...")
+		ticker := time.NewTicker(60 * time.Second)
+		defer ticker.Stop()
+		// Send initial heartbeat
+		_ = snd.SendHeartbeat()
+		for range ticker.C {
+			if err := snd.SendHeartbeat(); err != nil {
+				log.Printf("[heartbeat] Error: %v", err)
+			}
+		}
+	}()
+
+	rm := rules.New(cfg.ServerURL + "/api/agent/rules")
+	rm.StartPoll(5 * time.Minute)
+
 	// Try to drain queue on startup
 	snd.DrainQueue()
 
-	// 1a. Start Primary Log Tailer
-	tl := tailer.New(cfg)
-	// Hack: Temporarily overwrite cfg for the first tailer if needed, but here we just tail LogPath
-	events, err := tl.Start()
-	if err != nil {
-		log.Fatalf("Failed to start tailer: %v", err)
-	}
+	host, _ := os.Hostname()
 
-	// 1b. Start Auditd Tailer (if file exists or configured)
-	// We create a temp config for the second tailer to reuse the struct
-	if cfg.AuditdPath != "" {
-		auditCfg := *cfg // copy
-		auditCfg.LogPath = cfg.AuditdPath
-		auditCfg.LogType = "auditd"
-		
-		auditTailer := tailer.New(&auditCfg)
-		auditEvents, err := auditTailer.Start()
-		if err == nil {
-			fmt.Printf("Starting Auditd Tailer: %s\n", cfg.AuditdPath)
-			// Merge channels? Or just launch another goroutine.
-			// Launch separate consumer for simplicity
-			go func() {
-				for event := range auditEvents {
-					// fmt.Printf("Sending AUDIT: %s...\n", event.Message[:min(len(event.Message), 20)])
-					if err := snd.Send(event); err != nil {
-						fmt.Println("Error sending audit:", err)
-					}
-				}
-			}()
-		} else {
-			fmt.Printf("Failed to start auditd tailer (ignore if file missing): %v\n", err)
+	// 1. Start Log Tailers if enabled
+	if cfg.EnableLogs {
+		// Define tailer pairs: (path, type)
+		tails := []struct {
+			path    string
+			logType string
+		}{
+			{cfg.LogPaths.Auth, "auth"},
+			{cfg.LogPaths.Syslog, "syslog"},
+			{cfg.LogPaths.Auditd, "auditd"},
 		}
-	}
-	
-	// Main Loop for Primary Logs
-	go func() {
-		for event := range events {
-			fmt.Printf("Sending log: %s...\n", event.Message[:min(len(event.Message), 20)])
-			if err := snd.Send(event); err != nil {
-				fmt.Println("Error sending log:", err)
-			}
-		}
-	}()
 
-	// 2. Start Metrics Collector (Ticker)
-	go func() {
-		host, _ := os.Hostname()
-		ticker := time.NewTicker(5 * time.Second) // Fast 5s updates for demo
-		defer ticker.Stop()
-		
-		for range ticker.C {
-			m, err := collector.GetMetrics(host)
-			if err != nil {
-				fmt.Println("Error collecting metrics:", err)
+		for _, t := range tails {
+			if t.path == "" {
 				continue
 			}
-			fmt.Printf("Sending metrics: CPU=%.1f%% RAM=%.1f%%\n", m.CPUPercent, m.RAMPercent)
-			if err := snd.SendMetric(m); err != nil {
-				fmt.Println("Error sending metric:", err.Error())
+
+			// Check if file exists before starting
+			if _, err := os.Stat(t.path); os.IsNotExist(err) {
+				fmt.Printf("[%s] Warning: Log file not found at %s. Skipping.\n", t.logType, t.path)
+				continue
 			}
+
+			path := t.path
+			lType := t.logType
+			
+			// Start tailer in goroutine
+			go func(p string, lt string) {
+				fmt.Printf("[%s] Starting tailer for %s\n", lt, p)
+				
+				t := tailer.New(cfg, p, lt) 
+				t.Start(func(msg string) {
+					event := model.LogEvent{
+						Timestamp: time.Now().UTC(),
+						Host:      host,
+						LogType:   lt,
+						FilePath:  p,
+						Message:   msg,
+					}
+					if matched, rID, rev := rm.Match(event.Message); matched {
+						event.LocalFlag = true
+						event.AgentRuleID = rID
+						event.LocalRuleVersion = rev
+					}
+					if err := snd.Send(event); err != nil {
+						log.Printf("[%s] Error sending: %v", lt, err)
+					}
+				})
+			}(path, lType)
 		}
-	}()
+	}
+
+	// 2. Start Metrics Collector if enabled
+	if cfg.EnableMetrics {
+		fmt.Println("Starting metrics collector (5s interval)...")
+		go func() {
+			ticker := time.NewTicker(5 * time.Second)
+			defer ticker.Stop()
+			for range ticker.C {
+				m, err := collector.GetMetrics(host)
+				if err != nil {
+					log.Printf("Metrics error: %v", err)
+					continue
+				}
+				if err := snd.SendMetric(m); err != nil {
+					log.Printf("Metrics send error: %v", err)
+				}
+			}
+		}()
+	}
 
 	// Wait for interrupt
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
-	fmt.Println("Shutting down agent...")
+	fmt.Println("\nShutting down agent...")
 }
 
 func min(a, b int) int {

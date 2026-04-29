@@ -73,10 +73,11 @@
                 <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
             </div>
         </form>
-        <button class="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-primary/20">
+        <a href="/agents/new"
+           class="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-primary/20">
             <span class="material-symbols-outlined text-lg">add</span>
             Register New Agent
-        </button>
+        </a>
     </div>
 
     <!-- Table -->
@@ -85,39 +86,44 @@
             <table class="w-full text-left">
                 <thead>
                     <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-primary/10">
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Agent ID</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Agent Name</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Hostname / IP</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">CPU Load</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Memory Usage</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Memory</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Last Seen</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-primary/5">
                     {% for agent in agents %}
                     <tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
                         <td class="px-6 py-5">
-                            <span class="text-sm font-medium">{{ agent.id }}</span>
-                        </td>
-                        <td class="px-6 py-5">
                             <div class="flex flex-col">
-                                <span class="text-sm font-bold">{{ agent.hostname }}</span>
-                                <span class="text-xs text-slate-500">{{ agent.ip }}</span>
+                                <a href="/agents/{{ agent.agent_id }}" class="text-sm font-bold hover:text-primary transition-colors">{{ agent.agent_name }}</a>
+                                <span class="text-xs text-slate-400 font-mono">{{ agent.agent_id[:16] }}…</span>
                             </div>
                         </td>
                         <td class="px-6 py-5">
-                            {% if agent.status == 'ONLINE' %}
-                            <span class="px-2.5 py-1 rounded-full bg-green-500/10 text-green-500 text-[11px] font-bold">ONLINE</span>
-                            {% elif agent.status == 'OFFLINE' %}
+                            <div class="flex flex-col">
+                                <span class="text-sm font-semibold">{{ agent.hostname }}</span>
+                                <span class="text-xs text-slate-500">{{ agent.ip_address }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5">
+                            {% if agent.status == 'active' %}
+                            <span class="px-2.5 py-1 rounded-full bg-green-500/10 text-green-500 text-[11px] font-bold">ACTIVE</span>
+                            {% elif agent.status == 'offline' %}
                             <span class="px-2.5 py-1 rounded-full bg-red-500/10 text-red-500 text-[11px] font-bold">OFFLINE</span>
+                            {% elif agent.status == 'pending' %}
+                            <span class="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[11px] font-bold">PENDING</span>
                             {% else %}
-                            <span class="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[11px] font-bold uppercase">HIGH LOAD</span>
+                            <span class="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[11px] font-bold uppercase">{{ agent.status }}</span>
                             {% endif %}
                         </td>
                         <td class="px-6 py-5">
                             <div class="flex items-center gap-3 w-32">
                                 <div class="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                    <div class="h-full bg-primary" style="width: {{ agent.cpu }}%"></div>
+                                    <div class="h-full bg-primary" style="--w: {{ agent.cpu }}%; width: var(--w);"></div>
                                 </div>
                                 <span class="text-xs font-medium {% if agent.cpu > 85 %}text-amber-500{% endif %}">{{ agent.cpu }}%</span>
                             </div>
@@ -125,19 +131,22 @@
                         <td class="px-6 py-5">
                             <div class="flex items-center gap-3 w-32">
                                 <div class="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                    <div class="h-full bg-primary" style="width: {{ agent.ram }}%"></div>
+                                    <div class="h-full bg-primary" style="--w: {{ agent.ram }}%; width: var(--w);"></div>
                                 </div>
                                 <span class="text-xs font-medium {% if agent.ram > 85 %}text-amber-500{% endif %}">{{ agent.ram }}%</span>
                             </div>
                         </td>
-                        <td class="px-6 py-5 text-right">
-                            <button class="text-primary hover:text-primary/70 font-bold text-xs uppercase tracking-widest transition-colors">Edit</button>
+                        <td class="px-6 py-5">
+                            <span class="text-xs text-slate-500">{{ agent.last_seen }}</span>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="px-6 py-8 text-center text-slate-500 text-sm">
-                            No agents found.
+                        <td colspan="6" class="px-6 py-12 text-center text-slate-500 text-sm">
+                            <div class="flex flex-col items-center gap-3">
+                                <span class="material-symbols-outlined text-slate-300 text-4xl">dns</span>
+                                <p>No agents found. <a href="/agents/new" class="text-primary underline">Register your first agent</a>.</p>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}

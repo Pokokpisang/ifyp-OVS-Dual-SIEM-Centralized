@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Agent Detail | prod-web-01</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;700;900&amp;family=Work+Sans:wght@300;400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#f9f9f9",
+                        "inverse-primary": "#c8c6c5",
+                        "tertiary": "#3b3b3b",
+                        "on-primary-fixed": "#ffffff",
+                        "on-primary": "#e5e2e1",
+                        "tertiary-fixed-dim": "#464747",
+                        "surface-variant": "#e2e2e2",
+                        "surface-container-low": "#f3f3f4",
+                        "outline": "#777777",
+                        "secondary": "#5f5e5e",
+                        "on-tertiary-container": "#ffffff",
+                        "secondary-fixed": "#c8c6c6",
+                        "inverse-surface": "#2f3131",
+                        "on-surface-variant": "#474747",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed": "#ffffff",
+                        "primary-container": "#3c3b3b",
+                        "surface-container": "#eeeeee",
+                        "on-secondary": "#ffffff",
+                        "surface": "#f9f9f9",
+                        "surface-container-highest": "#e2e2e2",
+                        "on-secondary-fixed-variant": "#3b3b3b",
+                        "inverse-on-surface": "#f0f1f1",
+                        "surface-tint": "#5f5e5e",
+                        "primary-fixed": "#5f5e5e",
+                        "background": "#f9f9f9",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-container": "#ffffff",
+                        "on-error-container": "#410002",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#474746",
+                        "on-surface": "#1a1c1c",
+                        "surface-dim": "#dadada",
+                        "outline-variant": "#c6c6c6",
+                        "error": "#ba1a1a",
+                        "secondary-fixed-dim": "#acabab",
+                        "primary": "#000000",
+                        "on-secondary-container": "#1b1c1c",
+                        "on-background": "#1a1c1c",
+                        "secondary-container": "#d6d4d3",
+                        "on-tertiary-fixed-variant": "#e4e2e2",
+                        "on-secondary-fixed": "#1b1c1c",
+                        "tertiary-fixed": "#5e5e5e",
+                        "surface-container-high": "#e8e8e8",
+                        "on-tertiary": "#e4e2e2",
+                        "tertiary-container": "#757474",
+                        "on-primary-fixed-variant": "#e5e2e1"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Epilogue"],
+                        "display": ["Epilogue"],
+                        "body": ["Work Sans"],
+                        "label": ["Work Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { background-color: #18161a; color: #ededed; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .hatch-pattern {
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(240, 84, 132, 0.1) 5px, rgba(240, 84, 132, 0.1) 10px);
+        }
+        .marker-border { border: 2px solid #F05484; position: relative; }
+        .marker-border::after {
+            content: ''; position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px;
+            border: 1px solid rgba(240, 84, 132, 0.3); pointer-events: none;
+        }
+        .sketch-box { border: 1.5px solid #F05484; box-shadow: 2px 2px 0px rgba(240, 84, 132, 0.2); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #18161a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #F05484; }
+    </style>
+</head>
+<body class="font-body selection:bg-[#F05484] selection:text-white">
+<!-- TopAppBar -->
+<header class="bg-[#18161a] border-b-2 border-[#F05484]/20 docked full-width top-0 z-50 fixed flex justify-between items-center px-6 py-4 w-full">
+<div class="flex items-center gap-4">
+<span class="text-2xl font-epilogue font-black text-[#F05484] tracking-tighter">SIEM_ANALOG</span>
+<nav class="hidden md:flex items-center gap-6 ml-8">
+<a class="text-[#ededed]/70 font-medium font-epilogue text-[#ededed] uppercase tracking-widest font-bold hover:text-[#F05484] transition-colors duration-200" href="#">Overview</a>
+<a class="text-[#F05484] font-bold underline decoration-wavy font-epilogue uppercase tracking-widest" href="#">Agent Fleet</a>
+<a class="text-[#ededed]/70 font-medium font-epilogue text-[#ededed] uppercase tracking-widest font-bold hover:text-[#F05484] transition-colors duration-200" href="#">Threat Intel</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative group">
+<span class="material-symbols-outlined text-[#ededed]/70 hover:text-[#F05484] cursor-pointer transition-colors" data-icon="notifications">notifications</span>
+<span class="absolute -top-1 -right-1 w-2 h-2 bg-[#F05484] rounded-full"></span>
+</div>
+<span class="material-symbols-outlined text-[#ededed]/70 hover:text-[#F05484] cursor-pointer transition-colors" data-icon="settings">settings</span>
+<div class="w-8 h-8 rounded-full border border-[#F05484]/40 overflow-hidden bg-surface-container-high">
+<img class="w-full h-full object-cover" data-alt="Administrator Avatar profile picture of a cybersecurity expert in a dark workspace with digital interfaces" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRezGmTWBrQNd-es0zI_OY7rjDiqxLvzktSd9Ctum8NLpF6SbvQnDouQ19AU0pgajCbZNQROh8dA9ttyuosDYvB7fo2S7BbJmZ-HqHqHHZqpXmyPJW-oD2--DMz2BYyxl8k0zsx27PpDbTCcbyadER8T13FaN9WxB0imJYp8qA-8vyABgEl-ARChcTIhHOw_poawcDW1i2npgwqx-RksxveNhC37DsYx7q9qCarNVSg_2cTgqrJcMYxfAZTC0O51ZWAbP0jJfXi7tE"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-64 z-40 bg-[#18161a] border-r-2 border-[#F05484]/10 flex flex-col h-screen pt-20 hidden md:flex">
+<div class="px-6 py-4 border-b border-[#F05484]/5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-[#F05484]/10 flex items-center justify-center sketch-box">
+<span class="material-symbols-outlined text-[#F05484]" data-icon="memory">memory</span>
+</div>
+<div>
+<h2 class="font-epilogue font-bold text-[#F05484] text-sm uppercase tracking-tighter">ANALOG_ARCHITECT</h2>
+<p class="text-[10px] text-[#ededed]/40 uppercase">Secure Shell v1.0</p>
+</div>
+</div>
+</div>
+<nav class="mt-6 flex-1">
+<a class="flex items-center gap-3 text-[#ededed]/50 py-3 px-6 hover:bg-[#F05484]/10 hover:text-[#ededed] transition-all" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="dashboard">dashboard</span>
+<span class="font-work-sans text-sm tracking-tight">Overview</span>
+</a>
+<a class="flex items-center gap-3 text-[#F05484] bg-[#F05484]/5 border-r-4 border-[#F05484] py-3 px-6 font-bold transition-all" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="memory">memory</span>
+<span class="font-work-sans text-sm tracking-tight">Agent Fleet</span>
+</a>
+<a class="flex items-center gap-3 text-[#ededed]/50 py-3 px-6 hover:bg-[#F05484]/10 hover:text-[#ededed] transition-all" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="security">security</span>
+<span class="font-work-sans text-sm tracking-tight">Threat Intel</span>
+</a>
+<a class="flex items-center gap-3 text-[#ededed]/50 py-3 px-6 hover:bg-[#F05484]/10 hover:text-[#ededed] transition-all" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="terminal">terminal</span>
+<span class="font-work-sans text-sm tracking-tight">Log Explorer</span>
+</a>
+<a class="flex items-center gap-3 text-[#ededed]/50 py-3 px-6 hover:bg-[#F05484]/10 hover:text-[#ededed] transition-all" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="tune">tune</span>
+<span class="font-work-sans text-sm tracking-tight">Settings</span>
+</a>
+</nav>
+<div class="p-6">
+<button class="w-full sketch-box py-2 text-[#F05484] font-bold text-xs uppercase tracking-widest hover:bg-[#F05484] hover:text-white transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+                New Analysis
+            </button>
+</div>
+<div class="px-6 py-6 border-t border-[#F05484]/5">
+<a class="flex items-center gap-3 text-[#ededed]/30 py-2 hover:text-[#F05484] text-xs transition-all" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="help">help</span>
+                Documentation
+            </a>
+<a class="flex items-center gap-3 text-[#ededed]/30 py-2 hover:text-[#F05484] text-xs transition-all" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="contact_support">contact_support</span>
+                Support
+            </a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="md:ml-64 pt-24 px-8 pb-12">
+<!-- Section 1: Agent Header -->
+<header class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+<div>
+<div class="flex items-center gap-3 mb-2">
+<span class="text-3xl font-epilogue font-black text-[#ededed] tracking-tight">prod-web-01</span>
+<span class="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 text-green-400 text-[10px] font-bold uppercase tracking-widest sketch-box border-green-500/30">
+<span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                        Online
+                    </span>
+<span class="text-xs text-[#ededed]/40 uppercase tracking-wider font-medium">Last seen 10 seconds ago</span>
+</div>
+<div class="flex flex-wrap gap-x-8 gap-y-2 text-xs text-[#ededed]/60">
+<div class="flex items-center gap-2"><span class="text-[#F05484] font-bold">HOSTNAME</span> srv-prod-01</div>
+<div class="flex items-center gap-2"><span class="text-[#F05484] font-bold">IP</span> 192.168.1.45</div>
+<div class="flex items-center gap-2"><span class="text-[#F05484] font-bold">OS</span> Ubuntu 22.04 LTS</div>
+<div class="flex items-center gap-2">
+<span class="text-[#F05484] font-bold">TAGS</span>
+<span class="bg-[#ededed]/5 px-2 py-0.5 border border-[#ededed]/10">Production</span>
+<span class="bg-[#ededed]/5 px-2 py-0.5 border border-[#ededed]/10">Web-Tier</span>
+</div>
+</div>
+</div>
+<!-- Actions Panel (Integrated) -->
+<div class="flex flex-wrap gap-3">
+<button class="px-4 py-2 bg-[#F05484]/10 text-[#F05484] text-[10px] font-bold uppercase tracking-widest border border-[#F05484] hover:bg-[#F05484] hover:text-white transition-all active:scale-95">Restart Agent</button>
+<button class="px-4 py-2 bg-transparent text-[#ededed]/60 text-[10px] font-bold uppercase tracking-widest border border-[#ededed]/20 hover:border-[#ededed]/50 transition-all active:scale-95">Reinstall</button>
+<button class="px-4 py-2 bg-[#ce2e46]/10 text-[#ce2e46] text-[10px] font-bold uppercase tracking-widest border border-[#ce2e46] hover:bg-[#ce2e46] hover:text-white transition-all active:scale-95">Delete Agent</button>
+</div>
+</header>
+<!-- Section 2: Bento Grid for Metrics & Features -->
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-10">
+<!-- Metric: CPU -->
+<div class="lg:col-span-1 bg-[#232126] p-6 sketch-box border-[#F05484]/20 relative overflow-hidden group">
+<div class="hatch-pattern absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-4">
+<span class="font-epilogue font-bold text-[#F05484] text-xs uppercase tracking-tighter">CPU_LOAD</span>
+<span class="material-symbols-outlined text-[#F05484]" data-icon="monitoring">monitoring</span>
+</div>
+<div class="text-4xl font-epilogue font-black mb-4">24<span class="text-sm font-normal text-[#ededed]/40 ml-1">%</span></div>
+<div class="h-1 bg-[#ededed]/10 w-full">
+<div class="h-full bg-[#F05484]" style="width: 24%"></div>
+</div>
+</div>
+</div>
+<!-- Metric: Memory -->
+<div class="lg:col-span-1 bg-[#232126] p-6 sketch-box border-[#F05484]/20 relative overflow-hidden group">
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-4">
+<span class="font-epilogue font-bold text-[#F05484] text-xs uppercase tracking-tighter">MEMORY_USE</span>
+<span class="material-symbols-outlined text-[#F05484]" data-icon="memory">memory</span>
+</div>
+<div class="text-4xl font-epilogue font-black mb-4">62<span class="text-sm font-normal text-[#ededed]/40 ml-1">%</span></div>
+<div class="h-1 bg-[#ededed]/10 w-full">
+<div class="h-full bg-[#f59b00]" style="width: 62%"></div>
+</div>
+</div>
+</div>
+<!-- Metric: Network -->
+<div class="lg:col-span-1 bg-[#232126] p-6 sketch-box border-[#F05484]/20 relative overflow-hidden group">
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-4">
+<span class="font-epilogue font-bold text-[#F05484] text-xs uppercase tracking-tighter">NET_THROUGHPUT</span>
+<span class="material-symbols-outlined text-[#F05484]" data-icon="swap_vert">swap_vert</span>
+</div>
+<div class="text-4xl font-epilogue font-black mb-4">2.4<span class="text-sm font-normal text-[#ededed]/40 ml-1">MB/s</span></div>
+<div class="flex gap-1 h-8 items-end">
+<div class="w-1 bg-[#F05484]/40 h-[20%]"></div>
+<div class="w-1 bg-[#F05484]/40 h-[40%]"></div>
+<div class="w-1 bg-[#F05484] h-[80%]"></div>
+<div class="w-1 bg-[#F05484]/40 h-[30%]"></div>
+<div class="w-1 bg-[#F05484]/40 h-[50%]"></div>
+</div>
+</div>
+</div>
+<!-- Feature Monitoring Toggles -->
+<div class="lg:col-span-1 bg-[#232126] p-6 sketch-box border-[#F05484]/20">
+<h3 class="font-epilogue font-bold text-[#F05484] text-[10px] uppercase tracking-widest mb-4">MONITORING_MODULES</h3>
+<ul class="space-y-4">
+<li class="flex justify-between items-center">
+<span class="text-xs font-medium uppercase text-[#ededed]/70">Log Collection</span>
+<div class="w-8 h-4 bg-[#F05484]/20 border border-[#F05484] relative flex items-center px-0.5">
+<div class="w-2.5 h-2.5 bg-[#F05484] absolute right-0.5"></div>
+</div>
+</li>
+<li class="flex justify-between items-center opacity-50">
+<span class="text-xs font-medium uppercase text-[#ededed]/70">FIM <span class="text-[8px] text-[#f59b00] border border-[#f59b00]/30 px-1 ml-1">Coming Soon</span></span>
+<div class="w-8 h-4 bg-[#ededed]/10 border border-[#ededed]/20 relative flex items-center px-0.5">
+<div class="w-2.5 h-2.5 bg-[#ededed]/20"></div>
+</div>
+</li>
+<li class="flex justify-between items-center">
+<span class="text-xs font-medium uppercase text-[#ededed]/70">System Metrics</span>
+<div class="w-8 h-4 bg-[#F05484]/20 border border-[#F05484] relative flex items-center px-0.5">
+<div class="w-2.5 h-2.5 bg-[#F05484] absolute right-0.5"></div>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<!-- Section 3: Alerts & Configuration -->
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-10">
+<!-- Alerts Table -->
+<div class="xl:col-span-2">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-epilogue font-bold text-[#F05484] text-sm uppercase tracking-widest flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="report">report</span>
+                        Active_Alerts
+                    </h3>
+<a class="text-[10px] text-[#ededed]/40 hover:text-[#F05484] uppercase font-bold tracking-widest transition-all" href="#">View all history</a>
+</div>
+<div class="sketch-box bg-[#232126] border-[#F05484]/10 overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-[#18161a] text-[10px] text-[#ededed]/40 uppercase tracking-widest border-b border-[#F05484]/10">
+<th class="px-4 py-3 font-bold">Timestamp</th>
+<th class="px-4 py-3 font-bold">Alert Name</th>
+<th class="px-4 py-3 font-bold">Severity</th>
+<th class="px-4 py-3 font-bold">MITRE Tag</th>
+</tr>
+</thead>
+<tbody class="text-xs font-medium">
+<tr class="border-b border-[#ededed]/5 hover:bg-[#F05484]/5 transition-colors">
+<td class="px-4 py-4 font-mono text-[#ededed]/60">12:45:01</td>
+<td class="px-4 py-4">Unauthorized SSH Login Attempt</td>
+<td class="px-4 py-4"><span class="bg-[#ce2e46]/20 text-[#ce2e46] px-2 py-0.5 border border-[#ce2e46]/30 uppercase text-[9px] font-black">Critical</span></td>
+<td class="px-4 py-4 font-mono text-[#f59b00]">T1021.004</td>
+</tr>
+<tr class="border-b border-[#ededed]/5 hover:bg-[#F05484]/5 transition-colors">
+<td class="px-4 py-4 font-mono text-[#ededed]/60">12:42:15</td>
+<td class="px-4 py-4">High Inbound Traffic Spike</td>
+<td class="px-4 py-4"><span class="bg-[#f59b00]/20 text-[#f59b00] px-2 py-0.5 border border-[#f59b00]/30 uppercase text-[9px] font-black">Warning</span></td>
+<td class="px-4 py-4 font-mono text-[#ededed]/40">T1498</td>
+</tr>
+<tr class="border-b border-[#ededed]/5 hover:bg-[#F05484]/5 transition-colors">
+<td class="px-4 py-4 font-mono text-[#ededed]/60">12:30:59</td>
+<td class="px-4 py-4">Kernel Module Modified</td>
+<td class="px-4 py-4"><span class="bg-[#ce2e46]/20 text-[#ce2e46] px-2 py-0.5 border border-[#ce2e46]/30 uppercase text-[9px] font-black">Critical</span></td>
+<td class="px-4 py-4 font-mono text-[#f59b00]">T1547.006</td>
+</tr>
+<tr class="hover:bg-[#F05484]/5 transition-colors">
+<td class="px-4 py-4 font-mono text-[#ededed]/60">12:15:22</td>
+<td class="px-4 py-4">New User Created</td>
+<td class="px-4 py-4"><span class="bg-[#ededed]/10 text-[#ededed]/40 px-2 py-0.5 border border-[#ededed]/20 uppercase text-[9px] font-black">Info</span></td>
+<td class="px-4 py-4 font-mono text-[#ededed]/40">T1136</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Configuration Panel -->
+<div class="xl:col-span-1">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-epilogue font-bold text-[#F05484] text-sm uppercase tracking-widest flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="terminal">terminal</span>
+                        AGENT_CONFIG
+                    </h3>
+</div>
+<div class="bg-[#232126] sketch-box border-[#F05484]/10 p-6">
+<div class="space-y-6">
+<div>
+<label class="text-[9px] text-[#ededed]/40 uppercase tracking-[0.2em] block mb-1">Agent Identity</label>
+<div class="flex justify-between items-center">
+<span class="font-mono text-xs">AG-8821</span>
+<span class="material-symbols-outlined text-xs text-[#F05484] cursor-pointer" data-icon="content_copy">content_copy</span>
+</div>
+</div>
+<div>
+<label class="text-[9px] text-[#ededed]/40 uppercase tracking-[0.2em] block mb-1">Server Endpoint</label>
+<span class="font-mono text-xs block text-[#ededed]/70 overflow-hidden text-ellipsis">siem-cluster-01.ovs-sec.io</span>
+</div>
+<div class="pt-4 border-t border-[#F05484]/5">
+<div class="flex items-center justify-between group cursor-pointer">
+<span class="text-[10px] font-bold text-[#ededed]/40 uppercase">Advanced JSON Config</span>
+<span class="material-symbols-outlined text-sm transition-transform group-hover:rotate-180" data-icon="expand_more">expand_more</span>
+</div>
+<div class="mt-4 hidden group-active:block">
+<pre class="text-[10px] font-mono text-[#ededed]/30 bg-[#18161a] p-3 border border-[#F05484]/10 overflow-x-auto">{"agent_id":"AG-8821","log_level":"info"}</pre>
+</div>
+</div>
+<button class="w-full bg-[#F05484] text-white text-[10px] font-black uppercase tracking-widest py-3 sketch-box hover:brightness-110 active:scale-[0.98] transition-all">
+                            Copy Install Command
+                        </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 4: Log Stream -->
+<div class="w-full">
+<div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+<h3 class="font-epilogue font-bold text-[#F05484] text-sm uppercase tracking-widest flex items-center gap-2 self-start md:self-auto">
+<span class="material-symbols-outlined text-sm" data-icon="view_list">view_list</span>
+                    REALTIME_LOG_STREAM
+                </h3>
+<div class="flex items-center gap-3 w-full md:w-auto">
+<div class="relative flex-1 md:w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#ededed]/30" data-icon="search">search</span>
+<input class="w-full bg-[#18161a] border border-[#F05484]/20 text-xs px-9 py-2 focus:ring-0 focus:border-[#F05484] placeholder-[#ededed]/20" placeholder="Filter logs..." type="text"/>
+</div>
+<select class="bg-[#18161a] border border-[#F05484]/20 text-[10px] px-3 py-2 text-[#ededed]/70 font-bold uppercase tracking-widest focus:ring-0">
+<option>Level: All</option>
+<option>Error</option>
+<option>Warning</option>
+</select>
+</div>
+</div>
+<div class="bg-[#121014] border-2 border-[#F05484]/10 p-4 font-mono text-[11px] h-80 overflow-y-auto custom-scrollbar shadow-inner">
+<div class="space-y-1.5">
+<div class="flex gap-4">
+<span class="text-[#ededed]/30">12:50:04</span>
+<span class="text-[#f59b00]">[WARN]</span>
+<span class="text-[#ededed]/60">Agent memory usage exceeding 60% threshold...</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[#ededed]/30">12:49:58</span>
+<span class="text-green-500">[INFO]</span>
+<span class="text-[#ededed]/60">Heartbeat signal sent to siem-cluster-01.ovs-sec.io</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[#ededed]/30">12:48:33</span>
+<span class="text-[#ce2e46]">[ERR]</span>
+<span class="text-[#ededed]/60">Failed login attempt from IP: 45.33.12.102 (User: root)</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[#ededed]/30">12:45:01</span>
+<span class="text-[#ce2e46]">[CRIT]</span>
+<span class="text-white font-bold bg-[#ce2e46]/20">THREAT DETECTED: SSH Brute Force signature matched (T1021.004)</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[#ededed]/30">12:44:10</span>
+<span class="text-green-500">[INFO]</span>
+<span class="text-[#ededed]/60">Agent configuration synchronized. No changes pending.</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[#ededed]/30">12:42:15</span>
+<span class="text-[#f59b00]">[WARN]</span>
+<span class="text-[#ededed]/60">Network anomaly detected: Outbound traffic volume above baseline.</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[#ededed]/30">12:40:00</span>
+<span class="text-green-500">[INFO]</span>
+<span class="text-[#ededed]/60">System metrics scan completed. All sub-processes nominal.</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[#ededed]/30">12:35:44</span>
+<span class="text-green-500">[INFO]</span>
+<span class="text-[#ededed]/60">Log collector scanning /var/log/syslog...</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[#ededed]/30">12:30:59</span>
+<span class="text-[#ce2e46]">[ERR]</span>
+<span class="text-[#ededed]/60">Unauthorized kernel module loaded: 'hide_pid_x86'</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[#ededed]/30">12:28:12</span>
+<span class="text-green-500">[INFO]</span>
+<span class="text-[#ededed]/60">Connection re-established with primary SIEM node.</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation for Mobile -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full bg-[#18161a] border-t-2 border-[#F05484]/20 flex justify-around py-3 z-50">
+<a class="flex flex-col items-center gap-1 text-[#ededed]/50" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="dashboard">dashboard</span>
+<span class="text-[8px] font-bold uppercase">Overview</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-[#F05484]" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="memory">memory</span>
+<span class="text-[8px] font-bold uppercase">Fleet</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-[#ededed]/50" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="terminal">terminal</span>
+<span class="text-[8px] font-bold uppercase">Logs</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-[#ededed]/50" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="tune">tune</span>
+<span class="text-[8px] font-bold uppercase">Settings</span>
+</a>
+</nav>
+</body></html>

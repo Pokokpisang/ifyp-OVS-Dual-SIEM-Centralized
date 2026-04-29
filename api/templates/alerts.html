@@ -15,6 +15,46 @@
 <!-- Scrollable Content -->
 <div class="flex-1 overflow-y-auto p-8 space-y-6">
 
+    <!-- MITRE T1059 Threat Intelligence Banner -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="mitre-stats-row">
+        <div class="p-4 rounded-xl border border-red-500/20 bg-red-500/5 flex items-center gap-4">
+            <div class="h-10 w-10 rounded-lg bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-red-400">gpp_bad</span>
+            </div>
+            <div class="flex-1">
+                <p class="text-[10px] font-bold text-red-400/70 uppercase tracking-wider">MITRE Detections</p>
+                <div class="flex items-center justify-between">
+                    <p class="text-2xl font-black text-red-400" id="banner-mitre">-</p>
+                    <button onclick="markAllRead()" class="px-2 py-0.5 rounded text-[9px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all">MARK READ</button>
+                </div>
+            </div>
+        </div>
+        <div class="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-center gap-4">
+            <div class="h-10 w-10 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-amber-400">notifications_active</span>
+            </div>
+            <div class="flex-1">
+                <p class="text-[10px] font-bold text-amber-400/70 uppercase tracking-wider">High Severity</p>
+                <div class="flex items-center justify-between">
+                    <p class="text-2xl font-black text-amber-400" id="banner-high">-</p>
+                    <button onclick="markAllRead()" class="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all">MARK READ</button>
+                </div>
+            </div>
+        </div>
+        <div class="p-4 rounded-xl border border-violet-500/20 bg-violet-500/5 flex items-center gap-4">
+            <div class="h-10 w-10 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-violet-400">shield</span>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-violet-400/70 uppercase tracking-wider">Active Technique</p>
+                <div class="flex items-center gap-2 mt-0.5">
+                    <span class="text-xs font-bold text-violet-300">T1059.004</span>
+                    <span class="text-[10px] text-slate-400">Unix Shell</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Filter Bar -->
     <div class="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-primary/5 p-4 shadow-sm">
         <form class="flex flex-wrap items-center gap-4" method="get" action="/alerts">
@@ -44,16 +84,15 @@
                 </div>
             </div>
 
-            <div class="flex flex-col gap-1.5 flex-1 min-w-[240px]">
-                <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-primary/60 px-1">Host / Agent</label>
+            <div class="flex flex-col gap-1.5 min-w-[150px]">
+                <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-primary/60 px-1">Status</label>
                 <div class="relative">
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">dns</span>
-                    <select name="host" class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/20 rounded-lg py-2 pl-10 pr-4 text-sm focus:ring-primary appearance-none">
-                        <option value="">All Hosts</option>
-                        {% for h in hosts %}
-                        <option value="{{ h }}" {% if h==current_host %}selected{% endif %}>{{ h }}</option>
-                        {% endfor %}
+                    <select name="read_status" class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/20 rounded-lg py-2 pl-3 pr-10 text-sm focus:ring-primary appearance-none">
+                        <option value="all" {% if current_read_status == "all" %}selected{% endif %}>All Status</option>
+                        <option value="unread" {% if current_read_status == "unread" %}selected{% endif %}>Unread Only</option>
+                        <option value="read" {% if current_read_status == "read" %}selected{% endif %}>Read Only</option>
                     </select>
+                    <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">expand_more</span>
                 </div>
             </div>
 
@@ -72,7 +111,10 @@
     <!-- Table Container -->
     <div class="bg-white dark:bg-card-dark rounded-xl border border-slate-200 dark:border-primary/5 overflow-hidden shadow-sm">
         <div class="px-6 py-4 border-b border-slate-200 dark:border-primary/10 flex justify-between items-center bg-slate-50/50 dark:bg-primary/5">
-            <h3 class="font-bold text-slate-900 dark:text-slate-100">Live Alert Stream</h3>
+            <div class="flex items-center gap-4">
+                <h3 class="font-bold text-slate-900 dark:text-slate-100">Live Alert Stream</h3>
+                <button onclick="markAllRead()" class="px-3 py-1 rounded-lg text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-all">MARK ALL AS READ</button>
+            </div>
             <div class="flex items-center gap-4">
                 <span class="text-xs text-slate-500 dark:text-slate-400">Showing page {{ page }} of {{ total_pages }} ({{ total_count }} total)</span>
                 
@@ -101,64 +143,93 @@
         </div>
 
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="w-full text-left border-collapse table-fixed">
                 <thead>
                     <tr class="bg-slate-50 dark:bg-primary/5">
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Timestamp</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Severity</th>
+                        <th class="w-32 px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Timestamp</th>
+                        <th class="w-28 px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Severity</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Description / Rule</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Agent / Host</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Source / Type</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Actions</th>
+                        <th class="w-40 px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Agent / Host</th>
+                        <th class="w-32 px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Source / Type</th>
+                        <th class="w-24 px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Status</th>
+                        <th class="w-32 px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-primary/70">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200 dark:divide-primary/10">
                     {% for alert in alerts %}
-                    <tr class="hover:bg-slate-50/80 dark:hover:bg-primary/5 transition-colors group">
-                        <td class="px-6 py-5 whitespace-nowrap">
+                    <tr class="hover:bg-slate-50/80 dark:hover:bg-primary/5 transition-colors group {% if not alert.is_read %}bg-primary/5 border-l-2 border-primary{% endif %}">
+                        <td class="px-6 py-5 whitespace-nowrap overflow-hidden text-ellipsis">
                             <div class="flex flex-col">
                                 <span class="text-sm font-medium">{{ alert.timestamp.strftime('%Y-%m-%d') }}</span>
                                 <span class="text-xs text-slate-500 dark:text-slate-400">{{ alert.timestamp.strftime('%H:%M:%S') }}</span>
                             </div>
                         </td>
                         <td class="px-6 py-5">
-                            {% if alert.severity == 'HIGH' or alert.severity == 'CRITICAL' %}
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-severity-critical/10 text-severity-critical border border-severity-critical/20">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-severity-critical mr-2"></span>
-                                    {{ alert.severity }}
+                            {% if alert.severity|upper in ['HIGH', 'CRITICAL'] %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-severity-critical/10 text-severity-critical border border-severity-critical/20">
+                                <span class="w-1.5 h-1.5 rounded-full bg-severity-critical mr-2"></span>
+                                {{ alert.severity|upper }}
+                            </span>
+                        {% elif alert.severity|upper in ['MED', 'MEDIUM', 'WARNING'] %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-severity-warning/10 text-severity-warning border border-severity-warning/20">
+                                <span class="w-1.5 h-1.5 rounded-full bg-severity-warning mr-2"></span>
+                                {{ alert.severity|upper }}
+                            </span>
+                        {% else %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                                <span class="w-1.5 h-1.5 rounded-full bg-primary mr-2"></span>
+                                {{ alert.severity|upper }}
+                            </span>
+                        {% endif %}
+                        </td>
+                        <td class="px-6 py-5 min-w-[300px] max-w-[500px]">
+                            <div class="flex flex-col gap-1">
+                                <!-- Truncated bold title -->
+                                <span class="text-sm font-bold text-slate-800 dark:text-slate-200 block truncate" title="{{ alert.description }}">
+                                    {{ alert.description[:80] }}{% if alert.description|length > 80 %}...{% endif %}
                                 </span>
-                            {% elif alert.severity == 'MED' or alert.severity == 'WARNING' %}
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-severity-warning/10 text-severity-warning border border-severity-warning/20">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-severity-warning mr-2"></span>
-                                    {{ alert.severity }}
+                                <!-- Wrapped full description in smaller text -->
+                                <span class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed break-words whitespace-normal opacity-80" title="{{ alert.description }}">
+                                    {{ alert.description }}
+                                </span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5 overflow-hidden">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-slate-400 text-lg flex-shrink-0">terminal</span>
+                                <span class="text-sm font-mono text-slate-700 dark:text-slate-300 truncate" title="{{ alert.host }}">{{ alert.host }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5 overflow-hidden">
+                            {% if alert.source and alert.source.startswith('T') %}
+                                <span class="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg bg-violet-500/10 text-violet-300 border border-violet-500/20 truncate" title="{{ alert.source }}">
+                                    <span class="material-symbols-outlined text-[11px] flex-shrink-0">shield</span>{{ alert.source }}
                                 </span>
                             {% else %}
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-primary mr-2"></span>
-                                    {{ alert.severity }}
-                                </span>
+                                <span class="text-xs font-medium px-2 py-1 rounded-lg bg-slate-100 dark:bg-primary/10 border border-slate-200 dark:border-primary/20 truncate block" title="{{ alert.source }}">{{ alert.source }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-5 whitespace-nowrap">
+                            {% if not alert.is_read %}
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-primary text-white">NEW</span>
+                            {% else %}
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 dark:bg-primary/10 text-slate-500">SEEN</span>
                             {% endif %}
                         </td>
                         <td class="px-6 py-5">
-                            <div class="flex flex-col">
-                                <!-- Assuming rule name is part of description or we just show description -->
-                                <span class="text-sm font-bold text-slate-800 dark:text-slate-200">{{ alert.description[:50] }}{% if alert.description|length > 50 %}...{% endif %}</span>
-                                <span class="text-xs text-slate-500 dark:text-slate-400" title="{{ alert.description }}">{{ alert.description }}</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-5">
                             <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-slate-400 text-lg">terminal</span>
-                                <span class="text-sm font-mono text-slate-700 dark:text-slate-300">{{ alert.host }}</span>
+                                {% if not alert.is_read %}
+                                <button onclick="markAsRead('{{ alert.id }}')" class="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all" title="Mark as read">
+                                    <span class="material-symbols-outlined text-lg">done_all</span>
+                                </button>
+                                {% endif %}
+                                <a href="/alerts/{{ alert.id }}/investigation"
+                                    class="p-1.5 rounded-lg bg-slate-100 dark:bg-primary/5 text-slate-500 hover:text-primary hover:bg-primary/10 transition-all flex items-center gap-1 text-xs font-medium px-2.5"
+                                    title="Investigate alert #{{ alert.id }}">
+                                    <span class="material-symbols-outlined text-[16px]">manage_search</span>
+                                    Investigate
+                                </a>
                             </div>
-                        </td>
-                        <td class="px-6 py-5">
-                            <span class="text-xs font-medium px-2 py-1 rounded-lg bg-slate-100 dark:bg-primary/10 border border-slate-200 dark:border-primary/20">{{ alert.source }}</span>
-                        </td>
-                        <td class="px-6 py-5">
-                            <button class="text-primary hover:text-primary/80 transition-colors opacity-0 group-hover:opacity-100">
-                                <span class="material-symbols-outlined">visibility</span>
-                            </button>
                         </td>
                     </tr>
                     {% else %}
@@ -196,4 +267,48 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadAlertStats() {
+    try {
+        const res = await fetch('/api/alerts/stats');
+        const stats = await res.json();
+        const m = document.getElementById('banner-mitre');
+        const h = document.getElementById('banner-high');
+        if (m) {
+            if (stats.unread_mitre > 0) {
+                m.innerHTML = `${stats.mitre_detections} <span class="text-xs font-bold text-white bg-primary px-1.5 py-0.5 rounded ml-2">${stats.unread_mitre} NEW</span>`;
+            } else {
+                m.textContent = stats.mitre_detections ?? '-';
+            }
+        }
+        if (h) {
+            if (stats.unread_high > 0) {
+                h.innerHTML = `${stats.high_severity} <span class="text-xs font-bold text-white bg-amber-500 px-1.5 py-0.5 rounded ml-2">${stats.unread_high} NEW</span>`;
+            } else {
+                h.textContent = stats.high_severity ?? '-';
+            }
+        }
+    } catch(e) { console.error(e); }
+}
+
+async function markAllRead() {
+    if (!confirm("Are you sure you want to mark all alerts as read?")) return;
+    try {
+        await fetch('/api/alerts/mark-all-read', { method: 'POST' });
+        window.location.reload();
+    } catch(e) { console.error(e); }
+}
+
+async function markAsRead(id) {
+    try {
+        await fetch(`/api/alerts/${id}/read`, { method: 'PUT' });
+        window.location.reload();
+    } catch(e) { console.error(e); }
+}
+
+loadAlertStats();
+</script>
 {% endblock %}

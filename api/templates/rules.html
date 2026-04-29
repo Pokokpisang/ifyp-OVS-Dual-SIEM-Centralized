@@ -19,8 +19,7 @@
             <h3 class="text-2xl font-black text-slate-900 dark:text-slate-50">Rule Management</h3>
             <p class="text-slate-500 dark:text-slate-400 text-sm">Configure detection logic and monitor matching activity.</p>
         </div>
-        <!-- Note: the create rule button was not functional in old design, linking it to # for now -->
-        <a href="#" class="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg flex items-center gap-2 font-bold text-sm transition-all shadow-lg shadow-primary/20">
+        <a href="/rules/new" class="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg flex items-center gap-2 font-bold text-sm transition-all shadow-lg shadow-primary/20">
             <span class="material-symbols-outlined text-lg">add</span>
             Add Rule
         </a>
@@ -36,7 +35,8 @@
                         <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">MITRE Technique</th>
                         <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Severity</th>
                         <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Status</th>
-                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10 border-r border-slate-200 dark:border-primary/10">Scope</th>
+                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Scope</th>
+                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10 border-r border-slate-200 dark:border-primary/10">Type</th>
                         <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -64,8 +64,15 @@
                                 <div class="w-9 h-5 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
                             </label>
                         </td>
-                        <td class="px-6 py-5 text-sm text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-primary/10">
+                        <td class="px-6 py-5 text-sm text-slate-500 dark:text-slate-400">
                              {{ rule.log_type_scope }}
+                        </td>
+                        <td class="px-6 py-5 text-sm font-bold border-r border-slate-200 dark:border-primary/10">
+                            {% if rule.rule_type == 'agent' %}
+                            <span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] uppercase">Agent</span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20 text-[10px] uppercase">Server</span>
+                            {% endif %}
                         </td>
                         <td class="px-6 py-5 text-right">
                             <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

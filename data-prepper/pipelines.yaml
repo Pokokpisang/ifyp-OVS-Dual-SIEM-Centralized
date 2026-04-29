@@ -1,0 +1,32 @@
+siem-telemetry-pipeline:
+  source:
+    http:
+      port: 2021
+      path: "/log/ingest"
+  processor:
+    # - key_value:
+    #     source: "message"
+    #     include_when: '/log_type == "auditd"'
+    - rename_keys:
+        entries:
+          - from_key: "cmdline"
+            to_key: "command_line"
+          - from_key: "host"
+            to_key: "hostname"
+          - from_key: "user"
+            to_key: "username"
+          - from_key: "comm"
+            to_key: "command_name"
+          - from_key: "exe"
+            to_key: "executable_path"
+    # Convert timestamps to standard ISO8601 in @timestamp
+    # Actually, OpenSearch can parse standard ISO8601 natively if we just rename timestamp to @timestamp
+    - rename_keys:
+        entries:
+          - from_key: "timestamp"
+            to_key: "@timestamp"
+  sink:
+    - opensearch:
+        hosts: [ "http://opensearch:9200" ]
+        insecure: true
+        index: "siem-security-logs-%{yyyy.MM.dd}"

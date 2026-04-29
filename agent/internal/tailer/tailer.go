@@ -2,57 +2,82 @@ package tailer
 
 import (
 	"agent/internal/config"
-	"agent/internal/model"
 	"fmt"
 	"github.com/hpcloud/tail"
+	"io"
+	"log"
 	"os"
 	"time"
 )
 
 type Tailer struct {
-	cfg   *config.Config
-	lines chan model.LogEvent
+	cfg     *config.Config
+	path    string
+	logType string
 }
 
-func New(cfg *config.Config) *Tailer {
+func New(cfg *config.Config, path string, logType string) *Tailer {
 	return &Tailer{
-		cfg:   cfg,
-		lines: make(chan model.LogEvent),
+		cfg:     cfg,
+		path:    path,
+		logType: logType,
 	}
 }
 
-func (t *Tailer) Start() (<-chan model.LogEvent, error) {
-	// Create file if it doesn't exist for test purposes, or fail if strictly read mode
-	// But usually log file exists. If we are testing locally, maybe we need to create it.
-	if _, err := os.Stat(t.cfg.LogPath); os.IsNotExist(err) {
-		fmt.Printf("Log file %s does not exist, waiting for it...\n", t.cfg.LogPath)
+// Start runs the tailer loop. It is intended to be run in a goroutine.
+func (t *Tailer) Start(handler func(string)) {
+	for {
+		err := t.tailLoop(handler)
+		if err != nil {
+			log.Printf("[%s] Tailer error: %v", t.logType, err)
+		}
+		log.Printf("[%s] Tailer stopped for %s. Restarting in 5s...", t.logType, t.path)
+		time.Sleep(5 * time.Second)
 	}
+}
+
+func (t *Tailer) tailLoop(handler func(string)) error {
+	// 1. Setup SeekInfo - always from end for now to avoid massive backlogs
+	seek := &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}
 
 	tailConfig := tail.Config{
 		ReOpen:    true,
 		Follow:    true,
-		MustExist: false,
-		Poll:      true, // Polling is often safer on mounted volumes/Docker
+		MustExist: true,
+		Poll:      true,
+		Location:  seek,
 	}
 
-	tailFile, err := tail.TailFile(t.cfg.LogPath, tailConfig)
+	// Verify file existence before starting
+	if _, err := os.Stat(t.path); os.IsNotExist(err) {
+		return fmt.Errorf("file %s does not exist", t.path)
+	}
+
+	tf, err := tail.TailFile(t.path, tailConfig)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	go func() {
-		host, _ := os.Hostname()
-		for line := range tailFile.Lines {
-			event := model.LogEvent{
-				Timestamp: time.Now().UTC(),
-				Host:      host,
-				LogType:   t.cfg.LogType,
-				FilePath:  t.cfg.LogPath,
-				Message:   line.Text,
-			}
-			t.lines <- event
-		}
-	}()
+	// 2. Heartbeat Ticker
+	heartbeat := time.NewTicker(5 * time.Minute) // Reduced logging frequency
+	defer heartbeat.Stop()
 
-	return t.lines, nil
+	// 3. Line processing loop
+	log.Printf("[%s] Tailer active: %s", t.logType, t.path)
+
+	for {
+		select {
+		case line, ok := <-tf.Lines:
+			if !ok {
+				return fmt.Errorf("line channel closed")
+			}
+			if line.Err != nil {
+				return line.Err
+			}
+			handler(line.Text)
+
+		case <-heartbeat.C:
+			log.Printf("[%s] tailer alive: %s", t.logType, t.path)
+		}
+	}
 }
