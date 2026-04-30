@@ -35,13 +35,13 @@ def get_install_command(
     metrics_str = "true" if enable_metrics else "false"
 
     return (
-        f"curl -s {base}/install.sh | sudo bash -s -- \\\n"
-        f"  --token {token} \\\n"
-        f"  --server {base} \\\n"
-        f"  --name {name} \\\n"
-        f"  --logs {logs_str} \\\n"
-        f"  --fim {fim_str} \\\n"
-        f"  --metrics {metrics_str}"
+        f"curl -s {base}/install.sh | sudo bash -s -- "
+        f"--token {token} "
+        f"--server {base} "
+        f"--name {name} "
+        f"--logs {logs_str} "
+        f"--fim {fim_str} "
+        f"--metrics {metrics_str}"
     )
 
 
@@ -153,12 +153,61 @@ echo "========================================"
 echo ""
 
 # ---------------------------------------------------------------------------
+# Install Dependencies (Auditd, Rsyslog)
+# ---------------------------------------------------------------------------
+echo "[1/7] Checking for dependencies..."
+PKGS=""
+if ! command -v auditctl &>/dev/null; then PKGS="$PKGS auditd"; fi
+if [[ ! -f /var/log/syslog && ! -f /var/log/messages ]]; then
+  if ! command -v rsyslogd &>/dev/null; then PKGS="$PKGS rsyslog"; fi
+fi
+
+if [[ -n "$PKGS" ]]; then
+  echo "    Installing missing packages: $PKGS"
+  if command -v apt-get &>/dev/null; then
+    apt-get update -qq && apt-get install -y $PKGS -qq
+  elif command -v yum &>/dev/null; then
+    yum install -y $PKGS -q
+  else
+    echo "Warning: Could not detect package manager to install dependencies. Please install $PKGS manually."
+  fi
+fi
+
+# Ensure services are enabled and running
+if command -v systemctl &>/dev/null; then
+  systemctl enable auditd 2>/dev/null || true
+  if command -v rsyslogd &>/dev/null; then
+    systemctl enable rsyslog 2>/dev/null || true
+    systemctl start rsyslog 2>/dev/null || true
+  fi
+fi
+
+# Configure Auditd rules for execution logging (Required for T1059 detection)
+echo "    Configuring auditd rules for process execution logging..."
+mkdir -p /etc/audit/rules.d
+cat > /etc/audit/rules.d/ovs-siem.rules <<EOF
+-D
+-b 8192
+-f 1
+--backlog_wait_time 60000
+-a exit,always -F arch=b64 -S execve -k T1059
+-a exit,always -F arch=b32 -S execve -k T1059
+EOF
+
+if command -v augenrules &>/dev/null; then
+  augenrules --load
+else
+  service auditd restart || systemctl restart auditd || true
+fi
+echo "    Auditd configured successfully."
+
+# ---------------------------------------------------------------------------
 # Download agent binary (skip if already installed)
 # ---------------------------------------------------------------------------
 if [[ -f "$AGENT_BIN" ]]; then
-  echo "[1/6] Agent binary already present at $AGENT_BIN — skipping download."
+  echo "[2/7] Agent binary already present at $AGENT_BIN — skipping download."
 else
-  echo "[1/6] Downloading agent binary..."
+  echo "[2/7] Downloading agent binary..."
   DOWNLOAD_URL="$SERVER/downloads/ovs-agent-linux-amd64"
   curl -fSL --progress-bar -o "$AGENT_BIN" "$DOWNLOAD_URL" || {{
     echo "Error: Failed to download agent binary from $DOWNLOAD_URL" >&2
@@ -172,7 +221,7 @@ echo "    Binary ready: $AGENT_BIN"
 # ---------------------------------------------------------------------------
 # Write configuration
 # ---------------------------------------------------------------------------
-echo "[2/6] Writing configuration..."
+echo "[3/7] Writing configuration..."
 mkdir -p "$AGENT_CONF_DIR"
 cat > "$AGENT_CONF" <<EOF
 server_url: "$SERVER"
@@ -191,7 +240,7 @@ echo "    Config written: $AGENT_CONF"
 # ---------------------------------------------------------------------------
 # Register with SIEM server
 # ---------------------------------------------------------------------------
-echo "[3/6] Registering agent with SIEM server..."
+echo "[4/7] Registering agent with SIEM server..."
 REGISTER_URL="$SERVER/api/agents/register"
 
 RESPONSE=$(curl -sf -X POST "$REGISTER_URL" \\
@@ -223,7 +272,7 @@ echo "    Registration successful. Agent key saved."
 # ---------------------------------------------------------------------------
 # Create systemd service
 # ---------------------------------------------------------------------------
-echo "[4/6] Creating systemd service..."
+echo "[5/7] Creating systemd service..."
 cat > "$SERVICE_FILE" <<EOF
 [Unit]
 Description=OVS SIEM Monitoring Agent
@@ -247,14 +296,14 @@ echo "    Service file written: $SERVICE_FILE"
 # ---------------------------------------------------------------------------
 # Enable and start service
 # ---------------------------------------------------------------------------
-echo "[5/6] Enabling and starting ovs-agent service..."
+echo "[6/7] Enabling and starting ovs-agent service..."
 systemctl daemon-reload
 systemctl enable --now ovs-agent
 
 # ---------------------------------------------------------------------------
 # Verify
 # ---------------------------------------------------------------------------
-echo "[6/6] Verifying service status..."
+echo "[7/7] Verifying service status..."
 sleep 2
 if systemctl is-active --quiet ovs-agent; then
   echo ""

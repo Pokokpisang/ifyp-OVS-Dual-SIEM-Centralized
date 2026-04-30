@@ -6,7 +6,8 @@ from .. import models, db
 from typing import List, Literal, Optional
 from datetime import datetime, timedelta
 import re
-from ..services.agent_service import update_last_seen
+import json
+from ..services.agent_service import update_last_seen, get_agent_metadata_by_key
 
 router = APIRouter(prefix="/api")
 
@@ -31,8 +32,10 @@ def ingest_metric(
     x_agent_key: Optional[str] = Header(None, alias="X-Agent-Key")
 ):
     # 0. Update Last Seen if key provided
+    agent_meta = None
     if x_agent_key:
         update_last_seen(agent_key=x_agent_key, db=db)
+        agent_meta = get_agent_metadata_by_key(agent_key=x_agent_key, db=db)
 
     db_metric = models.Metric(
         timestamp=metric.timestamp,
@@ -45,38 +48,76 @@ def ingest_metric(
     db.add(db_metric)
     db.commit()
     
-    # --- Simple Alert Rule: High CPU ---
-    # Check last 3 samples (including this one)
-    if metric.cpu_percent > 85:
-        # Fetch last 2 from DB
-        recent = db.query(models.Metric).filter(
-            models.Metric.host == metric.host
-        ).order_by(desc(models.Metric.timestamp)).limit(2).all()
-        
-        consecutive_high = 1
-        for m in recent:
-            if float(m.cpu_percent) > 85:
-                consecutive_high += 1
-        
-        if consecutive_high >= 3:
-             # Check if we already alerted recently to avoid spam (dedupe 1 min)
-             recent_alert = db.query(models.Alert).filter(
-                 models.Alert.host == metric.host,
-                 models.Alert.source == "CPU_HIGH",
-                 models.Alert.timestamp > datetime.utcnow() - timedelta(minutes=1)
-             ).first()
-             
-             if not recent_alert:
-                 alert = models.Alert(
-                     timestamp=datetime.utcnow(),
-                     host=metric.host,
-                     severity="HIGH",
-                     title="High CPU Load",
-                     description=f"CPU usage > 85% for 3 samples (Current: {metric.cpu_percent}%)",
-                     source="CPU_HIGH"
-                 )
-                 db.add(alert)
-                 db.commit()
+    # --- System Health Rules Alerting ---
+    health_rules = db.query(models.SystemHealthRule).filter(models.SystemHealthRule.enabled == True).all()
+    
+    for rule in health_rules:
+        # 1. Determine observed value
+        observed_value = 0.0
+        unit = "%"
+        if rule.metric_name == "cpu":
+            observed_value = float(metric.cpu_percent)
+        elif rule.metric_name == "ram":
+            observed_value = float(metric.ram_percent)
+        elif rule.metric_name == "net_in":
+            # For network, we might need to calculate rate, but user suggested thresholds > 100MB/s
+            # We'll use the raw value for now or calculate rate if possible.
+            # Given the requirement "threshold display 100MB/s", let's try to get the rate.
+            summary = get_metrics_summary(host=metric.host, db=db)
+            observed_value = summary.get("net_in_rate", 0.0)
+            unit = "B/s"
+        elif rule.metric_name == "net_out":
+            summary = get_metrics_summary(host=metric.host, db=db)
+            observed_value = summary.get("net_out_rate", 0.0)
+            unit = "B/s"
+            
+        # 2. Check threshold
+        is_triggered = False
+        if rule.operator == ">":
+            is_triggered = observed_value > rule.threshold_value
+        elif rule.operator == "<":
+            is_triggered = observed_value < rule.threshold_value
+            
+        if is_triggered:
+            # 3. Check Cooldown (5 minutes)
+            cooldown_period = datetime.utcnow() - timedelta(minutes=5)
+            recent_alert = db.query(models.Alert).filter(
+                models.Alert.host == metric.host,
+                models.Alert.rule_id == rule.rule_id,
+                models.Alert.timestamp > cooldown_period
+            ).first()
+            
+            if not recent_alert:
+                # 4. Create Alert
+                metadata = {
+                    "engine": rule.detection_engine,
+                    "metric": rule.metric_name,
+                    "threshold": rule.threshold_value,
+                    "observed_value": round(observed_value, 2),
+                    "unit": unit
+                }
+                
+                alert = models.Alert(
+                    timestamp=datetime.utcnow(),
+                    host=metric.host,
+                    severity=rule.severity,
+                    title=rule.rule_name,
+                    description=f"{rule.rule_name}: {rule.metric_name} {rule.operator} {rule.threshold_value}{unit} (Observed: {round(observed_value, 2)}{unit})",
+                    source=None, # Not MITRE
+                    agent_id=agent_meta["agent_id"] if agent_meta else None,
+                    rule_id=rule.rule_id,
+                    rule_name=rule.rule_name,
+                    risk_score=20,
+                    mitre_tactic=None,
+                    mitre_technique=None,
+                    detection_engine=rule.detection_engine,
+                    detection_metadata=json.dumps(metadata)
+                )
+                db.add(alert)
+                
+                # Update last_triggered
+                rule.last_triggered = datetime.utcnow()
+                db.commit()
 
     return {"status": "ok"}
 
@@ -381,9 +422,17 @@ def get_investigation_data(alert_id: int, db: Session = Depends(db.get_db)):
             "description": alert_desc,
             "source": source,
             "is_read": alert.is_read,
+            # v2.0.0 Fields
+            "rule_id": alert.rule_id,
+            "rule_name": alert.rule_name,
+            "risk_score": alert.risk_score,
+            "mitre_tactic": alert.mitre_tactic,
+            "mitre_technique": alert.mitre_technique,
+            "detection_engine": alert.detection_engine,
+            "detection_metadata": json.loads(alert.detection_metadata) if alert.detection_metadata else {},
         },
-        "rule_name": rule_name,
-        "mitre_technique": mitre_technique,
+        "rule_name": alert.rule_name or rule_name,
+        "mitre_technique": alert.mitre_technique or mitre_technique,
         "source_ip": source_ip,
         "assessment": {
             "status": assessment.status if assessment else "New",

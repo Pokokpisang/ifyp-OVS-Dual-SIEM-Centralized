@@ -67,10 +67,11 @@ func (s *Sender) post(endpoint string, data interface{}) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("server returned %d", resp.StatusCode)
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		// fmt.Printf("[sender] Successfully sent to %s\n", endpoint)
+		return nil
 	}
-	return nil
+	return fmt.Errorf("server returned %d", resp.StatusCode)
 }
 
 func (s *Sender) DrainQueue() {

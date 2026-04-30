@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -98,6 +99,14 @@ func main() {
 				
 				t := tailer.New(cfg, p, lt) 
 				t.Start(func(msg string) {
+					// 1. Filter out circular logging (agent seeing its own logs in syslog)
+					if (lt == "syslog" || lt == "auth") && (
+						// Contains agent name or common identifier
+						strings.Contains(msg, "ovs-agent") || 
+						strings.Contains(msg, "agent_queue.jsonl")) {
+						return
+					}
+
 					event := model.LogEvent{
 						Timestamp: time.Now().UTC(),
 						Host:      host,

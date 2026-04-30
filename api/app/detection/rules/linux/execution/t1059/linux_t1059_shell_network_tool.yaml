@@ -7,8 +7,8 @@ platform:
 log_source:
   product: linux
   service: auditd
-severity: medium
-risk_score: 47
+severity: high
+risk_score: 67
 mitre:
   tactic:
     id: TA0002
@@ -27,7 +27,6 @@ tags:
 required_fields:
   - process.name
   - process.command_line
-  - process.parent.name
   - user.name
   - host.name
 condition:
@@ -48,19 +47,41 @@ condition:
         - ncat
         - socat
         - openssl
+    - field: process.command_line
+      operator: contains_any
+      value:
+        - "| bash"
+        - "| sh"
+        - "| /bin/bash"
+        - "| /bin/sh"
+        - "bash -c"
+        - "sh -c"
+        - "bash <"
+        - "sh <"
 risk_adjustment:
   increase_if:
     - field: process.command_line
       operator: contains_any
       value:
-        - "| sh"
-        - "| bash"
         - "/tmp/"
         - "/dev/shm/"
         - "chmod"
         - "base64"
       add_score: 20
-      reason: Shell command contains high-risk execution indicators
+      reason: Shell command contains secondary high-risk indicators
+    - field: process.parent.name
+      operator: in
+      value:
+        - nginx
+        - apache
+        - apache2
+        - httpd
+        - php-fpm
+        - python
+        - python3
+        - perl
+      add_score: 20
+      reason: Shell spawned by suspicious parent process (web server or interpreter)
   decrease_if:
     - field: process.parent.name
       operator: in

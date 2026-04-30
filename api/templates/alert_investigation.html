@@ -101,8 +101,8 @@
                         <p id="det-host" class="text-sm font-medium">—</p>
                     </div>
                     <div>
-                        <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Source IP</p>
-                        <p id="det-ip" class="text-sm font-medium font-mono">—</p>
+                        <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Detection Engine</p>
+                        <div id="det-engine-badge">—</div>
                     </div>
                     <div>
                         <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Timestamp</p>
@@ -111,6 +111,68 @@
                     <div class="col-span-2 md:col-span-3">
                         <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Description</p>
                         <p id="det-desc" class="text-sm text-slate-300 break-words">—</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Card: Detection Details (YAML Metadata) -->
+            <section id="yaml-metadata-section" class="hidden bg-violet-500/5 border border-violet-500/20 rounded-xl p-6">
+                <h4 class="text-sm font-bold text-violet-400 mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">analytics</span>Detection Metadata
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Risk Score Gauge -->
+                    <div class="flex flex-col items-center justify-center p-4 bg-background-dark/50 rounded-xl border border-white/5">
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Risk Confidence</p>
+                        <div class="relative flex items-center justify-center">
+                            <svg class="w-32 h-32 transform -rotate-90">
+                                <circle cx="64" cy="64" r="58" stroke="currentColor" stroke-width="8" fill="transparent" class="text-slate-800" />
+                                <circle id="risk-gauge-circle" cx="64" cy="64" r="58" stroke="currentColor" stroke-width="8" fill="transparent" 
+                                    stroke-dasharray="364.4" stroke-dashoffset="364.4"
+                                    class="text-primary transition-all duration-1000" />
+                            </svg>
+                            <div class="absolute flex flex-col items-center justify-center">
+                                <span id="risk-val" class="text-3xl font-black text-white">—</span>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase">SCORE</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MITRE & Rule Info -->
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">MITRE ATT&CK</p>
+                            <div class="space-y-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-bold text-slate-500">Tactic:</span>
+                                    <span id="meta-tactic" class="text-xs font-medium text-slate-200">—</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-bold text-slate-500">Technique:</span>
+                                    <span id="meta-technique" class="text-xs font-bold text-primary">—</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-[10px] uppercase font-bold mb-1">Rule ID</p>
+                            <p id="meta-rule-id" class="text-xs font-mono text-slate-300 bg-black/30 px-2 py-1 rounded border border-white/5">—</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Match Reasons List -->
+                <div class="mt-8 space-y-4">
+                    <div>
+                        <p class="text-slate-400 text-[10px] uppercase font-bold mb-2">Analysis Findings</p>
+                        <ul id="match-reasons-list" class="space-y-2">
+                            <!-- filled by JS -->
+                        </ul>
+                    </div>
+                    <div id="adj-reasons-container" class="hidden">
+                        <p class="text-slate-400 text-[10px] uppercase font-bold mb-2">Risk Adjustments</p>
+                        <ul id="adj-reasons-list" class="space-y-2">
+                            <!-- filled by JS -->
+                        </ul>
                     </div>
                 </div>
             </section>
@@ -323,9 +385,145 @@ async function loadInvestigation() {
         document.getElementById('det-rule').textContent = d.rule_name || '—';
         document.getElementById('det-mitre').textContent = d.mitre_technique || '—';
         document.getElementById('det-host').textContent = d.alert.host || '—';
-        document.getElementById('det-ip').textContent = d.source_ip || 'Not available';
         document.getElementById('det-ts').textContent = d.alert.timestamp || '—';
         document.getElementById('det-desc').textContent = d.alert.description || 'No description available.';
+
+        // Engine Badge
+        const engineEl = document.getElementById('det-engine-badge');
+        if (d.alert.detection_engine === 'YAML') {
+            engineEl.innerHTML = `
+                <span class="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                    <span class="material-symbols-outlined text-[12px]">code</span>YAMLDetectionEngine
+                </span>`;
+        } else if (d.alert.detection_engine === 'CorrelationEngine') {
+            engineEl.innerHTML = `
+                <span class="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <span class="material-symbols-outlined text-[12px]">device_hub</span>CorrelationEngine
+                </span>`;
+        } else {
+            engineEl.innerHTML = `
+                <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-slate-500/10 text-slate-400 border border-slate-500/20">
+                    <span class="material-symbols-outlined text-[12px]">history</span>Legacy RuleEngine
+                </span>`;
+        }
+
+        // YAML Metadata
+        if (d.alert.detection_engine === 'YAML' && d.alert.detection_metadata) {
+            document.getElementById('yaml-metadata-section').classList.remove('hidden');
+            const meta = d.alert.detection_metadata;
+            
+            // Risk Gauge
+            const risk = d.alert.risk_score || 0;
+            document.getElementById('risk-val').textContent = risk;
+            const circle = document.getElementById('risk-gauge-circle');
+            const circumference = 364.4; // 2 * PI * 58
+            const offset = circumference - (risk / 100) * circumference;
+            circle.style.strokeDashoffset = offset;
+            
+            if (risk >= 80) circle.classList.replace('text-primary', 'text-severity-critical');
+            else if (risk >= 50) circle.classList.replace('text-primary', 'text-amber-400');
+            else circle.classList.replace('text-primary', 'text-emerald-400');
+
+            // MITRE
+            document.getElementById('meta-tactic').textContent = d.alert.mitre_tactic || '—';
+            document.getElementById('meta-technique').textContent = d.alert.mitre_technique || '—';
+            document.getElementById('meta-rule-id').textContent = d.alert.rule_id || '—';
+
+            // Match Reasons
+            const reasonsList = document.getElementById('match-reasons-list');
+            reasonsList.innerHTML = '';
+            (meta.match_reasons || []).forEach(r => {
+                reasonsList.innerHTML += `
+                    <li class="flex items-start gap-2 text-[11px] text-slate-300">
+                        <span class="material-symbols-outlined text-emerald-400 text-[14px] mt-0.5">check_circle</span>
+                        ${r}
+                    </li>`;
+            });
+
+            // Adjustments
+            const adjContainer = document.getElementById('adj-reasons-container');
+            const adjList = document.getElementById('adj-reasons-list');
+            if (meta.adjustment_reasons && meta.adjustment_reasons.length > 0) {
+                adjContainer.classList.remove('hidden');
+                adjList.innerHTML = '';
+                meta.adjustment_reasons.forEach(r => {
+                    adjList.innerHTML += `
+                        <li class="flex items-start gap-2 text-[11px] text-slate-300">
+                            <span class="material-symbols-outlined text-amber-400 text-[14px] mt-0.5">trending_up</span>
+                            ${r}
+                        </li>`;
+                });
+            } else {
+                adjContainer.classList.add('hidden');
+            }
+        } else if (d.alert.detection_engine === 'CorrelationEngine' && d.alert.detection_metadata) {
+            // Render correlation evidence inside the shared metadata section
+            document.getElementById('yaml-metadata-section').classList.remove('hidden');
+            const meta = d.alert.detection_metadata;
+
+            // Risk Gauge
+            const risk = d.alert.risk_score || 0;
+            document.getElementById('risk-val').textContent = risk;
+            const circle = document.getElementById('risk-gauge-circle');
+            const circumference = 364.4;
+            const offset = circumference - (risk / 100) * circumference;
+            circle.style.strokeDashoffset = offset;
+            // Amber colour for correlation alerts
+            ['text-primary', 'text-severity-critical', 'text-emerald-400'].forEach(c => circle.classList.remove(c));
+            circle.classList.add('text-amber-400');
+
+            // MITRE info
+            document.getElementById('meta-tactic').textContent = d.alert.mitre_tactic || '—';
+            document.getElementById('meta-technique').textContent = d.alert.mitre_technique || '—';
+            document.getElementById('meta-rule-id').textContent = d.alert.rule_id || '—';
+
+            // Correlation evidence as findings
+            const reasonsList = document.getElementById('match-reasons-list');
+            reasonsList.innerHTML = '';
+            const corrReasons = [
+                meta.first_event_process  ? `Download event \u2014 [${meta.first_event_process}] ${(meta.first_event_command || '').substring(0, 120)}` : null,
+                meta.second_event_process ? `Shell event \u2014 [${meta.second_event_process}] ${(meta.second_event_command || '').substring(0, 120)}` : null,
+                meta.time_delta_seconds !== undefined ? `Time delta: ${meta.time_delta_seconds}s (window: ${meta.correlation_window_seconds || 10}s)` : null,
+                meta.source_url ? `Source URL: ${meta.source_url}` : null,
+                meta.reason ? `Reason: ${meta.reason}` : null,
+            ].filter(Boolean);
+            
+            // Add supporting evidence if present
+            if (meta.supporting_evidence && meta.supporting_evidence.length > 0) {
+                meta.supporting_evidence.forEach(ev => {
+                    corrReasons.push(`Supporting evidence \u2014 [${ev.process}] ${ev.command} (at ${ev.delta})`);
+                });
+            }
+
+            corrReasons.forEach(r => {
+                reasonsList.innerHTML += `
+                    <li class="flex items-start gap-2 text-[11px] text-slate-300">
+                        <span class="material-symbols-outlined text-amber-400 text-[14px] mt-0.5">device_hub</span>
+                        ${r}
+                    </li>`;
+            });
+
+            // Optional correlated keys (user, tty, session, cwd)
+            const adjContainer = document.getElementById('adj-reasons-container');
+            const adjList = document.getElementById('adj-reasons-list');
+            const optKeys = meta.optional_keys || {};
+            const optEntries = Object.entries(optKeys);
+            if (optEntries.length > 0) {
+                adjContainer.classList.remove('hidden');
+                adjList.innerHTML = '';
+                optEntries.forEach(([k, v]) => {
+                    adjList.innerHTML += `
+                        <li class="flex items-start gap-2 text-[11px] text-slate-300">
+                            <span class="material-symbols-outlined text-sky-400 text-[14px] mt-0.5">link</span>
+                            Correlated key &mdash; ${k}: <span class="font-mono ml-1">${v}</span>
+                        </li>`;
+                });
+            } else {
+                adjContainer.classList.add('hidden');
+            }
+        } else {
+            document.getElementById('yaml-metadata-section').classList.add('hidden');
+        }
 
         // Assessment
         currentStatus = d.assessment.status || 'New';

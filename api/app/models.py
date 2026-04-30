@@ -13,6 +13,7 @@ class Log(Base):
     file_path = Column(String)
     message = Column(Text)
     local_flag = Column(Boolean, default=False)
+    agent_id = Column(String, index=True, nullable=True)
     agent_rule_id = Column(Integer, nullable=True)
     local_rule_version = Column(Integer, nullable=True)
 
@@ -36,8 +37,18 @@ class Alert(Base):
     severity = Column(String) # HIGH, MED, LOW
     title = Column(String)
     description = Column(Text)
-    source = Column(String) # Rule name
+    source = Column(String) # MITRE technique ID or legacy source
     is_read = Column(Boolean, default=False)
+
+    # v2.0.0 Generic Metadata Fields
+    agent_id = Column(String, index=True, nullable=True)
+    rule_id = Column(String, index=True, nullable=True)
+    rule_name = Column(String, nullable=True)
+    risk_score = Column(Integer, default=0)
+    mitre_tactic = Column(String, nullable=True)
+    mitre_technique = Column(String, nullable=True)
+    detection_engine = Column(String, default="LEGACY") # YAML, LEGACY
+    detection_metadata = Column(Text, nullable=True) # JSON match reasons/details
 
 class DetectionRule(Base):
     __tablename__ = "detection_rules"
@@ -125,6 +136,22 @@ class AgentRecord(Base):
     last_seen = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class SystemHealthRule(Base):
+    __tablename__ = "system_health_rules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    rule_id = Column(String, unique=True, index=True)
+    rule_name = Column(String)
+    metric_name = Column(String) # cpu, ram, net_in, net_out
+    threshold_value = Column(Float)
+    operator = Column(String, default=">")
+    severity = Column(String, default="MEDIUM")
+    enabled = Column(Boolean, default=True)
+    detection_engine = Column(String, default="MetricEngine")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_triggered = Column(DateTime, nullable=True)
+
 
 # Pydantic Models
 
@@ -159,3 +186,25 @@ class LogOut(LogCreate):
 
     class Config:
         from_attributes = True
+
+class SystemHealthRuleBase(BaseModel):
+    rule_id: str
+    rule_name: str
+    metric_name: str
+    threshold_value: float
+    operator: str
+    severity: str
+    enabled: bool
+
+class SystemHealthRuleOut(SystemHealthRuleBase):
+    id: int
+    detection_engine: str
+    last_triggered: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+class SystemHealthRuleUpdate(BaseModel):
+    enabled: bool | None = None
+    threshold_value: float | None = None
+    severity: str | None = None

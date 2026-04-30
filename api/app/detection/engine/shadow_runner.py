@@ -14,15 +14,20 @@ logger.setLevel(logging.INFO)
 class ShadowDetectionRunner:
     def __init__(self, engine: YAMLDetectionEngine = None):
         self.engine = engine or YAMLDetectionEngine()
-        self.enabled = os.getenv("YAML_DETECTION_SHADOW_MODE", "false").lower() == "true"
+        
+        # Respect both the legacy flag and the new system mode
+        mode = os.getenv("DETECTION_ENGINE_MODE", "YAML").upper()
+        legacy_shadow = os.getenv("YAML_DETECTION_SHADOW_MODE", "false").lower() == "true"
+        
+        self.enabled = (mode == "SHADOW") or legacy_shadow
         self.include_suppressed = os.getenv("YAML_DETECTION_INCLUDE_SUPPRESSED", "true").lower() == "true"
         self.return_unmatched = os.getenv("YAML_DETECTION_RETURN_UNMATCHED", "false").lower() == "true"
         
         if self.enabled:
-            print(f"[*] ShadowDetectionRunner initialized (ENABLED=true, include_suppressed={self.include_suppressed})")
+            print(f"[*] ShadowDetectionRunner initialized (ENABLED=true, mode={mode}, include_suppressed={self.include_suppressed})")
         else:
             # Add a one-time print if initialized but disabled to help debugging
-            print("[!] ShadowDetectionRunner initialized (DISABLED)")
+            print(f"[!] ShadowDetectionRunner initialized (DISABLED, mode={mode})")
 
     def run(self, normalized_event: Dict[str, Any]):
         """
