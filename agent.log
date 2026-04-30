@@ -1,0 +1,335 @@
+========================================
+       FYP SIEM AGENT STARTED
+========================================
+Detected OS   : ubuntu
+Agent Name    : ovs-agent
+Server URL    : http://localhost:8000
+Logs Enabled  : true
+Metrics Enabled: true
+FIM Enabled    : false
+========================================
+Using Log Paths:
+  - Auth   : /var/log/syslog
+  - Syslog : /var/log/syslog
+  - Auditd : /var/log/audit/audit.log
+Starting heartbeat loop (60s interval)...
+Failed to send to /api/agents/heartbeat: Post "http://localhost:8000/api/agents/heartbeat": read tcp 127.0.0.1:45794->127.0.0.1:8000: read: connection reset by peer
+Failed to fetch agent rules: Get "http://localhost:8000/api/agent/rules": EOF
+[auth] Starting tailer for /var/log/syslog
+2026/04/30 15:20:01 [auth] Tailer active: /var/log/syslog
+2026/04/30 15:20:01 Seeked /var/log/syslog - &{Offset:0 Whence:2}
+Starting metrics collector (5s interval)...
+[syslog] Starting tailer for /var/log/syslog
+2026/04/30 15:20:01 [syslog] Tailer active: /var/log/syslog
+2026/04/30 15:20:01 Seeked /var/log/syslog - &{Offset:0 Whence:2}
+[auditd] Starting tailer for /var/log/audit/audit.log
+2026/04/30 15:20:01 [auditd] Tailer active: /var/log/audit/audit.log
+2026/04/30 15:20:01 Seeked /var/log/audit/audit.log - &{Offset:0 Whence:2}
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:02 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44846->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:02 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44846->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44858->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:02 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44858->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:02 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:02 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:02 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44886->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:02 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44886->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44892->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:02 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44892->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44896->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:02 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44896->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44898->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:02 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44898->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44900->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:02 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44900->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:02 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44932->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44932->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44952->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44952->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44954->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44954->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44996->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:44996->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45002->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45002->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45022->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45022->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45034->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45034->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45048->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45048->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45068->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45068->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45094->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45094->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45116->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45116->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45130->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45130->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45146->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45146->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45162->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45162->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45192->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45192->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45218->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45218->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45224->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45224->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:03 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": http: server closed idle connection
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": http: server closed idle connection
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": http: server closed idle connection
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": http: server closed idle connection
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45296->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45296->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45344->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45344->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45350->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45350->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45354->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45354->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45440->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45440->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45458->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45458->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45526->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45526->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45570->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45570->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45624->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45624->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45630->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45630->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45640->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45640->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45642->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45642->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45704->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45704->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45722->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45722->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45730->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45730->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45740->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45740->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45756->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45756->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45834->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45834->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45896->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45896->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45920->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:45920->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46008->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46008->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": http: server closed idle connection
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": http: server closed idle connection
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46032->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46032->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": http: server closed idle connection
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": http: server closed idle connection
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46076->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46076->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46130->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46130->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46140->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46140->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46162->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46162->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46180->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46180->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46192->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46192->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46204->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46204->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46220->127.0.0.1:8000: read: connection reset by peer
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": read tcp 127.0.0.1:46220->127.0.0.1:8000: read: connection reset by peer
+Failed to send to /ingest/log: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:20:04 [auditd] Error sending: Post "http://localhost:8000/ingest/log": EOF
+2026/04/30 15:21:01 [heartbeat] Error: server returned 422
+2026/04/30 15:22:01 [heartbeat] Error: server returned 422
+2026/04/30 15:23:01 [heartbeat] Error: server returned 422
+2026/04/30 15:24:01 [heartbeat] Error: server returned 422
+2026/04/30 15:25:01 [auth] tailer alive: /var/log/syslog
+2026/04/30 15:25:01 [syslog] tailer alive: /var/log/syslog
+2026/04/30 15:25:01 [heartbeat] Error: server returned 422
+2026/04/30 15:25:01 [auditd] tailer alive: /var/log/audit/audit.log
