@@ -487,6 +487,14 @@ async function loadInvestigation() {
                 meta.source_url ? `Source URL: ${meta.source_url}` : null,
                 meta.reason ? `Reason: ${meta.reason}` : null,
             ].filter(Boolean);
+            
+            // Add supporting evidence if present
+            if (meta.supporting_evidence && meta.supporting_evidence.length > 0) {
+                meta.supporting_evidence.forEach(ev => {
+                    corrReasons.push(`Supporting evidence \u2014 [${ev.process}] ${ev.command} (at ${ev.delta})`);
+                });
+            }
+
             corrReasons.forEach(r => {
                 reasonsList.innerHTML += `
                     <li class="flex items-start gap-2 text-[11px] text-slate-300">

@@ -148,6 +148,7 @@ class ActiveDetectionRunner:
             "correlation_window_seconds": match.correlation_window_seconds,
             "reason": match.reason,
             "source_url": match.source_url,
+            "supporting_evidence": match.supporting_evidence,
             "optional_keys": match.optional_keys,
         }
 

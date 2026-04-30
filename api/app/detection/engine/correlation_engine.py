@@ -112,6 +112,7 @@ class CorrelationMatch:
     correlation_window_seconds: int = CORRELATION_WINDOW_SECONDS
     reason: str = ""
     source_url: str = ""                      # URL extracted from Event A (for dedup)
+    supporting_evidence: List[Dict[str, str]] = field(default_factory=list)
     optional_keys: Dict[str, str] = field(default_factory=dict)
 
 
@@ -280,6 +281,9 @@ def _is_event_b(process_name: str, command_line: str) -> bool:
     Restricted to core shell processes only.
     """
     name_lower = process_name.lower()
+    if name_lower in _DOWNLOAD_TOOLS:
+        return False
+
     if name_lower in _SHELL_PROCESSES:
         return True
 
@@ -337,12 +341,9 @@ class CorrelationEngine:
     Stateless evaluator that uses the shared ProcessEventBuffer to detect
     the download-then-shell pattern.
 
-    Usage::
-
-        engine = CorrelationEngine(get_process_event_buffer(), get_dedup_cache())
-        match = engine.evaluate(normalized_event)
-        if match:
-            create_alert(match)
+    Order-insensitive:
+    - If current event is B (shell), scan recent for A (download).
+    - If current event is A (download), scan recent for B (shell).
     """
 
     def __init__(
@@ -354,28 +355,31 @@ class CorrelationEngine:
         self._buffer = buffer
         self._dedup = dedup
         self._window = window_seconds
+        logger.info(f"[CORRELATION] Engine initialized. enabled={ENABLE_CORRELATION_ENGINE} window={self._window}s")
 
     # ------------------------------------------------------------------
     def evaluate(self, event: Dict[str, Any]) -> Optional[CorrelationMatch]:
         """
         1. Extract process fields from the normalised event.
         2. Push a buffered snapshot.
-        3. If this event is Event B, scan recent buffer for a matching Event A.
-        4. Return CorrelationMatch on hit, None otherwise.
+        3. Determine if current event is A or B.
+        4. Scan buffer for the opposite event from same agent within window.
         """
         agent_id = event.get("agent_id", "")
         if not agent_id:
-            return None  # Cannot correlate without agent identity
+            return None
 
         process_name = _get(event, "process", "name")
         command_line  = _get(event, "process", "command_line")
 
         if not process_name:
-            return None  # Non-process events skipped
+            return None
+
+        logger.debug(f"[CORRELATION] Received event: agent={agent_id} proc={process_name} cmd={command_line[:100]}...")
 
         opt_keys = _optional_keys(event)
 
-        # --- Push this event to the buffer (always, before checking) ---
+        # --- Push this event to the buffer ---
         buffered = BufferedProcessEvent(
             agent_id=agent_id,
             timestamp=time.time(),
@@ -388,84 +392,101 @@ class CorrelationEngine:
         )
         self._buffer.push(buffered)
 
-        # --- Check if this is Event B ---
-        if not _is_event_b(process_name, command_line):
+        # --- Classification ---
+        is_a, url = _is_event_a(process_name, command_line)
+        is_b = _is_event_b(process_name, command_line)
+
+        if not is_a and not is_b:
+            logger.debug(f"[CORRELATION] Classified type=NONE for proc={process_name}")
             return None
 
-        # --- Scan buffer for a preceding Event A ---
+        event_type = "A" if is_a else "B"
+        logger.info(f"[CORRELATION] Classified type={event_type} for proc={process_name} agent={agent_id}")
+
+        # --- Scan buffer for a preceding matching opposite event ---
         now = time.time()
         recent_events = self._buffer.get_recent(agent_id)
-
+        logger.debug(f"[CORRELATION] Buffer size for agent={agent_id}: {len(recent_events)}")
         for candidate in reversed(recent_events):
-            # Skip self (same timestamp rounded; use identity check)
             if candidate is buffered:
                 continue
 
-            # Time window check
-            delta = now - candidate.timestamp
+            delta = abs(now - candidate.timestamp)
+            logger.debug(f"[CORRELATION] Checking candidate: proc={candidate.process_name} delta={delta:.2f}s")
+            
             if delta > self._window:
-                # Events are oldest-first; once too old, can still find newer
-                # so we keep scanning (could break early if sorted, but deque
-                # after expiry is always ordered oldest-to-newest)
-                continue
-            if delta < 0:
                 continue
 
-            # Check if candidate is Event A
-            is_a, url = _is_event_a(candidate.process_name, candidate.command_line)
-            if not is_a:
+            # If current is B, look for A. If current is A, look for B.
+            match_found = False
+            ev_a = None
+            ev_b = None
+            found_url = ""
+
+            if is_b:
+                cand_is_a, cand_url = _is_event_a(candidate.process_name, candidate.command_line)
+                if cand_is_a:
+                    logger.debug(f"[CORRELATION] Found matching Event A in buffer: {candidate.process_name}")
+                    match_found = True
+                    ev_a = candidate
+                    ev_b = buffered
+                    found_url = cand_url
+            elif is_a:
+                if _is_event_b(candidate.process_name, candidate.command_line):
+                    logger.debug(f"[CORRELATION] Found matching Event B in buffer: {candidate.process_name}")
+                    match_found = True
+                    ev_a = buffered
+                    ev_b = candidate
+                    found_url = url # url of current Event A
+
+            if not match_found:
                 continue
 
             # Optional key match
             if not _keys_match(candidate, opt_keys):
+                logger.debug(f"[CORRELATION] Skipped match due to key mismatch between current and {candidate.process_name}")
                 continue
 
             # --- Dedup check ---
             rule_id = "linux_t1059_download_then_shell_execution"
-            if self._dedup.is_duplicate(agent_id, rule_id, url):
-                logger.info(
-                    f"[CORR] Duplicate suppressed: {rule_id} agent={agent_id} url={url}"
-                )
+            if self._dedup.is_duplicate(agent_id, rule_id, found_url):
+                logger.info(f"[CORRELATION] Duplicate suppressed: agent={agent_id} url={found_url}")
                 return None
 
             # --- Build match ---
-            matched_opt_keys: Dict[str, str] = {}
-            if candidate.user_name:
-                matched_opt_keys["user_name"] = candidate.user_name
-            if candidate.tty:
-                matched_opt_keys["tty"] = candidate.tty
-            if candidate.session_id:
-                matched_opt_keys["session_id"] = candidate.session_id
-            if candidate.cwd:
-                matched_opt_keys["cwd"] = candidate.cwd
+            # Collect any supporting evidence from the buffer within the window
+            supporting_evidence = []
+            for ev in recent_events:
+                if abs(now - ev.timestamp) <= self._window:
+                    if ev.process_name.lower() in _SHELL_EVIDENCE_PROCESSES:
+                        supporting_evidence.append({
+                            "process": ev.process_name,
+                            "command": ev.command_line,
+                            "delta": f"{abs(now - ev.timestamp):.2f}s"
+                        })
 
             reason = (
-                f"curl/wget downloaded a shell script from a remote host "
-                f"({url or 'unknown URL'}), followed by shell execution "
-                f"({process_name}) on the same agent within "
-                f"{self._window} seconds."
+                f"Network script download ({ev_a.process_name}) followed by shell execution "
+                f"({ev_b.process_name}) on the same agent within {self._window} seconds. "
+                f"URL: {found_url or 'unknown'}"
             )
 
             match = CorrelationMatch(
                 agent_id=agent_id,
-                first_event_process=candidate.process_name,
-                first_event_command=candidate.command_line,
-                second_event_process=process_name,
-                second_event_command=command_line,
+                first_event_process=ev_a.process_name,
+                first_event_command=ev_a.command_line,
+                second_event_process=ev_b.process_name,
+                second_event_command=ev_b.command_line,
                 time_delta_seconds=round(delta, 2),
                 correlation_window_seconds=self._window,
                 reason=reason,
-                source_url=url,
-                optional_keys=matched_opt_keys,
+                source_url=found_url,
+                supporting_evidence=supporting_evidence,
+                optional_keys=opt_keys,
             )
 
-            # Mark dedup AFTER building the match so the alert fires once
-            self._dedup.mark(agent_id, rule_id, url)
-
-            logger.info(
-                f"[CORR] MATCH: {rule_id} agent={agent_id} "
-                f"delta={delta:.1f}s url={url!r}"
-            )
+            self._dedup.mark(agent_id, rule_id, found_url)
+            logger.info(f"[CORRELATION] MATCH FOUND: agent={agent_id} A={ev_a.process_name} B={ev_b.process_name} delta={delta:.2f}s")
             return match
 
         return None
