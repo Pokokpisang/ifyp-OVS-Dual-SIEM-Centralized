@@ -7,7 +7,7 @@ from typing import List, Literal, Optional
 from datetime import datetime, timedelta
 import re
 import json
-from ..services.agent_service import update_last_seen
+from ..services.agent_service import update_last_seen, get_agent_metadata_by_key
 
 router = APIRouter(prefix="/api")
 
@@ -32,8 +32,10 @@ def ingest_metric(
     x_agent_key: Optional[str] = Header(None, alias="X-Agent-Key")
 ):
     # 0. Update Last Seen if key provided
+    agent_meta = None
     if x_agent_key:
         update_last_seen(agent_key=x_agent_key, db=db)
+        agent_meta = get_agent_metadata_by_key(agent_key=x_agent_key, db=db)
 
     db_metric = models.Metric(
         timestamp=metric.timestamp,
@@ -102,6 +104,7 @@ def ingest_metric(
                     title=rule.rule_name,
                     description=f"{rule.rule_name}: {rule.metric_name} {rule.operator} {rule.threshold_value}{unit} (Observed: {round(observed_value, 2)}{unit})",
                     source=None, # Not MITRE
+                    agent_id=agent_meta["agent_id"] if agent_meta else None,
                     rule_id=rule.rule_id,
                     rule_name=rule.rule_name,
                     risk_score=20,

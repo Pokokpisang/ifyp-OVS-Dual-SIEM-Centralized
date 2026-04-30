@@ -70,6 +70,7 @@ func (s *Sender) post(endpoint string, data interface{}) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("server returned %d", resp.StatusCode)
 	}
+	fmt.Printf("[sender] Successfully sent to %s\n", endpoint)
 	return nil
 }
 

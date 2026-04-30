@@ -206,6 +206,33 @@ def update_last_seen(*, agent_key: str, db: Session) -> bool:
         return False
 
 
+def get_agent_metadata_by_key(agent_key: str, db: Session) -> dict | None:
+    """
+    Retrieve essential agent metadata (ID, hostname, IP, OS) using its permanent key.
+    Useful for enriching incoming log/metric events.
+    """
+    if not agent_key:
+        return None
+    
+    key_hash = _sha256(agent_key)
+    agent = (
+        db.query(models.AgentRecord)
+        .filter(models.AgentRecord.agent_key_hash == key_hash)
+        .first()
+    )
+    if not agent:
+        return None
+    
+    return {
+        "agent_id": agent.agent_id,
+        "hostname": agent.hostname,
+        "ip_address": agent.ip_address,
+        "os_type": agent.os_type,
+        "distribution": agent.distribution,
+        "agent_name": agent.agent_name
+    }
+
+
 def compute_agent_status(agent: models.AgentRecord) -> str:
     """
     Derive the *current* status of *agent* at read time.

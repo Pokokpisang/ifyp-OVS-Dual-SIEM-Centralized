@@ -13,6 +13,7 @@ class Log(Base):
     file_path = Column(String)
     message = Column(Text)
     local_flag = Column(Boolean, default=False)
+    agent_id = Column(String, index=True, nullable=True)
     agent_rule_id = Column(Integer, nullable=True)
     local_rule_version = Column(Integer, nullable=True)
 
@@ -40,6 +41,7 @@ class Alert(Base):
     is_read = Column(Boolean, default=False)
 
     # v2.0.0 Generic Metadata Fields
+    agent_id = Column(String, index=True, nullable=True)
     rule_id = Column(String, index=True, nullable=True)
     rule_name = Column(String, nullable=True)
     risk_score = Column(Integer, default=0)

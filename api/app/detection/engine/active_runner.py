@@ -82,6 +82,7 @@ class ActiveDetectionRunner:
             source=str(technique),
             
             # v2.0.0 Fields
+            agent_id=event.get("agent_id"),
             rule_id=candidate.rule_id,
             rule_name=candidate.rule_name,
             risk_score=candidate.risk_score,
@@ -94,4 +95,3 @@ class ActiveDetectionRunner:
         self.db.add(alert)
         self.db.commit()
         logger.info(f"[ACTIVE_RUNNER] ALERT CREATED: {candidate.rule_id} on {host} (Risk: {candidate.risk_score})")
-        print(f"[*] YAML ALERT CREATED: {candidate.rule_id} on {host} (Risk: {candidate.risk_score})")

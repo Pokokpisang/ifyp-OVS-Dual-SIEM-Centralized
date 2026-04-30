@@ -8,7 +8,7 @@ import os
 import json
 from .. import db, models
 from ..detection.engine.detection_engine import RuleEngine
-from ..services.agent_service import update_last_seen
+from ..services.agent_service import update_last_seen, get_agent_metadata_by_key
 
 router = APIRouter()
 
@@ -45,8 +45,10 @@ async def collect_agent_logs(
     x_agent_key: Optional[str] = Header(None, alias="X-Agent-Key")
 ):
     # 0. Update Last Seen if key provided
+    agent_meta = None
     if x_agent_key:
         update_last_seen(agent_key=x_agent_key, db=database)
+        agent_meta = get_agent_metadata_by_key(agent_key=x_agent_key, db=database)
 
     # 1. Read Raw JSON
     try:
@@ -54,18 +56,41 @@ async def collect_agent_logs(
     except json.JSONDecodeError:
         return {"status": "error", "message": "Invalid JSON"}
 
-    # Add metadata if needed (for example agent_id if present in headers, or timestamp)
-    # Override timestamp with server ingestion time so Data Prepper @timestamp stays current
+    # Add metadata
     ingestion_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
     payload["timestamp"] = ingestion_time
     payload["agent_received_at"] = ingestion_time
+    
+    # Enrichment with Agent Identity (v2.0.0 Requirement)
+    if agent_meta:
+        payload["agent_id"] = agent_meta["agent_id"]
+        payload["hostname"] = agent_meta["hostname"]
+        payload["ip_address"] = agent_meta["ip_address"]
+        payload["os_type"] = agent_meta["os_type"]
+        payload["distribution"] = agent_meta["distribution"]
+        payload["agent_name"] = agent_meta["agent_name"]
+        
+        # ECS compatibility fields
+        payload["host"] = {
+            "name": agent_meta["hostname"],
+            "ip": agent_meta["ip_address"],
+            "os": {
+                "type": agent_meta["os_type"].lower(),
+                "name": agent_meta["distribution"]
+            }
+        }
+        payload["agent"] = {
+            "id": agent_meta["agent_id"],
+            "name": agent_meta["agent_name"]
+        }
     # 2. Save to PostgreSQL (for Dashboard / System Logs UI)
     try:
         # Use server ingestion time or the one provided by agent if reliable
         # For now, we use the normalized ingestion_time we just created
         new_log = models.Log(
             timestamp=datetime.now(timezone.utc),
-            host=payload.get("host") or payload.get("hostname", "unknown"),
+            host=payload.get("host") if isinstance(payload.get("host"), str) else payload.get("hostname", "unknown"),
+            agent_id=payload.get("agent_id"),
             log_type=payload.get("log_type", "unknown"),
             file_path=payload.get("file_path", "unknown"),
             message=payload.get("message", "")

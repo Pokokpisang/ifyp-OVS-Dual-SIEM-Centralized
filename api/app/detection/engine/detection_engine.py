@@ -90,7 +90,8 @@ class RuleEngine:
             severity=severity,
             title=f"Detection: {rule.name}",
             description=f"{reason}. Tokens: {tokens}\n\nRAW_LOG: {log.message}",
-            source=rule.mitre_technique_id
+            source=rule.mitre_technique_id,
+            agent_id=log.agent_id
         )
         self.db.add(alert)
         self.db.commit()
@@ -180,7 +181,8 @@ class RuleEngine:
             severity=severity.upper(),
             title=f"[{mitre_id}] {rule_name}",
             description=f"{reason}. Command: {display_cmd}\n\nRAW_LOG: {raw_log.get('message')}",
-            source=mitre_id
+            source=mitre_id,
+            agent_id=raw_log.get("agent_id")
         )
         self.db.add(alert)
         self.db.commit()
