@@ -107,6 +107,11 @@ class AuditdParser:
             raw_log["process"]["name"] = raw_log["comm"]
         elif "exe" in raw_log:
             raw_log["process"]["name"] = raw_log["exe"].split("/")[-1]
+        
+        # Fallback for EXECVE logs
+        if not raw_log.get("process", {}).get("name") and "a0" in raw_log:
+            a0 = str(raw_log["a0"]).strip('"')
+            raw_log["process"]["name"] = a0.split("/")[-1]
 
         if "ppid" in raw_log:
             if "parent" not in raw_log["process"]: raw_log["process"]["parent"] = {}

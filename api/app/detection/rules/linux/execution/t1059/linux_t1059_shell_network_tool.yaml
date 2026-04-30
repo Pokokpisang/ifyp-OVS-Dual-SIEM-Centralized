@@ -27,7 +27,6 @@ tags:
 required_fields:
   - process.name
   - process.command_line
-  - process.parent.name
   - user.name
   - host.name
 condition:
