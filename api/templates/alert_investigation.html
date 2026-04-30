@@ -395,6 +395,11 @@ async function loadInvestigation() {
                 <span class="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">
                     <span class="material-symbols-outlined text-[12px]">code</span>YAMLDetectionEngine
                 </span>`;
+        } else if (d.alert.detection_engine === 'CorrelationEngine') {
+            engineEl.innerHTML = `
+                <span class="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <span class="material-symbols-outlined text-[12px]">device_hub</span>CorrelationEngine
+                </span>`;
         } else {
             engineEl.innerHTML = `
                 <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-slate-500/10 text-slate-400 border border-slate-500/20">
@@ -446,6 +451,63 @@ async function loadInvestigation() {
                         <li class="flex items-start gap-2 text-[11px] text-slate-300">
                             <span class="material-symbols-outlined text-amber-400 text-[14px] mt-0.5">trending_up</span>
                             ${r}
+                        </li>`;
+                });
+            } else {
+                adjContainer.classList.add('hidden');
+            }
+        } else if (d.alert.detection_engine === 'CorrelationEngine' && d.alert.detection_metadata) {
+            // Render correlation evidence inside the shared metadata section
+            document.getElementById('yaml-metadata-section').classList.remove('hidden');
+            const meta = d.alert.detection_metadata;
+
+            // Risk Gauge
+            const risk = d.alert.risk_score || 0;
+            document.getElementById('risk-val').textContent = risk;
+            const circle = document.getElementById('risk-gauge-circle');
+            const circumference = 364.4;
+            const offset = circumference - (risk / 100) * circumference;
+            circle.style.strokeDashoffset = offset;
+            // Amber colour for correlation alerts
+            ['text-primary', 'text-severity-critical', 'text-emerald-400'].forEach(c => circle.classList.remove(c));
+            circle.classList.add('text-amber-400');
+
+            // MITRE info
+            document.getElementById('meta-tactic').textContent = d.alert.mitre_tactic || '—';
+            document.getElementById('meta-technique').textContent = d.alert.mitre_technique || '—';
+            document.getElementById('meta-rule-id').textContent = d.alert.rule_id || '—';
+
+            // Correlation evidence as findings
+            const reasonsList = document.getElementById('match-reasons-list');
+            reasonsList.innerHTML = '';
+            const corrReasons = [
+                meta.first_event_process  ? `Download event \u2014 [${meta.first_event_process}] ${(meta.first_event_command || '').substring(0, 120)}` : null,
+                meta.second_event_process ? `Shell event \u2014 [${meta.second_event_process}] ${(meta.second_event_command || '').substring(0, 120)}` : null,
+                meta.time_delta_seconds !== undefined ? `Time delta: ${meta.time_delta_seconds}s (window: ${meta.correlation_window_seconds || 10}s)` : null,
+                meta.source_url ? `Source URL: ${meta.source_url}` : null,
+                meta.reason ? `Reason: ${meta.reason}` : null,
+            ].filter(Boolean);
+            corrReasons.forEach(r => {
+                reasonsList.innerHTML += `
+                    <li class="flex items-start gap-2 text-[11px] text-slate-300">
+                        <span class="material-symbols-outlined text-amber-400 text-[14px] mt-0.5">device_hub</span>
+                        ${r}
+                    </li>`;
+            });
+
+            // Optional correlated keys (user, tty, session, cwd)
+            const adjContainer = document.getElementById('adj-reasons-container');
+            const adjList = document.getElementById('adj-reasons-list');
+            const optKeys = meta.optional_keys || {};
+            const optEntries = Object.entries(optKeys);
+            if (optEntries.length > 0) {
+                adjContainer.classList.remove('hidden');
+                adjList.innerHTML = '';
+                optEntries.forEach(([k, v]) => {
+                    adjList.innerHTML += `
+                        <li class="flex items-start gap-2 text-[11px] text-slate-300">
+                            <span class="material-symbols-outlined text-sky-400 text-[14px] mt-0.5">link</span>
+                            Correlated key &mdash; ${k}: <span class="font-mono ml-1">${v}</span>
                         </li>`;
                 });
             } else {
