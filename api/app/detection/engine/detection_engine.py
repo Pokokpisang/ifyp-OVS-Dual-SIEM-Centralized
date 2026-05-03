@@ -1,15 +1,19 @@
 """
 Detection engine orchestrator.
 
-Future responsibility:
-- Receive normalized security events
-- Load active rules
-- Evaluate rules
-- Apply risk scoring
-- Apply suppressions
-- Return alert or suppressed result
+RuleEngine is the compatibility shim that routes every ingest event to the
+correct detection backend based on DETECTION_ENGINE_MODE:
+
+  YAML   (default) — YAMLDetectionEngine via ActiveDetectionRunner (real alerts)
+  SHADOW            — YAML as primary (real alerts) + verbose shadow logging for debugging
+  LEGACY            — DB-backed JSON-logic rules only; explicit rollback path
+
+The legacy evaluation code below is DEPRECATED. Do not add new detection logic
+here. All new rules belong in detection/rules/ as YAML files.
 """
 import json
+import logging
+import os
 from datetime import datetime
 from sqlalchemy.orm import Session
 from ... import models
@@ -18,12 +22,29 @@ from .rule_evaluator import normalize_logic, match_conditions, exclude_condition
 from .suppressions import GLOBAL_EXCLUSIONS
 from .shadow_runner import get_shadow_runner
 from .active_runner import ActiveDetectionRunner
-import os
+
+logger = logging.getLogger("detection.engine")
+
+# One-time mode announcement per process (avoids per-event log spam)
+_announced_modes: set = set()
+
+
+def _announce_mode(mode: str) -> None:
+    if mode not in _announced_modes:
+        logger.info(f"[DETECTION] Active detection mode: {mode}")
+        _announced_modes.add(mode)
+
 
 class RuleEngine:
     """
-    Temporary RuleEngine class for backward compatibility.
-    This will be evolved into a more modular DetectionEngine.
+    Legacy compatibility shim.
+
+    Callers (collector.py) should continue calling evaluate_raw() — the
+    routing logic inside selects the correct engine based on
+    DETECTION_ENGINE_MODE.  The class-level helpers (normalize_logic, etc.)
+    are retained for rules.py until the legacy rule UI is retired.
+
+    DEPRECATED: Do not add new detection logic to this class.
     """
     GLOBAL_EXCLUSIONS = GLOBAL_EXCLUSIONS
 
@@ -41,7 +62,10 @@ class RuleEngine:
         return exclude_conditions(content, raw_log, exclude_logic)
 
     def evaluate(self, log_entry: models.Log):
-        # Fetch enabled rules for this log type
+        """
+        DEPRECATED — DB-backed rule evaluation against models.Log objects.
+        Only reached when DETECTION_ENGINE_MODE=LEGACY is active.
+        """
         rules = self.db.query(models.DetectionRule).filter(
             models.DetectionRule.enabled == True,
             models.DetectionRule.rule_type == "server",
@@ -52,15 +76,15 @@ class RuleEngine:
             try:
                 raw_logic = json.loads(rule.logic_json)
                 logic = self.normalize_logic(raw_logic)
-                
+
                 content = log_entry.message or ""
                 matched, match_reason, tokens, pattern_severity = self._match_conditions(content, logic["match"])
-                
+
                 if matched:
                     excluded, exclude_reason = self._exclude_conditions(content, {}, logic["exclude"])
                     if excluded:
                         continue
-                        
+
                     severity = pattern_severity or logic.get("alert", {}).get("severity") or rule.severity_default
                     alert_msg = logic.get("alert", {}).get("message")
                     reason = f"{match_reason}. {alert_msg}" if alert_msg else match_reason
@@ -70,7 +94,6 @@ class RuleEngine:
                 print(f"Error evaluating rule {rule.name}: {e}")
 
     def _trigger_match(self, rule, log, reason, tokens, severity):
-        # 1. Record Rule Match
         match = models.RuleMatch(
             matched_at_utc=datetime.utcnow(),
             rule_id=rule.id,
@@ -83,7 +106,6 @@ class RuleEngine:
         )
         self.db.add(match)
 
-        # 2. Generate Alert
         alert = models.Alert(
             timestamp=datetime.utcnow(),
             host=log.host,
@@ -102,38 +124,51 @@ class RuleEngine:
             raw_log = AuditdParser.normalize_log(raw_log)
 
         mode = os.getenv("DETECTION_ENGINE_MODE", "YAML").upper()
+        _announce_mode(mode)
 
-        # Mode Selection Logic
+        # ------------------------------------------------------------------
+        # YAML — primary production path (default)
+        # ------------------------------------------------------------------
         if mode == "YAML":
-            # Primary mode for v2.0.0
             ActiveDetectionRunner(self.db).run(raw_log)
             return
 
+        # ------------------------------------------------------------------
+        # SHADOW — YAML produces real alerts; shadow runner logs all rule
+        # decisions at DEBUG verbosity for side-by-side comparison.
+        # Legacy engine does NOT run in this mode.
+        # ------------------------------------------------------------------
         if mode == "SHADOW":
-            # Run legacy + log YAML results
+            ActiveDetectionRunner(self.db).run(raw_log)
             get_shadow_runner().run(raw_log)
-            # Continue to legacy logic below
-        elif mode == "LEGACY":
-            # Run only legacy
-            pass
+            return
+
+        # ------------------------------------------------------------------
+        # LEGACY — explicit rollback; DB-backed JSON-logic rules only.
+        # Set DETECTION_ENGINE_MODE=LEGACY to activate.
+        # ------------------------------------------------------------------
+        if mode == "LEGACY":
+            pass  # falls through to deprecated legacy logic below
         else:
-            # Default to YAML if unknown mode
+            logger.warning(
+                f"[DETECTION] Unknown DETECTION_ENGINE_MODE '{mode}', defaulting to YAML"
+            )
             ActiveDetectionRunner(self.db).run(raw_log)
             return
 
-        # Legacy Detection Logic (Fallback/Rollback/Shadow)
-        # 2. Content extraction
+        # ------------------------------------------------------------------
+        # DEPRECATED legacy evaluation — only reached when mode == "LEGACY"
+        # Do not add new detection logic here.
+        # ------------------------------------------------------------------
         content = raw_log.get("command_line") or raw_log.get("cmdline") or raw_log.get("message", "")
         if not content:
             return
 
-        # 3. Global Exclusions (Whitelist)
         content_lower = content.lower()
         for exclusion in self.GLOBAL_EXCLUSIONS:
             if exclusion.lower() in content_lower:
                 return
 
-        # 4. Dynamic Rule Evaluation
         rules = self.db.query(models.DetectionRule).filter(
             models.DetectionRule.enabled == True,
             models.DetectionRule.rule_type == "server",
@@ -144,18 +179,18 @@ class RuleEngine:
             try:
                 raw_logic = json.loads(rule.logic_json)
                 logic = self.normalize_logic(raw_logic)
-                
+
                 matched, match_reason, tokens, pattern_severity = self._match_conditions(content, logic["match"])
 
                 if matched:
                     excluded, exclude_reason = self._exclude_conditions(content, raw_log, logic["exclude"])
                     if excluded:
                         continue
-                        
+
                     severity = pattern_severity or logic.get("alert", {}).get("severity") or rule.severity_default
                     alert_msg = logic.get("alert", {}).get("message")
                     reason = f"{match_reason}. {alert_msg}" if alert_msg else match_reason
-                    
+
                     self._trigger_raw_match(
                         rule_name=rule.name,
                         mitre_id=rule.mitre_technique_id,
@@ -166,15 +201,14 @@ class RuleEngine:
                     )
             except Exception as e:
                 print(f"Error evaluating raw rule {rule.name}: {e}")
-    
+
     def _trigger_raw_match(self, rule_name, mitre_id, raw_log, reason, tokens, severity):
         host = raw_log.get("hostname", raw_log.get("host", "unknown"))
-        
-        # Use the enriched command_line if available
+
         display_cmd = raw_log.get("command_line", "")
         if not display_cmd and tokens:
             display_cmd = tokens[0]
-            
+
         alert = models.Alert(
             timestamp=datetime.utcnow(),
             host=host,
@@ -186,6 +220,4 @@ class RuleEngine:
         )
         self.db.add(alert)
         self.db.commit()
-        print(f"[*] ALERT GENERATED: {rule_name} on {host}")
-
-# TODO: Implement the DetectionEngine class that coordinates the detection pipeline.
+        logger.info(f"[LEGACY] ALERT GENERATED: {rule_name} on {host}")
