@@ -2,3 +2,7 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
