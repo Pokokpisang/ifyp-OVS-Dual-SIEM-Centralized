@@ -1,0 +1,155 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What This Is
+
+A prototype SIEM (Security Information and Event Management) system consisting of three main components:
+
+1. **FastAPI backend** (`api/`) — log ingestion, rule evaluation, alerting, web dashboard
+2. **Go agent** (`agent/`) — endpoint collector that tails logs and sends telemetry to the backend
+3. **OpenSearch pipeline** — Data Prepper receives forwarded logs for search/analytics
+
+## Commands
+
+### Start/Stop the Full System
+
+```bash
+make up        # builds Go agent, starts Docker services (API, DB, OpenSearch, Data Prepper), runs agent as background sudo process
+make down      # stops Docker services and kills agent
+make restart   # down then up
+make logs      # tail docker-compose service logs
+```
+
+The `docker-compose-v2` binary (committed to repo root) is used instead of the system `docker compose` command.
+
+### Build the Go Agent Only
+
+```bash
+cd agent && go build -o agent ./cmd/agent/main.go
+# or via Makefile (also copies binary to api/downloads/):
+make build-agent
+```
+
+### Run the API in Development (without Docker)
+
+```bash
+cd api
+source .venv/bin/activate
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Run Python Tests
+
+Tests live in `api/app/detection/tests/`. Run from the `api/` directory with the virtualenv active:
+
+```bash
+cd api
+source .venv/bin/activate
+python -m pytest app/detection/tests/ -v
+
+# Run a single test file:
+python -m pytest app/detection/tests/test_yaml_detection_engine.py -v
+
+# Run a single test:
+python -m pytest app/detection/tests/test_yaml_detection_engine.py::test_t1059_match_returns_candidate -v
+```
+
+### Test T1059 Detection End-to-End
+
+```bash
+make test-t1059   # sends a test auditd payload, waits 15s, queries DB for T1059 alerts
+```
+
+## Architecture
+
+### Detection Pipeline (v2.0.0)
+
+The active detection path: `POST /ingest/log` → `collector.py` → background task → `RuleEngine.evaluate_raw()` → `ActiveDetectionRunner` → `YAMLDetectionEngine` + `CorrelationEngine` → `models.Alert`.
+
+**Detection engine modes** (controlled by `DETECTION_ENGINE_MODE` env var in `api/.env`):
+- `YAML` (default/primary): uses `ActiveDetectionRunner` + `YAMLDetectionEngine`
+- `SHADOW`: runs both legacy and YAML engines; YAML results only logged, not persisted
+- `LEGACY`: legacy rule-matching engine only (fallback/rollback)
+
+**Key detection engine files:**
+- `api/app/detection/engine/detection_engine.py` — `RuleEngine` orchestrator; routes to YAML/SHADOW/LEGACY
+- `api/app/detection/engine/active_runner.py` — `ActiveDetectionRunner`: calls `YAMLDetectionEngine`, then optionally `CorrelationEngine`
+- `api/app/detection/engine/yaml_detection_engine.py` — `YAMLDetectionEngine`: load rules → evaluate → score risk → check suppressions → return `DetectionCandidate`
+- `api/app/detection/engine/correlation_engine.py` — `CorrelationEngine`: in-memory rolling buffer detecting "curl/wget → bash" two-event patterns (T1059.004)
+- `api/app/detection/engine/audit_parser.py` — `AuditdParser`: normalises raw auditd log lines into ECS-compatible dicts before rule evaluation
+- `api/app/detection/engine/rule_loader.py` — loads YAML rule files recursively from `detection/rules/`
+- `api/app/detection/engine/rule_evaluator.py` — field-based condition matching (`in`, `contains_any`, `not_contains_any`, `exists`, etc.)
+- `api/app/detection/engine/risk_scoring.py` — base score + adjustments from rule's `risk_adjustment` block
+- `api/app/detection/engine/suppressions.py` — loads `detection/tuning/*.yaml` and suppresses false positives
+
+### Detection-as-Code Rules
+
+YAML rules live under `api/app/detection/rules/` (organised by `platform/tactic/technique/`). The active production rule is:
+
+- `linux/execution/t1059/linux_t1059_shell_network_tool.yaml` — strict single-event T1059.004 rule requiring `process.name` ∈ {sh,bash,dash,zsh} AND `process.command_line` containing a network tool AND a pipe-to-shell indicator
+
+Rule schema is defined by `api/app/detection/schemas/rule_schema.py` (`DetectionRule` Pydantic model). Key fields: `condition` (field-based matching), `risk_adjustment` (score modifiers), `mitre`, `required_fields`.
+
+Suppression tuning files: `api/app/detection/tuning/` — `global_suppressions.yaml`, `linux_suppressions.yaml`, `rule_exceptions.yaml`.
+
+### Correlation Engine
+
+Handles fragmented auditd events where `curl http://... | bash` appears as two separate EXECVE records. Uses a singleton in-memory `ProcessEventBuffer` (per-agent rolling deque) and `DedupCache`. The engine is order-insensitive: Event A (download tool) or Event B (shell) can arrive first. Controlled by env vars: `ENABLE_CORRELATION_ENGINE`, `CORRELATION_WINDOW_SECONDS` (default 10), `CORRELATION_BUFFER_TTL_SECONDS` (default 60), `CORRELATION_DEDUP_SECONDS` (default 60). **Known limitation:** buffer is in-process only — data is lost on restart and not shared across multiple API workers.
+
+### Go Agent Internals
+
+Entry point: `agent/cmd/agent/main.go`. Config priority: YAML file (`-config` flag) → env vars (`AGENT_SERVER_URL`, `AGENT_NAME`, `AGENT_KEY`, `AGENT_LOG_PATH`).
+
+- `internal/tailer` — wraps `hpcloud/tail` to follow log files in real time
+- `internal/collector` — gathers CPU/RAM/network metrics via `gopsutil`
+- `internal/sender` — HTTP client; sends `X-Agent-Key` header; falls back to `internal/queue` (JSONL file) when offline
+- `internal/rules` — polls `/api/agent/rules` every 5 min for client-side rule matching
+- `internal/queue` — file-backed `agent_queue.jsonl` for offline buffering
+
+Agent sends heartbeats every 60s and metrics every 5s. Logs filtered to avoid circular ingestion (agent's own syslog lines are dropped).
+
+### Agent Registration Flow
+
+1. Create an `AgentRecord` with a one-time registration token via the dashboard
+2. Install the agent with `curl http://<server>/install.sh | bash -- --token <token>`
+3. Agent POSTs `X-Agent-Token` to `/api/agents/register` → server validates SHA-256 hash, returns permanent `agent_key`
+4. Subsequent requests use `X-Agent-Key`; token is nulled in DB after first use
+
+### Database (PostgreSQL)
+
+SQLAlchemy models in `api/app/models.py`. Key tables: `logs`, `metrics`, `alerts`, `detection_rules` (legacy JSON-logic rules), `rule_matches`, `agent_records`, `system_health_rules`, `alert_assessments`.
+
+`Alert` rows include `detection_engine` (`YAML`, `CorrelationEngine`, `LEGACY`, `MetricEngine`), `risk_score`, `mitre_tactic`, `mitre_technique`, and `detection_metadata` (JSON blob with match reasons).
+
+### API Routers
+
+| Router | Prefix | Purpose |
+|---|---|---|
+| `collector.py` | `/ingest/log` | Receives agent telemetry, runs detection in background |
+| `dashboard.py` | `/dashboard`, `/logs`, `/alerts` | HTML dashboard views |
+| `api_metrics.py` | `/api/metrics` | Metrics ingestion and health alerts |
+| `rules.py` | `/rules` | CRUD for legacy DB-backed `DetectionRule` rows |
+| `agents.py` | `/api/agents`, `/install.sh` | Agent registration, heartbeat, installer generation |
+| `system_health_rules.py` | `/api/system-health-rules` | CRUD for metric threshold rules |
+
+### Infrastructure Services
+
+Started by `docker-compose-v2`:
+- `siem_api` — FastAPI on port 8000
+- `siem_db` — PostgreSQL 13 on port 5432 (`user/password/siemdb`)
+- `opensearch` — OpenSearch 2.11 on port 9200
+- `data-prepper` — OpenSearch Data Prepper on port 2021 (receives forwarded logs)
+- `opensearch-dashboards` — port 5601
+
+## Environment Configuration
+
+`api/.env` is the live config file (not committed by default — see `.env.example` at repo root). Key variables:
+
+```
+DATABASE_URL=postgresql://...
+DETECTION_ENGINE_MODE=YAML         # YAML | LEGACY | SHADOW
+ENABLE_CORRELATION_ENGINE=true
+CORRELATION_WINDOW_SECONDS=10
+SIEM_SERVER_ADDRESS=<host-IP>      # Used to generate agent installer scripts
+```
