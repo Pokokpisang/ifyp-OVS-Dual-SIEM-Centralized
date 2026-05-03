@@ -13,6 +13,13 @@ from .correlation_engine import (
     get_process_event_buffer,
     get_dedup_cache,
 )
+from .ssh_bruteforce_engine import (
+    ENABLE_SSH_BRUTEFORCE_ENGINE,
+    SSHBruteForceEngine,
+    SSHBruteForceMatch,
+    get_ssh_failure_buffer,
+    get_ssh_bf_dedup,
+)
 
 logger = logging.getLogger("detection.active_runner")
 
@@ -77,6 +84,10 @@ class ActiveDetectionRunner:
         # --- Correlation Engine ---
         if ENABLE_CORRELATION_ENGINE:
             self._run_correlation(normalized_event, yaml_fired_t1059)
+
+        # --- SSH Brute Force Engine ---
+        if ENABLE_SSH_BRUTEFORCE_ENGINE:
+            self._run_ssh_bruteforce(normalized_event)
 
     # -----------------------------------------------------------------------
     # Correlation pass
@@ -191,6 +202,82 @@ class ActiveDetectionRunner:
         logger.info(
             f"[CORR] ALERT CREATED: {match.rule_id} on {host} "
             f"(Risk: {match.risk_score}, delta={match.time_delta_seconds}s)"
+        )
+
+    # -----------------------------------------------------------------------
+    # SSH Brute Force pass
+    # -----------------------------------------------------------------------
+
+    def _run_ssh_bruteforce(self, event: Dict[str, Any]) -> None:
+        """Run SSH brute force threshold detection for authentication events."""
+        event_block = event.get("event") or {}
+        if not isinstance(event_block, dict):
+            return
+        if event_block.get("category") != "authentication":
+            return
+
+        try:
+            bf_engine = SSHBruteForceEngine(
+                buffer=get_ssh_failure_buffer(),
+                dedup=get_ssh_bf_dedup(),
+            )
+            match = bf_engine.evaluate(event)
+        except Exception as e:
+            logger.error(f"[SSH_BF] Engine error: {e}", exc_info=True)
+            return
+
+        if match:
+            self._create_ssh_bruteforce_alert(event, match)
+
+    def _create_ssh_bruteforce_alert(
+        self, event: Dict[str, Any], match: SSHBruteForceMatch
+    ) -> None:
+        """Create a standard Alert record for an SSH brute-force threshold hit."""
+        host = event.get("hostname", event.get("host", "unknown"))
+        if isinstance(host, dict):
+            host = host.get("name", "unknown")
+
+        detection_metadata = {
+            "source_ip": match.source_ip,
+            "user_name": match.user_name,
+            "failure_count": match.failure_count,
+            "time_window_seconds": match.time_window_seconds,
+            "match_reasons": match.match_reasons,
+        }
+
+        description = (
+            f"{match.rule_name}. "
+            f"{match.failure_count} failed SSH login(s) from {match.source_ip} "
+            f"within {match.time_window_seconds}s."
+        )
+        if match.user_name:
+            description += f" Target user(s): {match.user_name}."
+        description += f"\n\nReasons: {', '.join(match.match_reasons)}"
+
+        alert = models.Alert(
+            timestamp=datetime.utcnow(),
+            host=str(host),
+            severity=match.severity.upper(),
+            title=f"[{match.rule_id}] {match.rule_name}",
+            description=description,
+            source=match.mitre_technique,
+
+            # v2.0.0 fields
+            agent_id=match.agent_id,
+            rule_id=match.rule_id,
+            rule_name=match.rule_name,
+            risk_score=match.risk_score,
+            mitre_tactic=match.mitre_tactic,
+            mitre_technique=match.mitre_technique,
+            detection_engine="SSHBruteForceEngine",
+            detection_metadata=json.dumps(detection_metadata),
+        )
+
+        self.db.add(alert)
+        self.db.commit()
+        logger.info(
+            f"[SSH_BF] ALERT CREATED: {match.rule_id} on {host} "
+            f"(source_ip={match.source_ip}, count={match.failure_count}, risk={match.risk_score})"
         )
 
     # -----------------------------------------------------------------------
