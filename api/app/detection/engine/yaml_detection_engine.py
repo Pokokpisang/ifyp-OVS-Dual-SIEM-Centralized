@@ -56,6 +56,28 @@ class YAMLDetectionEngine:
         
         for rule in rules:
             try:
+                # Gate: skip rule if any required field is absent
+                missing = [
+                    f for f in rule.required_fields
+                    if self.evaluator.get_field_value(event, f) is None
+                ]
+                if missing:
+                    if return_unmatched:
+                        candidates.append(DetectionCandidate(
+                            rule_id=rule.id,
+                            rule_name=rule.name,
+                            matched=False,
+                            suppressed=False,
+                            severity="informational",
+                            risk_score=0,
+                            base_risk_score=rule.risk_score,
+                            missing_fields=missing,
+                            errors=[f"SkippedDueToMissingFields: {missing}"],
+                            mitre=rule.mitre,
+                            tags=rule.tags,
+                        ))
+                    continue
+
                 # 2. Evaluate Rule Match
                 match_result = self.evaluator.evaluate(event, rule)
                 

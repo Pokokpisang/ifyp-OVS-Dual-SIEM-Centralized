@@ -16,6 +16,18 @@ from .correlation_engine import (
 
 logger = logging.getLogger("detection.active_runner")
 
+
+def _get_technique_id(mitre: dict) -> str:
+    """Normalise MITRE technique field to a plain string ID.
+
+    Handles both dict form {'id': 'T1059.004', ...} and legacy string form 'T1059'.
+    """
+    tech = mitre.get("technique", {})
+    if isinstance(tech, dict):
+        return tech.get("id", "")
+    return str(tech) if tech else ""
+
+
 # Log types that carry no process-level events — skip correlation for these
 _NON_PROCESS_LOG_TYPES = frozenset({
     "metric",
@@ -53,11 +65,7 @@ class ActiveDetectionRunner:
             for candidate in candidates:
                 if candidate.matched and not candidate.suppressed:
                     self._create_alert(normalized_event, candidate)
-                    if candidate.mitre.get("technique", {}) in ("T1059.004", "T1059"):
-                        yaml_fired_t1059 = True
-                    # Check by dict id too
-                    tech = candidate.mitre.get("technique", {})
-                    if isinstance(tech, dict) and tech.get("id", "") in ("T1059.004", "T1059"):
+                    if _get_technique_id(candidate.mitre) in ("T1059", "T1059.004"):
                         yaml_fired_t1059 = True
                 elif candidate.matched and candidate.suppressed:
                     logger.info(f"[ACTIVE_RUNNER] SUPPRESSED match: {candidate.rule_id}")
