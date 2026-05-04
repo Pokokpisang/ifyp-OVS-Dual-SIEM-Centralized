@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, Float
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Text, Boolean, Float
 from .db import Base
 from pydantic import BaseModel
 from datetime import datetime
@@ -135,6 +135,39 @@ class AgentRecord(Base):
     ip_address = Column(String, nullable=True)  # filled on registration
     last_seen = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class SOARActionExecution(Base):
+    __tablename__ = "soar_action_executions"
+
+    id                 = Column(Integer, primary_key=True, index=True)
+    alert_id           = Column(Integer, ForeignKey("alerts.id"), index=True, nullable=False)
+    playbook_id        = Column(String, nullable=False)
+    playbook_name      = Column(String, nullable=False)
+    action_id          = Column(String, nullable=False)
+    action_name        = Column(String, nullable=False)
+    action_type        = Column(String, nullable=False)
+    target             = Column(String, nullable=True)
+    mode               = Column(String, nullable=False)
+    status             = Column(String, nullable=False)  # "success" | "failed"
+    executed_by        = Column(String, nullable=True)
+    executed_at        = Column(DateTime, default=datetime.utcnow)
+    result_message     = Column(Text, nullable=True)
+    error_message      = Column(Text, nullable=True)
+    rollback_supported = Column(Boolean, default=False)
+    rollback_status    = Column(String, nullable=True)
+    exec_metadata      = Column(Text, nullable=True)  # JSON blob
+
+
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    key         = Column(String, unique=True, index=True, nullable=False)
+    value       = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    updated_at  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by  = Column(String, nullable=True)
+
 
 class SystemHealthRule(Base):
     __tablename__ = "system_health_rules"

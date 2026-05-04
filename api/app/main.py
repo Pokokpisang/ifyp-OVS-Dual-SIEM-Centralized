@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from typing import List
 from . import models, db
-from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules
+from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings
 import pathlib
 
 # Create tables
@@ -27,6 +27,8 @@ app.include_router(rules.router)
 app.include_router(collector.router)
 app.include_router(agents.router)
 app.include_router(system_health_rules.router)
+app.include_router(soar.router)
+app.include_router(settings.router)
 
 def seed_health_rules():
     database = db.SessionLocal()
