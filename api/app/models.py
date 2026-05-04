@@ -130,11 +130,18 @@ class AgentRecord(Base):
     enable_metrics = Column(Boolean, default=True)
 
     # Lifecycle
-    status = Column(String, default="pending")  # pending | active | offline
+    status = Column(String, default="pending")  # pending | active | offline (computed from last_seen)
     hostname = Column(String, nullable=True)    # filled on registration
     ip_address = Column(String, nullable=True)  # filled on registration
     last_seen = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Soft-delete / inventory lifecycle fields
+    # lifecycle_status: pending_registration | active_inventory | deleted | retired | test_agent
+    is_deleted = Column(Boolean, default=False, nullable=False, server_default="false")
+    deleted_at = Column(DateTime, nullable=True)
+    deleted_reason = Column(String, nullable=True)
+    lifecycle_status = Column(String, default="pending_registration")
 
 class SystemHealthRule(Base):
     __tablename__ = "system_health_rules"

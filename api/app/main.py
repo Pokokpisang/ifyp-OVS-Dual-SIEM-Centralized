@@ -1,10 +1,33 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from typing import List
 from . import models, db
 from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules
 import pathlib
+
+
+def run_startup_migrations():
+    """Add lifecycle columns to agent_records if they don't exist yet. PostgreSQL only."""
+    db_url = str(db.engine.url)
+    if not (db_url.startswith("postgresql") or db_url.startswith("postgres")):
+        return
+    migrations = [
+        "ALTER TABLE agent_records ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE agent_records ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP",
+        "ALTER TABLE agent_records ADD COLUMN IF NOT EXISTS deleted_reason VARCHAR",
+        "ALTER TABLE agent_records ADD COLUMN IF NOT EXISTS lifecycle_status VARCHAR DEFAULT 'pending_registration'",
+        # Backfill: existing active agents should be active_inventory, not pending_registration
+        "UPDATE agent_records SET lifecycle_status = 'active_inventory' WHERE status = 'active' AND lifecycle_status = 'pending_registration'",
+    ]
+    with db.engine.connect() as conn:
+        for sql in migrations:
+            conn.execute(text(sql))
+        conn.commit()
+
+
+run_startup_migrations()
 
 # Create tables
 models.Base.metadata.create_all(bind=db.engine)

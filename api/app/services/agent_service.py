@@ -80,6 +80,7 @@ def create_agent(
         enable_fim=enable_fim,
         enable_metrics=enable_metrics,
         status="pending",
+        lifecycle_status="pending_registration",
     )
     db.add(agent)
     db.commit()
@@ -138,6 +139,7 @@ def register_agent(
 
     # Activate
     agent.status = "active"
+    agent.lifecycle_status = "active_inventory"
     agent.hostname = hostname
     agent.ip_address = ip_address
     agent.last_seen = now
@@ -250,47 +252,115 @@ def compute_agent_status(agent: models.AgentRecord) -> str:
     return "active"
 
 
-def list_agents(db: Session) -> list[dict]:
+_HIDDEN_LIFECYCLE = ("deleted", "retired", "test_agent")
+
+
+def list_agents(db: Session, include_deleted: bool = False) -> list[dict]:
     """
-    Return all agent records with live-computed status.
+    Return agent records with live-computed status.
+
+    When ``include_deleted=False`` (default), hides agents where
+    ``is_deleted=True`` or ``lifecycle_status`` is in the hidden set.
     """
-    agents = db.query(models.AgentRecord).order_by(models.AgentRecord.created_at.desc()).all()
+    query = db.query(models.AgentRecord)
+    if not include_deleted:
+        query = query.filter(
+            models.AgentRecord.is_deleted == False,
+            models.AgentRecord.lifecycle_status.notin_(_HIDDEN_LIFECYCLE),
+        )
+    agents = query.order_by(models.AgentRecord.created_at.desc()).all()
     result = []
     for a in agents:
-        result.append(
-            {
-                "id": a.id,
-                "agent_id": a.agent_id,
-                "agent_name": a.agent_name,
-                "group": a.group,
-                "tags": a.tags,
-                "os_type": a.os_type,
-                "distribution": a.distribution,
-                "architecture": a.architecture,
-                "status": compute_agent_status(a),
-                "hostname": a.hostname or "—",
-                "ip_address": a.ip_address or "—",
-                "last_seen": a.last_seen.strftime("%Y-%m-%d %H:%M UTC") if a.last_seen else "Never",
-                "created_at": a.created_at.strftime("%Y-%m-%d %H:%M UTC") if a.created_at else "—",
-                "enable_logs": a.enable_logs,
-                "enable_fim": a.enable_fim,
-                "enable_metrics": a.enable_metrics,
-            }
-        )
+        result.append(_agent_to_dict(a))
     return result
+
+
+def get_all_agents_for_history(
+    db: Session,
+    q: str = "",
+    lifecycle_filter: str = "all",
+) -> list[dict]:
+    """Return all agent records for the history page (no lifecycle filter)."""
+    query = db.query(models.AgentRecord)
+
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            models.AgentRecord.agent_name.ilike(like)
+            | models.AgentRecord.hostname.ilike(like)
+            | models.AgentRecord.ip_address.ilike(like)
+            | models.AgentRecord.agent_id.ilike(like)
+        )
+
+    if lifecycle_filter and lifecycle_filter != "all":
+        if lifecycle_filter == "active":
+            query = query.filter(models.AgentRecord.lifecycle_status == "active_inventory")
+        elif lifecycle_filter == "pending":
+            query = query.filter(models.AgentRecord.lifecycle_status == "pending_registration")
+        elif lifecycle_filter in ("deleted", "retired", "test"):
+            status = "test_agent" if lifecycle_filter == "test" else lifecycle_filter
+            query = query.filter(models.AgentRecord.lifecycle_status == status)
+        elif lifecycle_filter == "offline":
+            # offline is a runtime computed status — filter by active_inventory with stale last_seen
+            cutoff = datetime.utcnow() - timedelta(minutes=OFFLINE_THRESHOLD_MINUTES)
+            query = query.filter(
+                models.AgentRecord.lifecycle_status == "active_inventory",
+                models.AgentRecord.last_seen < cutoff,
+            )
+
+    agents = query.order_by(models.AgentRecord.created_at.desc()).all()
+    return [_agent_to_dict(a) for a in agents]
+
+
+def _agent_to_dict(a: models.AgentRecord) -> dict:
+    return {
+        "id": a.id,
+        "agent_id": a.agent_id,
+        "agent_name": a.agent_name,
+        "group": a.group,
+        "tags": a.tags,
+        "os_type": a.os_type,
+        "distribution": a.distribution,
+        "architecture": a.architecture,
+        "status": compute_agent_status(a),
+        "hostname": a.hostname or "—",
+        "ip_address": a.ip_address or "—",
+        "last_seen": a.last_seen.strftime("%Y-%m-%d %H:%M UTC") if a.last_seen else "Never",
+        "created_at": a.created_at.strftime("%Y-%m-%d %H:%M UTC") if a.created_at else "—",
+        "enable_logs": a.enable_logs,
+        "enable_fim": a.enable_fim,
+        "enable_metrics": a.enable_metrics,
+        "is_deleted": getattr(a, "is_deleted", False),
+        "lifecycle_status": getattr(a, "lifecycle_status", "pending_registration") or "pending_registration",
+        "deleted_at": a.deleted_at.strftime("%Y-%m-%d %H:%M UTC") if getattr(a, "deleted_at", None) else None,
+        "deleted_reason": getattr(a, "deleted_reason", None),
+    }
 def get_agent_by_id(agent_id: str, db: Session) -> models.AgentRecord | None:
     """Return the AgentRecord with the given agent_id (UUID string)."""
     return db.query(models.AgentRecord).filter(models.AgentRecord.agent_id == agent_id).first()
 
 
-def delete_agent_by_id(agent_id: str, db: Session) -> bool:
-    """Delete the AgentRecord with the given agent_id. Returns True if deleted."""
+def delete_agent_by_id(agent_id: str, db: Session, reason: str | None = None) -> bool:
+    """Soft-delete an agent: marks is_deleted=True, records reason and timestamp."""
     agent = get_agent_by_id(agent_id, db)
-    if agent:
-        db.delete(agent)
-        db.commit()
-        return True
-    return False
+    if not agent:
+        return False
+    agent.is_deleted = True
+    agent.deleted_at = datetime.utcnow()
+    agent.deleted_reason = reason or "Deleted from dashboard"
+    agent.lifecycle_status = "deleted"
+    db.commit()
+    return True
+
+
+def purge_agent_by_id(agent_id: str, db: Session) -> bool:
+    """Permanently hard-delete an agent record. Use only in dev/admin contexts."""
+    agent = get_agent_by_id(agent_id, db)
+    if not agent:
+        return False
+    db.delete(agent)
+    db.commit()
+    return True
 
 
 def get_latest_agent_metrics(host: str, db: Session) -> models.Metric | None:
