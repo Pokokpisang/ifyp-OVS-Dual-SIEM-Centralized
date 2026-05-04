@@ -119,9 +119,8 @@ class RuleEngine:
         self.db.commit()
 
     def evaluate_raw(self, raw_log: dict):
-        # 1. Normalize auditd logs
-        if raw_log.get("log_type") == "auditd" or "type=" in raw_log.get("message", ""):
-            raw_log = AuditdParser.normalize_log(raw_log)
+        # 1. Normalize all logs — AuditdParser handles auditd, auth, and syslog
+        raw_log = AuditdParser.normalize_log(raw_log)
 
         mode = os.getenv("DETECTION_ENGINE_MODE", "YAML").upper()
         _announce_mode(mode)

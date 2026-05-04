@@ -67,7 +67,9 @@ class SSHBruteForceMatch:
     source_ip: str = ""
     user_name: Optional[str] = None
     failure_count: int = 0
+    threshold: int = SSH_BF_THRESHOLD
     time_window_seconds: int = SSH_BF_WINDOW_SECONDS
+    dedup_seconds: int = SSH_BF_DEDUP_SECONDS
     match_reasons: List[str] = field(default_factory=list)
 
 
@@ -277,7 +279,9 @@ class SSHBruteForceEngine:
             source_ip=source_ip,
             user_name=user_display,
             failure_count=count,
+            threshold=self._threshold,
             time_window_seconds=self._window,
+            dedup_seconds=self._dedup_seconds,
             match_reasons=match_reasons,
             risk_score=risk_score,
             severity=severity,

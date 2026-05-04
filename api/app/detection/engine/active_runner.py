@@ -238,11 +238,22 @@ class ActiveDetectionRunner:
             host = host.get("name", "unknown")
 
         detection_metadata = {
+            "rule_id": match.rule_id,
+            "rule_name": match.rule_name,
             "source_ip": match.source_ip,
             "user_name": match.user_name,
             "failure_count": match.failure_count,
+            "threshold": match.threshold,
             "time_window_seconds": match.time_window_seconds,
+            "dedup_seconds": match.dedup_seconds,
             "match_reasons": match.match_reasons,
+            "recommended_actions": [
+                "Block source IP at firewall if brute-force is confirmed.",
+                "Check if any login eventually succeeded from the same source IP.",
+                "Review the targeted user account for signs of compromise.",
+                "Enable account lockout policy if not already configured.",
+                "Correlate with other auth logs for the same source IP across hosts.",
+            ],
         }
 
         description = (

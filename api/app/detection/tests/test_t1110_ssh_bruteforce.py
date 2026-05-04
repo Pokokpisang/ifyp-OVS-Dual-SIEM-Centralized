@@ -154,3 +154,19 @@ def test_ssh_bruteforce_no_match_for_success_event():
     for _ in range(10):
         result = bf.evaluate(_success_ssh_event())
         assert result is None, "Success events must never trigger brute-force match"
+
+
+def test_ssh_bruteforce_match_includes_threshold_and_dedup():
+    threshold = 5
+    dedup_secs = 90
+    bf = _fresh_engine(threshold=threshold, dedup_seconds=dedup_secs)
+    event = _failed_ssh_event(source_ip="10.0.0.77", agent_id="agent-005")
+
+    match = None
+    for _ in range(threshold):
+        match = bf.evaluate(event)
+
+    assert match is not None
+    assert match.threshold == threshold, "threshold must be carried on the match"
+    assert match.dedup_seconds == dedup_secs, "dedup_seconds must be carried on the match"
+    assert match.time_window_seconds == 60  # default window

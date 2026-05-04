@@ -209,6 +209,14 @@
                                 <span class="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">
                                     <span class="material-symbols-outlined text-[12px]">code</span>YAML
                                 </span>
+                            {% elif alert.detection_engine == 'CorrelationEngine' %}
+                                <span class="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                    <span class="material-symbols-outlined text-[12px]">device_hub</span>CORRELATION
+                                </span>
+                            {% elif alert.detection_engine == 'SSHBruteForceEngine' %}
+                                <span class="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                                    <span class="material-symbols-outlined text-[12px]">lock_person</span>BRUTE FORCE
+                                </span>
                             {% elif alert.detection_engine == 'MetricEngine' %}
                                 <span class="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
                                     <span class="material-symbols-outlined text-[12px]">analytics</span>METRIC
@@ -217,9 +225,13 @@
                                 <span class="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
                                     <span class="material-symbols-outlined text-[12px]">shutter_speed</span>ANOMALY
                                 </span>
-                            {% else %}
+                            {% elif alert.detection_engine == 'LEGACY' or alert.detection_engine == None %}
                                 <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-slate-500/10 text-slate-400 border border-slate-500/20">
                                     <span class="material-symbols-outlined text-[12px]">history</span>LEGACY
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-slate-600/10 text-slate-400 border border-slate-600/20">
+                                    <span class="material-symbols-outlined text-[12px]">help_outline</span>{{ alert.detection_engine or 'UNKNOWN' }}
                                 </span>
                             {% endif %}
                         </td>
