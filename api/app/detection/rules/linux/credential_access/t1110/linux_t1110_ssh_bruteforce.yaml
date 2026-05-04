@@ -1,10 +1,9 @@
 id: linux_t1110_ssh_bruteforce
-name: SSH Brute Force Authentication Failures
+name: SSH Failed Authentication Event
 description: >
-  Detects individual failed SSH authentication events that may indicate a brute force
-  attack. This rule fires at low severity for each failure. Pair with the
-  SSHBruteForceEngine threshold component for high-confidence escalation after
-  repeated failures from the same source IP.
+  Detects a single failed SSH authentication event. Fires at low severity per failure
+  as an early indicator. For high-confidence brute-force escalation after repeated
+  failures from the same source IP, see SSHBruteForceEngine (T1110 threshold alert).
 enabled: true
 platform:
   - linux

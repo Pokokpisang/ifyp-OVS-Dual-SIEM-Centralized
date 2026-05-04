@@ -556,7 +556,7 @@ async function loadInvestigation() {
 
             const bfDetails = [
                 `<strong>Source IP:</strong> ${meta.source_ip || '—'}`,
-                `<strong>Failure count:</strong> ${meta.failure_count ?? '—'} / threshold ${meta.threshold ?? '—'}`,
+                `<strong>Failure count:</strong> ${meta.failure_count ?? '—'} / ${meta.threshold ?? '—'}`,
                 `<strong>Time window:</strong> ${meta.time_window_seconds ?? '—'}s`,
                 `<strong>Dedup cooldown:</strong> ${meta.dedup_seconds ?? '—'}s`,
                 meta.user_name ? `<strong>Targeted user(s):</strong> ${meta.user_name}` : null,
