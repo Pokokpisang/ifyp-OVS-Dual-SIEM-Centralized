@@ -1,0 +1,15 @@
+{
+  "message": "Failed password for root from 192.168.1.100 port 22 ssh2",
+  "log_type": "auth",
+  "hostname": "test-host",
+  "agent_id": "agent-001",
+  "ip_address": "10.0.0.5",
+  "event": {
+    "outcome": "failure",
+    "category": "authentication"
+  },
+  "service": { "name": "ssh" },
+  "source": { "ip": "192.168.1.100" },
+  "user": { "name": "root" },
+  "host": { "name": "test-host" }
+}

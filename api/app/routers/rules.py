@@ -14,12 +14,15 @@ templates = Jinja2Templates(directory="templates")
 
 # --- UI Routes ---
 
-@router.get("/rules", response_class=HTMLResponse)
-def view_rules(request: Request, db: Session = Depends(db.get_db)):
-    rules = db.query(models.DetectionRule).order_by(models.DetectionRule.id).all()
-    # Ensure default rule exists (simple seed check)
-    if not rules:
-        logic = {
+_SEED_RULES = [
+    {
+        "mitre_technique_id": "T1059",
+        "name": "T1059 Suspicious Command Execution",
+        "rule_type": "server",
+        "severity_default": "MED",
+        "mitre_technique_name": "Command and Scripting Interpreter",
+        "log_type_scope": "auditd",
+        "logic": {
             "match": {
                 "keywords_any": ["base64", "nc", "bash -i", "sh -c", "chmod +x"],
                 "patterns_any": [
@@ -28,41 +31,69 @@ def view_rules(request: Request, db: Session = Depends(db.get_db)):
                     {"name": "suspicious_downloader_sh", "all_of": ["curl|wget", ".sh"], "severity": "HIGH"},
                     {"name": "suspicious_downloader_out", "all_of": ["curl|wget", "http", "-o|-O|--output"], "severity": "MED"},
                     {"name": "base64_decode_exec", "all_of": ["base64", "bash|sh|python"], "severity": "HIGH"},
-                    {"name": "netcat_shell", "all_of": ["nc", "-e|bash -i|python -c"], "severity": "HIGH"}
-                ]
+                    {"name": "netcat_shell", "all_of": ["nc", "-e|bash -i|python -c"], "severity": "HIGH"},
+                ],
             },
             "exclude": {
                 "keywords_any": [
-                    "localhost", 
-                    "127.0.0.1", 
-                    "/api/agent/rules", 
-                    "/api/ingest", 
-                    "healthcheck", 
-                    "pg_isready", 
-                    "antigravity", 
-                    "cpuUsage.sh", 
-                    "/usr/share/antigravity/"
+                    "localhost", "127.0.0.1", "/api/agent/rules", "/api/ingest",
+                    "healthcheck", "pg_isready", "antigravity", "cpuUsage.sh",
+                    "/usr/share/antigravity/",
                 ]
             },
+            "alert": {"message": "Suspicious command execution detected.", "severity": "MED"},
+        },
+    },
+    {
+        "mitre_technique_id": "T1110",
+        "name": "T1110 SSH Brute Force Authentication Failures",
+        "rule_type": "server",
+        "severity_default": "LOW",
+        "mitre_technique_name": "Brute Force",
+        "log_type_scope": "auth",
+        "logic": {
+            "match": {
+                "keywords_any": ["Failed password", "authentication failure", "Invalid user"],
+                "patterns_any": [
+                    {"name": "ssh_failed_password", "all_of": ["Failed password"], "severity": "LOW"},
+                    {"name": "ssh_invalid_user", "all_of": ["Invalid user"], "severity": "LOW"},
+                ],
+            },
+            "exclude": {"keywords_any": []},
             "alert": {
-                "message": "Suspicious command execution detected.",
-                "severity": "MED"
-            }
-        }
-        default_rule = models.DetectionRule(
-            name="T1059 Suspicious Command Execution",
-            rule_type="server",
-            enabled=True,
-            severity_default="MED",
-            mitre_technique_id="T1059",
-            mitre_technique_name="Command and Scripting Interpreter",
-            log_type_scope="auditd",
-            logic_json=json.dumps(logic)
-        )
-        db.add(default_rule)
-        db.commit()
-        rules = [default_rule]
+                "message": "SSH authentication failure — possible brute force. Detected by YAML engine (linux_t1110_ssh_bruteforce).",
+                "severity": "LOW",
+            },
+        },
+    },
+]
 
+
+def _seed_rules(db_session: Session) -> None:
+    """Ensure all canonical seed rules exist in the DB (idempotent)."""
+    existing_ids = {
+        r.mitre_technique_id
+        for r in db_session.query(models.DetectionRule.mitre_technique_id).all()
+    }
+    for spec in _SEED_RULES:
+        if spec["mitre_technique_id"] not in existing_ids:
+            db_session.add(models.DetectionRule(
+                name=spec["name"],
+                rule_type=spec["rule_type"],
+                enabled=True,
+                severity_default=spec["severity_default"],
+                mitre_technique_id=spec["mitre_technique_id"],
+                mitre_technique_name=spec["mitre_technique_name"],
+                log_type_scope=spec["log_type_scope"],
+                logic_json=json.dumps(spec["logic"]),
+            ))
+    db_session.commit()
+
+
+@router.get("/rules", response_class=HTMLResponse)
+def view_rules(request: Request, db: Session = Depends(db.get_db)):
+    _seed_rules(db)
+    rules = db.query(models.DetectionRule).order_by(models.DetectionRule.id).all()
     return templates.TemplateResponse("rules.html", {"request": request, "rules": rules})
 
 @router.get("/rules/new", response_class=HTMLResponse)

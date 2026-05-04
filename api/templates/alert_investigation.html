@@ -400,10 +400,20 @@ async function loadInvestigation() {
                 <span class="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
                     <span class="material-symbols-outlined text-[12px]">device_hub</span>CorrelationEngine
                 </span>`;
-        } else {
+        } else if (d.alert.detection_engine === 'SSHBruteForceEngine') {
+            engineEl.innerHTML = `
+                <span class="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                    <span class="material-symbols-outlined text-[12px]">lock_person</span>SSHBruteForceEngine
+                </span>`;
+        } else if (d.alert.detection_engine === 'LEGACY' || !d.alert.detection_engine) {
             engineEl.innerHTML = `
                 <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-slate-500/10 text-slate-400 border border-slate-500/20">
                     <span class="material-symbols-outlined text-[12px]">history</span>Legacy RuleEngine
+                </span>`;
+        } else {
+            engineEl.innerHTML = `
+                <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-slate-600/10 text-slate-400 border border-slate-600/20">
+                    <span class="material-symbols-outlined text-[12px]">help_outline</span>${d.alert.detection_engine}
                 </span>`;
         }
 
@@ -516,6 +526,70 @@ async function loadInvestigation() {
                         <li class="flex items-start gap-2 text-[11px] text-slate-300">
                             <span class="material-symbols-outlined text-sky-400 text-[14px] mt-0.5">link</span>
                             Correlated key &mdash; ${k}: <span class="font-mono ml-1">${v}</span>
+                        </li>`;
+                });
+            } else {
+                adjContainer.classList.add('hidden');
+            }
+        } else if (d.alert.detection_engine === 'SSHBruteForceEngine' && d.alert.detection_metadata) {
+            document.getElementById('yaml-metadata-section').classList.remove('hidden');
+            const meta = d.alert.detection_metadata;
+
+            // Risk gauge — rose tint for brute force
+            const risk = d.alert.risk_score || 0;
+            document.getElementById('risk-val').textContent = risk;
+            const circle = document.getElementById('risk-gauge-circle');
+            const circumference = 364.4;
+            const offset = circumference - (risk / 100) * circumference;
+            circle.style.strokeDashoffset = offset;
+            ['text-primary', 'text-severity-critical', 'text-emerald-400', 'text-amber-400'].forEach(c => circle.classList.remove(c));
+            circle.classList.add(risk >= 61 ? 'text-severity-critical' : 'text-amber-400');
+
+            // MITRE
+            document.getElementById('meta-tactic').textContent = d.alert.mitre_tactic || 'TA0006 — Credential Access';
+            document.getElementById('meta-technique').textContent = d.alert.mitre_technique || 'T1110 — Brute Force';
+            document.getElementById('meta-rule-id').textContent = d.alert.rule_id || '—';
+
+            // Build findings list
+            const reasonsList = document.getElementById('match-reasons-list');
+            reasonsList.innerHTML = '';
+
+            const bfDetails = [
+                `<strong>Source IP:</strong> ${meta.source_ip || '—'}`,
+                `<strong>Failure count:</strong> ${meta.failure_count ?? '—'} / ${meta.threshold ?? '—'}`,
+                `<strong>Time window:</strong> ${meta.time_window_seconds ?? '—'}s`,
+                `<strong>Dedup cooldown:</strong> ${meta.dedup_seconds ?? '—'}s`,
+                meta.user_name ? `<strong>Targeted user(s):</strong> ${meta.user_name}` : null,
+            ].filter(Boolean);
+
+            bfDetails.forEach(item => {
+                reasonsList.innerHTML += `
+                    <li class="flex items-start gap-2 text-[11px] text-slate-300">
+                        <span class="material-symbols-outlined text-rose-400 text-[14px] mt-0.5">lock_person</span>
+                        <span>${item}</span>
+                    </li>`;
+            });
+
+            (meta.match_reasons || []).forEach(r => {
+                reasonsList.innerHTML += `
+                    <li class="flex items-start gap-2 text-[11px] text-slate-300">
+                        <span class="material-symbols-outlined text-rose-400 text-[14px] mt-0.5">check_circle</span>
+                        ${r}
+                    </li>`;
+            });
+
+            // Recommended analyst actions
+            const adjContainer = document.getElementById('adj-reasons-container');
+            const adjList = document.getElementById('adj-reasons-list');
+            const actions = meta.recommended_actions || [];
+            if (actions.length > 0) {
+                adjContainer.classList.remove('hidden');
+                adjList.innerHTML = '';
+                actions.forEach(action => {
+                    adjList.innerHTML += `
+                        <li class="flex items-start gap-2 text-[11px] text-slate-300">
+                            <span class="material-symbols-outlined text-sky-400 text-[14px] mt-0.5">task_alt</span>
+                            ${action}
                         </li>`;
                 });
             } else {

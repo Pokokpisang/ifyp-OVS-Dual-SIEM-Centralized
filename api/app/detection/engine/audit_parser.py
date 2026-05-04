@@ -137,8 +137,11 @@ class AuditdParser:
                 raw_log["auth"] = {"result": "failure"}
                 raw_log["event"]["outcome"] = "failure"
             
-            # Extract IP from SSH logs (e.g., "from 192.168.1.100")
-            ip_match = re.search(r'from (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', message)
+            # Extract IP from SSH logs — matches IPv4 (e.g. 192.168.1.1) and IPv6 (e.g. ::1, fe80::1)
+            ip_match = re.search(
+                r'from ((?:\d{1,3}\.){3}\d{1,3}|[0-9a-fA-F]{0,4}(?::[0-9a-fA-F]{0,4}){2,7})',
+                message
+            )
             if ip_match:
                 raw_log["source"]["ip"] = ip_match.group(1)
             
