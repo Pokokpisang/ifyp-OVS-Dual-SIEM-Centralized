@@ -1,0 +1,25 @@
+id: generic_high_risk_source_ip_containment
+name: Generic High Risk Source IP Containment
+description: Recommend temporary containment for high-risk alerts with a source IP.
+enabled: true
+
+trigger:
+  alert_severity:
+    in:
+      - high
+      - critical
+
+conditions:
+  all:
+    - field: source_ip
+      operator: exists
+
+actions:
+  - id: simulated_block_source_ip
+    name: Simulated Block Source IP
+    type: simulated_block_ip
+    target_field: source_ip
+    mode: simulation
+    requires_approval: true
+    rollback_supported: false
+    description: Records that the source IP would be blocked in a real deployment. No network change is made.

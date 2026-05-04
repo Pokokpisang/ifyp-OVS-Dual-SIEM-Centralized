@@ -348,6 +348,18 @@ def get_investigation_data(alert_id: int, db: Session = Depends(db.get_db)):
         "label": f"Detection Rule triggered: {rule_name}\nDescription: {timeline_desc}",
         "is_alert": True,
     })
+    # Inject SOAR execution events into timeline
+    soar_events = db.query(models.SOARActionExecution).filter(
+        models.SOARActionExecution.alert_id == alert_id
+    ).all()
+    for evt in soar_events:
+        timeline.append({
+            "ts": evt.executed_at.strftime("%Y-%m-%d %H:%M:%S") if evt.executed_at else "PENDING",
+            "label": f"SOAR: {evt.action_name} on {evt.target or 'N/A'} — {evt.status}",
+            "is_alert": False,
+            "is_soar": True,
+        })
+
     # Add pending analyst step
     timeline.append({
         "ts": "PENDING",
