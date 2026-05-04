@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class SOARActionAutomation(BaseModel):
+    auto_run_allowed: bool = False
 
 
 class SOARAction(BaseModel):
@@ -14,6 +18,7 @@ class SOARAction(BaseModel):
     requires_approval: bool = True
     rollback_supported: bool = False
     description: str = ""
+    automation: SOARActionAutomation = Field(default_factory=SOARActionAutomation)
 
 
 class SOARCondition(BaseModel):
@@ -24,6 +29,8 @@ class SOARCondition(BaseModel):
 
 class SOARTrigger(BaseModel):
     alert_severity: Optional[Dict[str, List[str]]] = None
+    detection_engine: Optional[Dict[str, List[str]]] = None
+    mitre_technique: Optional[Dict[str, List[str]]] = None
 
 
 class SOARPlaybook(BaseModel):

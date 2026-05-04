@@ -158,6 +158,17 @@ class SOARActionExecution(Base):
     exec_metadata      = Column(Text, nullable=True)  # JSON blob
 
 
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    key         = Column(String, unique=True, index=True, nullable=False)
+    value       = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    updated_at  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by  = Column(String, nullable=True)
+
+
 class SystemHealthRule(Base):
     __tablename__ = "system_health_rules"
 

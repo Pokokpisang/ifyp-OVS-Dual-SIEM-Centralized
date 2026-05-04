@@ -23,3 +23,5 @@ actions:
     requires_approval: true
     rollback_supported: false
     description: Records that the source IP would be blocked in a real deployment. No network change is made.
+    automation:
+      auto_run_allowed: false

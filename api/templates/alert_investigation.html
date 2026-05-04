@@ -217,6 +217,7 @@
             <section id="soar-card" class="bg-primary/5 border border-primary/10 rounded-xl p-6 hidden">
                 <h4 class="text-sm font-bold text-primary mb-4 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">security</span>SOAR Response
+                    <span id="soar-mode-badge" class="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold border uppercase bg-slate-500/10 text-slate-400 border-slate-500/20 ml-auto"></span>
                 </h4>
                 <!-- recommendation area -->
                 <div id="soar-recommendation"></div>
@@ -233,6 +234,7 @@
                                     <th class="px-4 py-2">Target</th>
                                     <th class="px-4 py-2">Mode</th>
                                     <th class="px-4 py-2">Status</th>
+                                    <th class="px-4 py-2">Executed By</th>
                                     <th class="px-4 py-2">Result</th>
                                 </tr>
                             </thead>
@@ -839,17 +841,35 @@ async function loadSOAR(alertId) {
 
     let recs = [];
     let history = [];
+    let soarMode = 'manual';
+    let soarModeLabel = 'Manual Approval';
 
     try {
-        const [recRes, histRes] = await Promise.all([
+        const [recRes, histRes, settingsRes] = await Promise.all([
             fetch(`/api/alerts/${alertId}/soar/recommendations`),
             fetch(`/api/alerts/${alertId}/soar/history`),
+            fetch(`/api/settings/soar`),
         ]);
-        if (recRes.ok)  recs    = (await recRes.json()).recommendations  || [];
-        if (histRes.ok) history = (await histRes.json()).history          || [];
-    } catch (_) { /* non-critical — show card with no match */ }
+        if (recRes.ok)      recs         = (await recRes.json()).recommendations || [];
+        if (histRes.ok)     history      = (await histRes.json()).history         || [];
+        if (settingsRes.ok) {
+            const s = await settingsRes.json();
+            soarMode      = s.soar_execution_mode || 'manual';
+            soarModeLabel = s.label               || 'Manual Approval';
+        }
+    } catch (_) { /* non-critical */ }
 
     card.classList.remove('hidden');
+
+    // Mode badge in card header
+    const modeBadgeEl = document.getElementById('soar-mode-badge');
+    if (modeBadgeEl) {
+        const badgeCls = soarMode === 'automatic'
+            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+            : 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+        modeBadgeEl.className = `shrink-0 px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${badgeCls}`;
+        modeBadgeEl.textContent = soarModeLabel;
+    }
 
     if (recs.length === 0) {
         recEl.innerHTML = `
@@ -860,6 +880,54 @@ async function loadSOAR(alertId) {
     } else {
         const r = recs[0];
         const a = r.action;
+
+        // Determine already-executed for this recommendation
+        const alreadyRun = history.some(h =>
+            h.playbook_id === r.playbook_id &&
+            h.action_id   === a.id          &&
+            h.status      === 'success'
+        );
+
+        let actionWidget = '';
+        if (soarMode === 'automatic' && a.automation && a.automation.auto_run_allowed) {
+            if (alreadyRun) {
+                actionWidget = `
+                    <div class="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                        <span class="material-symbols-outlined text-[16px] text-emerald-400">check_circle</span>
+                        <span class="text-xs text-emerald-400 font-semibold">Auto-executed. See response history below.</span>
+                    </div>`;
+            } else {
+                actionWidget = `
+                    <div class="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20">
+                        <span class="material-symbols-outlined text-[16px] text-primary">auto_mode</span>
+                        <span class="text-xs text-primary font-semibold">Eligible for automatic simulation — will run on next page load.</span>
+                    </div>`;
+            }
+        } else if (soarMode === 'automatic' && !(a.automation && a.automation.auto_run_allowed)) {
+            actionWidget = `
+                <div class="mt-2 space-y-2">
+                    <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                        <span class="material-symbols-outlined text-[14px] text-amber-400">lock</span>
+                        <span class="text-xs text-amber-400 font-semibold">Manual approval required — not eligible for auto-run.</span>
+                    </div>
+                    <button onclick="runSOARAction('${r.playbook_id}','${a.id}')"
+                        id="soar-run-btn"
+                        class="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20">
+                        <span class="material-symbols-outlined text-[16px]">play_arrow</span>Run Simulated Action
+                    </button>
+                    <p id="soar-run-msg" class="text-xs text-center hidden"></p>
+                </div>`;
+        } else {
+            // manual mode — always show button
+            actionWidget = `
+                <button onclick="runSOARAction('${r.playbook_id}','${a.id}')"
+                    id="soar-run-btn"
+                    class="mt-2 w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20">
+                    <span class="material-symbols-outlined text-[16px]">play_arrow</span>Run Simulated Action
+                </button>
+                <p id="soar-run-msg" class="text-xs text-center hidden"></p>`;
+        }
+
         recEl.innerHTML = `
             <div class="space-y-3">
                 <div class="flex items-start justify-between gap-3">
@@ -880,12 +948,7 @@ async function loadSOAR(alertId) {
                     <div><span class="text-slate-500 uppercase text-[9px] font-bold">Impact</span><p class="text-slate-400 mt-0.5">No real system change</p></div>
                 </div>
                 <p class="text-[11px] text-slate-400 italic">${a.description || ''}</p>
-                <button onclick="runSOARAction('${r.playbook_id}','${a.id}')"
-                    id="soar-run-btn"
-                    class="mt-2 w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20">
-                    <span class="material-symbols-outlined text-[16px]">play_arrow</span>Run Simulated Action
-                </button>
-                <p id="soar-run-msg" class="text-xs text-center hidden"></p>
+                ${actionWidget}
             </div>`;
     }
 
@@ -907,6 +970,9 @@ function renderSOARHistory(history) {
         const statusCls = h.status === 'success'
             ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
             : 'text-red-400 bg-red-500/10 border-red-500/20';
+        const executedByCls = (h.executed_by || '').startsWith('system:')
+            ? 'text-primary font-mono'
+            : 'text-slate-400 font-mono';
         tbody.innerHTML += `
             <tr class="hover:bg-primary/5 transition-colors">
                 <td class="px-4 py-2 whitespace-nowrap text-slate-400 font-mono">${h.executed_at || '—'}</td>
@@ -915,6 +981,7 @@ function renderSOARHistory(history) {
                 <td class="px-4 py-2 text-emerald-400 font-mono font-bold">${h.target || '—'}</td>
                 <td class="px-4 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 uppercase">${h.mode || '—'}</span></td>
                 <td class="px-4 py-2"><span class="px-2 py-0.5 rounded border text-[10px] font-bold ${statusCls} uppercase">${h.status || '—'}</span></td>
+                <td class="px-4 py-2 ${executedByCls}">${h.executed_by || 'analyst'}</td>
                 <td class="px-4 py-2 text-slate-400 max-w-xs truncate" title="${(h.result_message||'').replace(/"/g,'&quot;')}">${h.result_message || '—'}</td>
             </tr>`;
     });

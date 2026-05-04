@@ -90,15 +90,34 @@ def _eval_condition(condition: SOARCondition, ctx: Dict[str, Any]) -> bool:
     return False
 
 
+# Maps SOARTrigger field name → alert context key used for matching.
+# All trigger fields use the same {"in": [...]} structure.
+_TRIGGER_FIELD_MAP: Dict[str, str] = {
+    "alert_severity": "severity",
+    "detection_engine": "detection_engine",
+    "mitre_technique": "mitre_technique",
+}
+
+
 def _eval_trigger(playbook: SOARPlaybook, ctx: Dict[str, Any]) -> Optional[str]:
     trigger = playbook.trigger
-    if trigger.alert_severity:
-        severity_filter = trigger.alert_severity.get("in")
-        if severity_filter is not None:
-            if ctx.get("severity") not in [s.lower() for s in severity_filter]:
-                return None
-            return f"Alert severity '{ctx.get('severity')}' matches trigger"
-    return "Trigger matched (no severity filter)"
+    reasons: List[str] = []
+
+    for trigger_field, ctx_field in _TRIGGER_FIELD_MAP.items():
+        filter_dict = getattr(trigger, trigger_field, None)
+        if filter_dict is None:
+            continue
+        in_list = filter_dict.get("in")
+        if in_list is None:
+            continue
+        ctx_value = str(ctx.get(ctx_field) or "").lower()
+        if ctx_value not in [str(v).lower() for v in in_list]:
+            return None
+        reasons.append(f"{trigger_field} '{ctx_value}' matches trigger")
+
+    if not reasons:
+        return "Trigger matched (no filters)"
+    return "; ".join(reasons)
 
 
 def _eval_conditions(playbook: SOARPlaybook, ctx: Dict[str, Any]) -> List[str]:

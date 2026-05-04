@@ -95,6 +95,70 @@ def get_history(alert_id: int, db: Session) -> List[Dict[str, Any]]:
     return [_row_to_dict(r) for r in rows]
 
 
+def auto_run_for_alert(
+    alert_id: int,
+    db: Session,
+    executed_by: str = "system:auto",
+) -> Dict[str, Any]:
+    from ..services.settings_service import get_soar_execution_mode
+
+    mode = get_soar_execution_mode(db)
+    if mode != "automatic":
+        return {"mode": mode, "executed_count": 0, "skipped_count": 0, "results": []}
+
+    try:
+        recs = get_recommendations(alert_id, db)
+    except Exception:
+        return {"mode": mode, "executed_count": 0, "skipped_count": 0, "results": []}
+
+    executed, skipped, results = 0, 0, []
+
+    for rec in recs:
+        action = rec.action
+
+        if action.mode != "simulation":
+            skipped += 1
+            continue
+        if not action.automation.auto_run_allowed:
+            skipped += 1
+            continue
+
+        already_run = (
+            db.query(models.SOARActionExecution)
+            .filter_by(
+                alert_id=alert_id,
+                playbook_id=rec.playbook_id,
+                action_id=action.id,
+                target=rec.resolved_target,
+                status="success",
+            )
+            .first()
+        )
+        if already_run:
+            skipped += 1
+            continue
+
+        try:
+            result = run_action(alert_id, rec.playbook_id, action.id, db, executed_by)
+            results.append(result.model_dump())
+            executed += 1
+        except Exception as exc:
+            skipped += 1
+            results.append({
+                "playbook_id": rec.playbook_id,
+                "action_id": action.id,
+                "success": False,
+                "error": str(exc),
+            })
+
+    return {
+        "mode": "automatic",
+        "executed_count": executed,
+        "skipped_count": skipped,
+        "results": results,
+    }
+
+
 def _row_to_dict(r: models.SOARActionExecution) -> Dict[str, Any]:
     return {
         "id": r.id,

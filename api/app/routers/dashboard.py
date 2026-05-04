@@ -330,6 +330,11 @@ def view_investigation(alert_id: int, request: Request, db: Session = Depends(db
     })
 
 
+@router.get("/soar/settings", response_class=HTMLResponse)
+def view_soar_settings(request: Request):
+    return templates.TemplateResponse("soar_settings.html", {"request": request})
+
+
 @router.get("/agents/{agent_id}", response_class=HTMLResponse)
 def get_agent_detail(
     request: Request,

@@ -1,0 +1,27 @@
+id: t1059_unix_shell_investigation
+name: T1059 Unix Shell Investigation
+description: Recommend investigation workflow for suspicious Unix shell execution.
+enabled: true
+
+trigger:
+  mitre_technique:
+    in:
+      - T1059.004
+      - T1059
+
+conditions:
+  all:
+    - field: rule_name
+      operator: exists
+
+actions:
+  - id: create_t1059_unix_shell_investigation_note
+    name: Create T1059 Unix Shell Investigation Note
+    type: create_case_note
+    target_field: rule_name
+    mode: simulation
+    requires_approval: true
+    rollback_supported: false
+    description: Records an investigation note for suspicious Unix shell execution.
+    automation:
+      auto_run_allowed: true

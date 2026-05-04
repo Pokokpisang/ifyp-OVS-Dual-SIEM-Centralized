@@ -1,0 +1,28 @@
+id: ssh_bruteforce_response
+name: SSH Brute Force Response
+description: Recommend containment workflow for repeated SSH authentication failures.
+enabled: true
+
+trigger:
+  detection_engine:
+    in:
+      - SSHBruteForceEngine
+
+conditions:
+  all:
+    - field: source_ip
+      operator: exists
+    - field: failure_count
+      operator: exists
+
+actions:
+  - id: simulated_block_ssh_source_ip
+    name: Simulated Block SSH Source IP
+    type: simulated_block_ip
+    target_field: source_ip
+    mode: simulation
+    requires_approval: true
+    rollback_supported: false
+    description: Records that the SSH brute-force source IP would be blocked in a real deployment. No network change is made.
+    automation:
+      auto_run_allowed: false
