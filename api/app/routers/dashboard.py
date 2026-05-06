@@ -374,6 +374,11 @@ def view_agents_history(
     })
 
 
+@router.get("/soar/settings", response_class=HTMLResponse)
+def view_soar_settings(request: Request):
+    return templates.TemplateResponse("soar_settings.html", {"request": request})
+
+
 @router.get("/agents/{agent_id}", response_class=HTMLResponse)
 def get_agent_detail(
     request: Request,

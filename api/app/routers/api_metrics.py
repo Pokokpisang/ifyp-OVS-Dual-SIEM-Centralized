@@ -287,6 +287,9 @@ def get_investigation_data(alert_id: int, db: Session = Depends(db.get_db)):
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
+    from ..soar.response_service import auto_run_for_alert
+    auto_run_for_alert(alert_id, db, executed_by="system:auto")
+
     # 2. Load analyst assessment (may not exist yet)
     assessment = db.query(models.AlertAssessment).filter(
         models.AlertAssessment.alert_id == alert_id
@@ -348,6 +351,21 @@ def get_investigation_data(alert_id: int, db: Session = Depends(db.get_db)):
         "label": f"Detection Rule triggered: {rule_name}\nDescription: {timeline_desc}",
         "is_alert": True,
     })
+    # Inject SOAR execution events into timeline
+    soar_events = db.query(models.SOARActionExecution).filter(
+        models.SOARActionExecution.alert_id == alert_id
+    ).all()
+    for evt in soar_events:
+        timeline.append({
+            "ts": evt.executed_at.strftime("%Y-%m-%d %H:%M:%S") if evt.executed_at else "PENDING",
+            "label": (
+                f"SOAR: {evt.action_name} on {evt.target or 'N/A'} — {evt.status}\n"
+                f"Executed by: {evt.executed_by or 'analyst'}"
+            ),
+            "is_alert": False,
+            "is_soar": True,
+        })
+
     # Add pending analyst step
     timeline.append({
         "ts": "PENDING",
