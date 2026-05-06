@@ -6,7 +6,7 @@
 
 {% block header_actions %}
 <div class="flex items-center gap-2">
-    <span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-primary/10 text-[10px] font-bold text-primary uppercase">{{ rules|length }} Active</span>
+    <span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-primary/10 text-[10px] font-bold text-primary uppercase">{{ yaml_rules|length }} YAML Rules</span>
 </div>
 {% endblock %}
 
@@ -14,76 +14,110 @@
 <!-- Content -->
 <div class="flex-1 overflow-y-auto p-8">
     <!-- Action Bar -->
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
-            <h3 class="text-2xl font-black text-slate-900 dark:text-slate-50">Rule Management</h3>
-            <p class="text-slate-500 dark:text-slate-400 text-sm">Configure detection logic and monitor matching activity.</p>
+            <h3 class="text-2xl font-black text-slate-900 dark:text-slate-50">Detection Rules</h3>
+            <p class="text-slate-500 dark:text-slate-400 text-sm">YAML Detection-as-Code rules. Edit rule files directly to modify detection logic.</p>
         </div>
-        <a href="/rules/new" class="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg flex items-center gap-2 font-bold text-sm transition-all shadow-lg shadow-primary/20">
-            <span class="material-symbols-outlined text-lg">add</span>
-            Add Rule
-        </a>
     </div>
 
-    <!-- Rules Table Container -->
+    <!-- YAML Rules Table -->
     <div class="bg-white dark:bg-card-dark border border-slate-200 dark:border-primary/10 rounded-xl overflow-hidden shadow-sm">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-slate-50 dark:bg-primary/5 text-slate-500 dark:text-primary/70 text-xs font-bold uppercase tracking-wider">
-                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Rule Name</th>
-                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">MITRE Technique</th>
+                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Rule</th>
+                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">MITRE</th>
                         <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Severity</th>
+                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Risk Score</th>
+                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Platform</th>
                         <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Status</th>
-                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Scope</th>
-                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10 border-r border-slate-200 dark:border-primary/10">Type</th>
-                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200 dark:divide-primary/10">
-                    {% for rule in rules %}
-                    <tr class="hover:bg-slate-50 dark:hover:bg-primary/5 transition-colors group">
-                        <td class="px-6 py-5 font-semibold text-slate-900 dark:text-slate-100">{{ rule.name }}</td>
+                    {% for rule in yaml_rules %}
+                    <tr class="hover:bg-slate-50 dark:hover:bg-primary/5 transition-colors">
+                        <!-- Rule Name + ID -->
                         <td class="px-6 py-5">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-slate-200 dark:bg-primary/20 text-slate-800 dark:text-primary border border-slate-300 dark:border-primary/30">
-                                {{ rule.mitre_technique_id }}
-                            </span>
+                            <div class="font-semibold text-slate-900 dark:text-slate-100">{{ rule.name }}</div>
+                            <div class="text-[11px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">{{ rule.id }}</div>
                         </td>
+
+                        <!-- MITRE badges -->
                         <td class="px-6 py-5">
-                            {% if rule.severity_default == 'HIGH' or rule.severity_default == 'CRITICAL' %}
-                                <span class="px-2 py-0.5 rounded bg-severity-critical/10 text-severity-critical text-[10px] font-bold border border-severity-critical/20">{{ rule.severity_default }}</span>
-                            {% elif rule.severity_default == 'MED' or rule.severity_default == 'WARNING' %}
-                                <span class="px-2 py-0.5 rounded bg-severity-warning/10 text-severity-warning text-[10px] font-bold border border-severity-warning/20">{{ rule.severity_default }}</span>
-                            {% else %}
-                                <span class="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">{{ rule.severity_default }}</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-5">
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" class="sr-only peer" onchange="toggleRule('{{ rule.id }}')" {% if rule.enabled %}checked{% endif %}>
-                                <div class="w-9 h-5 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-                            </label>
-                        </td>
-                        <td class="px-6 py-5 text-sm text-slate-500 dark:text-slate-400">
-                             {{ rule.log_type_scope }}
-                        </td>
-                        <td class="px-6 py-5 text-sm font-bold border-r border-slate-200 dark:border-primary/10">
-                            {% if rule.rule_type == 'agent' %}
-                            <span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] uppercase">Agent</span>
-                            {% else %}
-                            <span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20 text-[10px] uppercase">Server</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-5 text-right">
-                            <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <a href="/rules/{{ rule.id }}" class="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-primary/20 text-slate-500 dark:text-slate-400">
-                                    <span class="material-symbols-outlined text-xl">edit</span>
-                                </a>
-                                <!-- Delete not implemented yet, using placeholder -->
-                                <button class="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500">
-                                    <span class="material-symbols-outlined text-xl">delete</span>
-                                </button>
+                            <div class="flex flex-wrap gap-1 items-center">
+                                {% if rule.mitre.get('tactic') %}
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                    {{ rule.mitre.get('tactic', {}).get('id', '') }}
+                                </span>
+                                {% endif %}
+                                {% if rule.mitre.get('subtechnique') %}
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
+                                    {{ rule.mitre.get('subtechnique', {}).get('id', '') }}
+                                </span>
+                                {% elif rule.mitre.get('technique') %}
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
+                                    {{ rule.mitre.get('technique', {}).get('id', '') }}
+                                </span>
+                                {% endif %}
                             </div>
+                            {% if rule.mitre.get('tactic') %}
+                            <div class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                                {{ rule.mitre.get('tactic', {}).get('name', '') }}
+                                {% if rule.mitre.get('subtechnique') %}
+                                · {{ rule.mitre.get('subtechnique', {}).get('name', '') }}
+                                {% elif rule.mitre.get('technique') %}
+                                · {{ rule.mitre.get('technique', {}).get('name', '') }}
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </td>
+
+                        <!-- Severity -->
+                        <td class="px-6 py-5">
+                            {% set sev = rule.severity.value %}
+                            {% if sev == 'critical' %}
+                                <span class="px-2 py-0.5 rounded bg-severity-critical/10 text-severity-critical text-[10px] font-bold border border-severity-critical/20 uppercase">{{ sev }}</span>
+                            {% elif sev == 'high' %}
+                                <span class="px-2 py-0.5 rounded bg-orange-500/10 text-orange-500 text-[10px] font-bold border border-orange-500/20 uppercase">{{ sev }}</span>
+                            {% elif sev == 'medium' %}
+                                <span class="px-2 py-0.5 rounded bg-severity-warning/10 text-severity-warning text-[10px] font-bold border border-severity-warning/20 uppercase">{{ sev }}</span>
+                            {% elif sev == 'low' %}
+                                <span class="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold border border-primary/20 uppercase">{{ sev }}</span>
+                            {% else %}
+                                <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-bold border border-slate-200 dark:border-slate-700 uppercase">{{ sev }}</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Risk Score -->
+                        <td class="px-6 py-5">
+                            <span class="text-sm font-mono font-bold text-slate-700 dark:text-slate-300">{{ rule.risk_score }}</span>
+                            <span class="text-[10px] text-slate-400 dark:text-slate-500">/100</span>
+                        </td>
+
+                        <!-- Platform -->
+                        <td class="px-6 py-5">
+                            <div class="flex flex-wrap gap-1">
+                                {% for p in rule.platform %}
+                                <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold border border-slate-200 dark:border-slate-700 uppercase">{{ p }}</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+
+                        <!-- Status -->
+                        <td class="px-6 py-5">
+                            {% if rule.enabled %}
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-bold border border-green-500/20">
+                                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                Enabled
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-bold border border-slate-200 dark:border-slate-700">
+                                <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                Disabled
+                            </span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -92,12 +126,4 @@
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    async function toggleRule(id) {
-        await fetch(`/api/rules/${id}/toggle`, { method: 'POST' });
-    }
-</script>
 {% endblock %}
