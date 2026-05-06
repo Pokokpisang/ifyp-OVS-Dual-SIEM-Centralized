@@ -61,9 +61,19 @@ class SOARExecutionResult(BaseModel):
     mode: str
     message: str
     error: Optional[str] = None
+    execution_id: Optional[int] = None
+    status: str = "executed"
 
 
 class SOARRunRequest(BaseModel):
     playbook_id: str
     action_id: str
     executed_by: Optional[str] = "analyst"
+
+
+class SOARApproveRequest(BaseModel):
+    approved_by: Optional[str] = "analyst"
+
+
+class SOARRejectRequest(BaseModel):
+    rejected_by: Optional[str] = "analyst"
