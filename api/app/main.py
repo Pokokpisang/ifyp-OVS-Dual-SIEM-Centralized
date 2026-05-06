@@ -20,6 +20,8 @@ def run_startup_migrations():
         "ALTER TABLE agent_records ADD COLUMN IF NOT EXISTS lifecycle_status VARCHAR DEFAULT 'pending_registration'",
         # Backfill: existing active agents should be active_inventory, not pending_registration
         "UPDATE agent_records SET lifecycle_status = 'active_inventory' WHERE status = 'active' AND lifecycle_status = 'pending_registration'",
+        "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS dedup_key VARCHAR",
+        "CREATE INDEX IF NOT EXISTS ix_alerts_dedup_key ON alerts (dedup_key)",
     ]
     with db.engine.connect() as conn:
         for sql in migrations:
