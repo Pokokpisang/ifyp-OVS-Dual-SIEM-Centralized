@@ -20,7 +20,7 @@ actions:
     type: create_case_note
     target_field: rule_name
     mode: simulation
-    requires_approval: true
+    requires_approval: false
     rollback_supported: false
     description: Records an investigation note for suspicious Unix shell execution.
     automation:

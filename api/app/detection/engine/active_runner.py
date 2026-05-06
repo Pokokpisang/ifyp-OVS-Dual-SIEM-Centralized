@@ -21,6 +21,8 @@ from .ssh_bruteforce_engine import (
     get_ssh_bf_dedup,
 )
 
+from ...soar.auto_runner import trigger_soar_auto_run_for_alert
+
 logger = logging.getLogger("detection.active_runner")
 
 
@@ -203,6 +205,7 @@ class ActiveDetectionRunner:
             f"[CORR] ALERT CREATED: {match.rule_id} on {host} "
             f"(Risk: {match.risk_score}, delta={match.time_delta_seconds}s)"
         )
+        trigger_soar_auto_run_for_alert(alert.id, self.db)
 
     # -----------------------------------------------------------------------
     # SSH Brute Force pass
@@ -290,6 +293,7 @@ class ActiveDetectionRunner:
             f"[SSH_BF] ALERT CREATED: {match.rule_id} on {host} "
             f"(source_ip={match.source_ip}, count={match.failure_count}, risk={match.risk_score})"
         )
+        trigger_soar_auto_run_for_alert(alert.id, self.db)
 
     # -----------------------------------------------------------------------
     # Standard YAML alert creator (unchanged)
@@ -350,3 +354,4 @@ class ActiveDetectionRunner:
         self.db.add(alert)
         self.db.commit()
         logger.info(f"[ACTIVE_RUNNER] ALERT CREATED: {candidate.rule_id} on {host} (Risk: {candidate.risk_score})")
+        trigger_soar_auto_run_for_alert(alert.id, self.db)
