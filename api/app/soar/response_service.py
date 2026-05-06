@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -12,6 +13,8 @@ from .action_executor import execute_action
 from .playbook_loader import PlaybookLoader
 from .playbook_matcher import _build_alert_context, match
 from .schemas import SOARExecutionResult, SOARRecommendation
+
+logger = logging.getLogger("soar.response_service")
 
 
 def get_recommendations(alert_id: int, db: Session) -> List[SOARRecommendation]:
@@ -104,11 +107,17 @@ def auto_run_for_alert(
 
     mode = get_soar_execution_mode(db)
     if mode != "automatic":
+        logger.info(
+            f"[SOAR_AUTO] Skipped for alert #{alert_id} — SOAR mode is '{mode}' (not automatic)"
+        )
         return {"mode": mode, "executed_count": 0, "skipped_count": 0, "results": []}
+
+    logger.info(f"[SOAR_AUTO] Starting auto-run for alert #{alert_id}")
 
     try:
         recs = get_recommendations(alert_id, db)
-    except Exception:
+    except Exception as exc:
+        logger.error(f"[SOAR_AUTO] Failed to load recommendations for alert #{alert_id}: {exc}", exc_info=True)
         return {"mode": mode, "executed_count": 0, "skipped_count": 0, "results": []}
 
     executed, skipped, results = 0, 0, []
@@ -117,9 +126,15 @@ def auto_run_for_alert(
         action = rec.action
 
         if action.mode != "simulation":
+            logger.debug(f"[SOAR_AUTO] Skipping action '{action.id}' — mode is '{action.mode}' (not simulation)")
+            skipped += 1
+            continue
+        if action.requires_approval:
+            logger.debug(f"[SOAR_AUTO] Skipping action '{action.id}' — requires_approval=True")
             skipped += 1
             continue
         if not action.automation.auto_run_allowed:
+            logger.debug(f"[SOAR_AUTO] Skipping action '{action.id}' — auto_run_allowed=False")
             skipped += 1
             continue
 
@@ -135,6 +150,10 @@ def auto_run_for_alert(
             .first()
         )
         if already_run:
+            logger.info(
+                f"[SOAR_AUTO] Skipping action '{action.id}' for alert #{alert_id} "
+                f"(playbook={rec.playbook_id}) — duplicate execution already exists"
+            )
             skipped += 1
             continue
 
@@ -142,8 +161,17 @@ def auto_run_for_alert(
             result = run_action(alert_id, rec.playbook_id, action.id, db, executed_by)
             results.append(result.model_dump())
             executed += 1
+            logger.info(
+                f"[SOAR_AUTO] Completed action '{action.id}' for alert #{alert_id} "
+                f"(playbook={rec.playbook_id}, success={result.success})"
+            )
         except Exception as exc:
             skipped += 1
+            logger.error(
+                f"[SOAR_AUTO] Action '{action.id}' failed for alert #{alert_id} "
+                f"(playbook={rec.playbook_id}): {exc}",
+                exc_info=True,
+            )
             results.append({
                 "playbook_id": rec.playbook_id,
                 "action_id": action.id,
@@ -151,6 +179,10 @@ def auto_run_for_alert(
                 "error": str(exc),
             })
 
+    logger.info(
+        f"[SOAR_AUTO] Finished for alert #{alert_id} — "
+        f"executed={executed}, skipped={skipped}"
+    )
     return {
         "mode": "automatic",
         "executed_count": executed,
