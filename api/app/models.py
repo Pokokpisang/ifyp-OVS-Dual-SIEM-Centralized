@@ -49,6 +49,7 @@ class Alert(Base):
     mitre_technique = Column(String, nullable=True)
     detection_engine = Column(String, default="LEGACY") # YAML, LEGACY
     detection_metadata = Column(Text, nullable=True) # JSON match reasons/details
+    dedup_key = Column(String, nullable=True, index=True)
 
 class DetectionRule(Base):
     __tablename__ = "detection_rules"

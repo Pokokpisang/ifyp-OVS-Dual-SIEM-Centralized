@@ -1,7 +1,8 @@
 import os
+import hashlib
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from ... import models
@@ -24,6 +25,70 @@ from .ssh_bruteforce_engine import (
 from ...soar.auto_runner import trigger_soar_auto_run_for_alert
 
 logger = logging.getLogger("detection.active_runner")
+
+YAML_DEDUP_WINDOW_SECONDS = 60
+_GMT8 = timezone(timedelta(hours=8))
+
+
+def _extract_event_epoch(event: dict) -> float:
+    """Return a UTC epoch from the event, preferring embedded timestamps.
+
+    Priority: @timestamp → timestamp → event.created → datetime.utcnow().
+    Z suffix is normalised to +00:00 for Python 3.10 fromisoformat compatibility.
+    Naive datetimes are treated as UTC.
+    """
+    for key_path in [["@timestamp"], ["timestamp"], ["event", "created"]]:
+        try:
+            val = event
+            for k in key_path:
+                val = val[k]
+            if isinstance(val, (int, float)):
+                return float(val)
+            iso = str(val).replace("Z", "+00:00")
+            dt = datetime.fromisoformat(iso)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.timestamp()
+        except (KeyError, TypeError, ValueError):
+            continue
+    return datetime.utcnow().timestamp()
+
+
+def build_yaml_alert_dedup_key(
+    agent_id: str,
+    rule_id: str,
+    event: dict,
+    *,
+    bucket_seconds: int = YAML_DEDUP_WINDOW_SECONDS,
+) -> str:
+    """Return a stable dedup key for a YAML-engine alert.
+
+    Format: yaml:{agent_id}:{rule_id}:{content_hash}:{bucket_epoch}
+
+    content_hash  — SHA-256 hex (first 16 chars) of
+                    process.command_line → message → "" (first non-empty wins)
+    bucket_epoch  — floor(event_epoch / bucket_seconds) * bucket_seconds
+    """
+    process = event.get("process") or {}
+    raw_content = (
+        process.get("command_line")
+        or event.get("message")
+        or ""
+    )
+    content_hash = hashlib.sha256(raw_content.encode()).hexdigest()[:16]
+    ts = _extract_event_epoch(event)
+    bucket_epoch = int(ts / bucket_seconds) * bucket_seconds
+    return f"yaml:{agent_id}:{rule_id}:{content_hash}:{bucket_epoch}"
+
+
+def is_duplicate_yaml_alert(dedup_key: str, db) -> bool:
+    """Return True if an Alert row with this dedup_key already exists."""
+    return (
+        db.query(models.Alert)
+        .filter(models.Alert.dedup_key == dedup_key)
+        .first()
+        is not None
+    )
 
 
 def _get_technique_id(mitre: dict) -> str:
@@ -305,7 +370,22 @@ class ActiveDetectionRunner:
         """
         host = event.get("hostname", event.get("host", "unknown"))
         mitre_info = candidate.mitre or {}
-        
+
+        # YAML dedup guard — must come before any DB write or SOAR trigger
+        _agent_id = str(event.get("agent_id") or "")
+        _rule_id  = str(candidate.rule_id or "")
+        dedup_key = build_yaml_alert_dedup_key(_agent_id, _rule_id, event)
+        if is_duplicate_yaml_alert(dedup_key, self.db):
+            logger.info(
+                f"[ACTIVE_RUNNER] DUPLICATE SKIPPED: rule={candidate.rule_id} "
+                f"agent={_agent_id} dedup_key={dedup_key}"
+            )
+            return
+        # Bucket display timestamps — UTC + GMT+8; dedup logic uses UTC epoch only
+        _bucket_epoch = int(_extract_event_epoch(event) / YAML_DEDUP_WINDOW_SECONDS) * YAML_DEDUP_WINDOW_SECONDS
+        _bucket_time_utc  = datetime.fromtimestamp(_bucket_epoch, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+        _bucket_time_gmt8 = datetime.fromtimestamp(_bucket_epoch, tz=timezone.utc).astimezone(_GMT8).isoformat()
+
         # Build description
         description = f"{candidate.rule_name}. Reasons: {', '.join(candidate.match_reasons)}"
         if candidate.adjustment_reasons:
@@ -320,7 +400,12 @@ class ActiveDetectionRunner:
             "adjustment_reasons": candidate.adjustment_reasons,
             "base_risk_score": candidate.base_risk_score,
             "tags": candidate.tags,
-            "errors": candidate.errors
+            "errors": candidate.errors,
+            "dedup_key": dedup_key,
+            "dedup_window_seconds": YAML_DEDUP_WINDOW_SECONDS,
+            "dedup_bucket_epoch_utc": _bucket_epoch,
+            "dedup_bucket_time_utc": _bucket_time_utc,
+            "dedup_bucket_time_gmt8": _bucket_time_gmt8,
         }
 
         # Extract IDs from MITRE dictionaries if they are dicts
@@ -348,7 +433,8 @@ class ActiveDetectionRunner:
             mitre_tactic=str(tactic),
             mitre_technique=str(technique),
             detection_engine="YAML",
-            detection_metadata=json.dumps(metadata)
+            detection_metadata=json.dumps(metadata),
+            dedup_key=dedup_key,
         )
 
         self.db.add(alert)
