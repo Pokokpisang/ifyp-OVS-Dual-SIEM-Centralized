@@ -1,0 +1,103 @@
+id: linux_t1543_002_systemd_service_persistence
+name: Suspicious Systemd Service Creation or Modification
+description: >
+  Detects creation or modification of a systemd .service unit file under standard
+  systemd directories where the writing process also carries suspicious payload
+  indicators such as ExecStart pointing to temporary paths, network tools, or
+  in-memory execution techniques. Commonly observed during Linux persistence
+  backdoor installation.
+enabled: true
+platform:
+  - linux
+log_source:
+  product: linux
+  service: auditd
+severity: medium
+risk_score: 55
+mitre:
+  tactic:
+    id: TA0003
+    name: Persistence
+  technique:
+    id: T1543
+    name: Create or Modify System Process
+  subtechnique:
+    id: T1543.002
+    name: Systemd Service
+tags:
+  - Linux
+  - T1543
+  - T1543.002
+  - Persistence
+  - Rule-Based Detection
+required_fields:
+  - file.path
+  - event.action
+  - process.command_line
+condition:
+  all:
+    - field: file.path
+      operator: contains_any
+      value:
+        - /etc/systemd/system/
+        - /usr/lib/systemd/system/
+        - /lib/systemd/system/
+    - field: file.path
+      operator: regex
+      value: '.*\.service$'
+    - field: event.action
+      operator: in
+      value:
+        - created
+        - modified
+        - write
+        - change
+    - field: process.command_line
+      operator: contains_any
+      value:
+        - "ExecStart="
+        - "/tmp/"
+        - "/var/tmp/"
+        - "/dev/shm/"
+        - "curl "
+        - "wget "
+        - "ncat"
+        - "socat"
+        - "bash -c"
+        - "sh -c"
+        - "chmod +x"
+        - "base64"
+        - "python -c"
+        - "perl -e"
+risk_adjustment:
+  increase_if:
+    - field: process.command_line
+      operator: contains_any
+      value:
+        - "curl "
+        - "wget "
+        - "ncat"
+        - "socat"
+      add_score: 15
+      reason: Service file written by process downloading content from network
+    - field: process.command_line
+      operator: contains_any
+      value:
+        - "/dev/shm/"
+        - "/var/tmp/"
+      add_score: 10
+      reason: ExecStart or payload path references highly suspicious in-memory or temp location
+false_positives:
+  - Legitimate system administrator creating custom service units for authorized software
+  - Configuration management tools (Ansible, Puppet, Chef) deploying service files
+  - Package managers writing service files during software installation
+investigation_guide: |
+  1. Identify the process that wrote the .service file and verify it is expected.
+  2. Review the full command line for payload paths (/tmp, /dev/shm) or download activity.
+  3. Inspect the created .service file content — focus on ExecStart, ExecStartPre, and Environment directives.
+  4. Check for network connections made around the same time by the writing process.
+  5. Determine whether the service was enabled or started after creation (systemctl enable / start).
+  6. Correlate with other persistence indicators: crontab changes, SSH key additions, SUID binaries.
+references:
+  - https://attack.mitre.org/techniques/T1543/002/
+  - https://www.freedesktop.org/software/systemd/man/systemd.service.html
