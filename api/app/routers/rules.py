@@ -8,6 +8,7 @@ import json
 from typing import Optional
 from .. import models, db
 from ..detection.engine.detection_engine import RuleEngine
+from ..detection.engine.rule_loader import RuleLoader
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -94,7 +95,10 @@ def _seed_rules(db_session: Session) -> None:
 def view_rules(request: Request, db: Session = Depends(db.get_db)):
     _seed_rules(db)
     rules = db.query(models.DetectionRule).order_by(models.DetectionRule.id).all()
-    return templates.TemplateResponse("rules.html", {"request": request, "rules": rules})
+    loader = RuleLoader()
+    yaml_rules = loader.load_rules_from_directory(loader.rules_path, include_disabled=True)
+    yaml_rules.sort(key=lambda r: (r.mitre.get("tactic", {}).get("id", ""), r.id))
+    return templates.TemplateResponse("rules.html", {"request": request, "rules": rules, "yaml_rules": yaml_rules})
 
 @router.get("/rules/new", response_class=HTMLResponse)
 def new_rule(request: Request):
