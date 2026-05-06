@@ -144,6 +144,11 @@
                         <span class="material-symbols-outlined text-[20px]">security</span>
                         <span class="text-sm">SOAR Settings</span>
                     </a>
+                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg {% if request.url.path == '/soar/history' %}bg-primary text-white{% else %}text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary{% endif %} transition-colors"
+                        href="/soar/history">
+                        <span class="material-symbols-outlined text-[20px]">history</span>
+                        <span class="text-sm">SOAR History</span>
+                    </a>
                 </div>
             </div>
         </nav>

@@ -379,6 +379,68 @@ def view_soar_settings(request: Request):
     return templates.TemplateResponse("soar_settings.html", {"request": request})
 
 
+@router.get("/soar/history", response_class=HTMLResponse)
+def view_soar_history(
+    request: Request,
+    status: str | None = None,
+    mode: str | None = None,
+    action_type: str | None = None,
+    alert_id: int | None = None,
+    database: Session = Depends(db.get_db),
+):
+    q = database.query(models.SOARActionExecution)
+
+    if status:
+        q = q.filter(models.SOARActionExecution.status == status)
+    if mode:
+        q = q.filter(models.SOARActionExecution.mode == mode)
+    if action_type:
+        q = q.filter(models.SOARActionExecution.action_type == action_type)
+    if alert_id:
+        q = q.filter(models.SOARActionExecution.alert_id == alert_id)
+
+    records = q.order_by(models.SOARActionExecution.id.desc()).limit(100).all()
+
+    # Summary counts (unfiltered)
+    all_rows = database.query(models.SOARActionExecution)
+    total = all_rows.count()
+    pending = all_rows.filter(models.SOARActionExecution.status == "pending_approval").count()
+    executed = all_rows.filter(models.SOARActionExecution.status.in_(["executed", "success"])).count()
+    failed = all_rows.filter(models.SOARActionExecution.status == "failed").count()
+    rejected = all_rows.filter(models.SOARActionExecution.status == "rejected").count()
+
+    # Distinct filter options
+    statuses = [r[0] for r in database.query(models.SOARActionExecution.status).distinct().all() if r[0]]
+    modes = [r[0] for r in database.query(models.SOARActionExecution.mode).distinct().all() if r[0]]
+    action_types = [r[0] for r in database.query(models.SOARActionExecution.action_type).distinct().all() if r[0]]
+
+    return templates.TemplateResponse(
+        "soar_history.html",
+        {
+            "request": request,
+            "records": records,
+            "filters": {
+                "status": status or "",
+                "mode": mode or "",
+                "action_type": action_type or "",
+                "alert_id": alert_id or "",
+            },
+            "summary": {
+                "total": total,
+                "pending": pending,
+                "executed": executed,
+                "failed": failed,
+                "rejected": rejected,
+            },
+            "filter_options": {
+                "statuses": statuses,
+                "modes": modes,
+                "action_types": action_types,
+            },
+        },
+    )
+
+
 @router.get("/agents/{agent_id}", response_class=HTMLResponse)
 def get_agent_detail(
     request: Request,
