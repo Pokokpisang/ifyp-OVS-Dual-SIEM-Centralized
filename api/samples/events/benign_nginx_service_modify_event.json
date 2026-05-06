@@ -1,0 +1,26 @@
+{
+  "event": {
+    "category": "file",
+    "type": "change",
+    "action": "modified"
+  },
+  "file": {
+    "path": "/etc/systemd/system/nginx.service",
+    "name": "nginx.service"
+  },
+  "process": {
+    "name": "dpkg",
+    "command_line": "dpkg --configure nginx",
+    "executable": "/usr/bin/dpkg",
+    "parent": {
+      "name": "apt"
+    }
+  },
+  "user": {
+    "name": "root"
+  },
+  "host": {
+    "name": "dev-vps"
+  },
+  "platform": "linux"
+}

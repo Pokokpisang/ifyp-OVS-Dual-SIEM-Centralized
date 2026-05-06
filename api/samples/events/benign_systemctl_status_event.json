@@ -1,0 +1,22 @@
+{
+  "event": {
+    "category": "process",
+    "type": "start",
+    "action": "execve"
+  },
+  "process": {
+    "name": "systemctl",
+    "command_line": "systemctl status nginx",
+    "executable": "/usr/bin/systemctl",
+    "parent": {
+      "name": "bash"
+    }
+  },
+  "user": {
+    "name": "admin"
+  },
+  "host": {
+    "name": "dev-vps"
+  },
+  "platform": "linux"
+}

@@ -1,0 +1,26 @@
+{
+  "event": {
+    "category": "file",
+    "type": "change",
+    "action": "created"
+  },
+  "file": {
+    "path": "/etc/systemd/system/backdoor.service",
+    "name": "backdoor.service"
+  },
+  "process": {
+    "name": "bash",
+    "command_line": "bash -c \"echo 'ExecStart=/tmp/payload.sh' > /etc/systemd/system/backdoor.service\"",
+    "executable": "/usr/bin/bash",
+    "parent": {
+      "name": "sshd"
+    }
+  },
+  "user": {
+    "name": "root"
+  },
+  "host": {
+    "name": "dev-vps"
+  },
+  "platform": "linux"
+}
