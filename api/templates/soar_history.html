@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}OVS SIEM - SOAR History{% endblock %}
+{% block page_title %}SOAR History{% endblock %}
+
+{% block main_content %}
+<div class="p-4 lg:p-8 space-y-6">
+
+    <!-- Header -->
+    <div>
+        <h3 class="text-2xl font-black text-slate-900 dark:text-slate-50">SOAR Action Audit Trail</h3>
+        <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Centralized log of all simulated response actions across every alert. Showing the latest 100 records.</p>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <a href="/soar/history" class="flex flex-col gap-1 p-4 rounded-xl border border-slate-200 dark:border-primary/10 bg-white dark:bg-card-dark hover:border-primary/30 transition-colors">
+            <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Total Executions</span>
+            <span class="text-2xl font-black text-slate-900 dark:text-slate-50">{{ summary.total }}</span>
+        </a>
+        <a href="/soar/history?status=pending_approval" class="flex flex-col gap-1 p-4 rounded-xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/5 hover:border-amber-400 dark:hover:border-amber-500/50 transition-colors">
+            <span class="text-xs text-amber-600 dark:text-amber-400 font-medium">Pending Approval</span>
+            <span class="text-2xl font-black text-amber-600 dark:text-amber-400">{{ summary.pending }}</span>
+        </a>
+        <a href="/soar/history?status=executed" class="flex flex-col gap-1 p-4 rounded-xl border border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/5 hover:border-emerald-400 dark:hover:border-emerald-500/50 transition-colors">
+            <span class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Executed</span>
+            <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400">{{ summary.executed }}</span>
+        </a>
+        <a href="/soar/history?status=failed" class="flex flex-col gap-1 p-4 rounded-xl border border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/5 hover:border-red-400 dark:hover:border-red-500/50 transition-colors">
+            <span class="text-xs text-red-600 dark:text-red-400 font-medium">Failed</span>
+            <span class="text-2xl font-black text-red-600 dark:text-red-400">{{ summary.failed }}</span>
+        </a>
+        <a href="/soar/history?status=rejected" class="flex flex-col gap-1 p-4 rounded-xl border border-slate-300 dark:border-slate-600/50 bg-slate-50 dark:bg-slate-700/10 hover:border-slate-400 dark:hover:border-slate-500/50 transition-colors">
+            <span class="text-xs text-slate-600 dark:text-slate-400 font-medium">Rejected</span>
+            <span class="text-2xl font-black text-slate-600 dark:text-slate-300">{{ summary.rejected }}</span>
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <form method="get" action="/soar/history" class="flex flex-wrap gap-3 items-end p-4 rounded-xl border border-slate-200 dark:border-primary/10 bg-white dark:bg-card-dark">
+        <div class="flex flex-col gap-1">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</label>
+            <select name="status" class="bg-slate-100 dark:bg-background-dark border-none rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-slate-200 focus:ring-1 focus:ring-primary">
+                <option value="">All</option>
+                <option value="pending_approval" {% if filters.status == 'pending_approval' %}selected{% endif %}>Pending Approval</option>
+                <option value="executed" {% if filters.status == 'executed' %}selected{% endif %}>Executed</option>
+                <option value="success" {% if filters.status == 'success' %}selected{% endif %}>Success (legacy)</option>
+                <option value="failed" {% if filters.status == 'failed' %}selected{% endif %}>Failed</option>
+                <option value="rejected" {% if filters.status == 'rejected' %}selected{% endif %}>Rejected</option>
+            </select>
+        </div>
+        <div class="flex flex-col gap-1">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mode</label>
+            <select name="mode" class="bg-slate-100 dark:bg-background-dark border-none rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-slate-200 focus:ring-1 focus:ring-primary">
+                <option value="">All</option>
+                {% for m in filter_options.modes %}
+                <option value="{{ m }}" {% if filters.mode == m %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex flex-col gap-1">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Action Type</label>
+            <select name="action_type" class="bg-slate-100 dark:bg-background-dark border-none rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-slate-200 focus:ring-1 focus:ring-primary">
+                <option value="">All</option>
+                {% for t in filter_options.action_types %}
+                <option value="{{ t }}" {% if filters.action_type == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex flex-col gap-1">
+            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Alert ID</label>
+            <input type="number" name="alert_id" value="{{ filters.alert_id }}" placeholder="e.g. 42"
+                class="bg-slate-100 dark:bg-background-dark border-none rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-slate-200 focus:ring-1 focus:ring-primary w-28" />
+        </div>
+        <div class="flex gap-2">
+            <button type="submit"
+                class="px-4 py-1.5 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors">
+                Apply
+            </button>
+            <a href="/soar/history"
+                class="px-4 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                Reset
+            </a>
+        </div>
+    </form>
+
+    <!-- Table -->
+    <div class="rounded-xl border border-slate-200 dark:border-primary/10 bg-white dark:bg-card-dark overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-200 dark:border-primary/10 bg-slate-50 dark:bg-background-dark/60">
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Time</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Alert</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Playbook</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Action</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Target</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Mode</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Status</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Actor</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Decision</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Result</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="soar-history-tbody">
+                    {% if not records %}
+                    <tr>
+                        <td colspan="11" class="px-4 py-10 text-center text-slate-500 dark:text-slate-400 text-sm">
+                            No SOAR executions found.
+                            {% if filters.status or filters.mode or filters.action_type or filters.alert_id %}
+                            <a href="/soar/history" class="text-primary underline ml-1">Clear filters</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% for r in records %}
+                    {% set status_cls = {
+                        'success': 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+                        'executed': 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+                        'pending_approval': 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+                        'rejected': 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+                        'failed': 'text-red-400 bg-red-500/10 border-red-500/20',
+                    }.get(r.status, 'text-red-400 bg-red-500/10 border-red-500/20') %}
+                    <tr class="border-b border-slate-100 dark:border-primary/5 hover:bg-slate-50 dark:hover:bg-primary/5 transition-colors">
+                        <!-- Time -->
+                        <td class="px-4 py-3 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">
+                            {% if r.executed_at %}
+                                {{ r.executed_at.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}
+                                <span class="text-slate-400 dark:text-slate-600">—</span>
+                            {% endif %}
+                            <div class="text-[10px] text-slate-400 dark:text-slate-600">#{{ r.id }}</div>
+                        </td>
+                        <!-- Alert -->
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <a href="/alerts/{{ r.alert_id }}/investigation"
+                                class="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors">
+                                <span class="material-symbols-outlined text-[13px]">open_in_new</span>
+                                Alert #{{ r.alert_id }}
+                            </a>
+                        </td>
+                        <!-- Playbook -->
+                        <td class="px-4 py-3 max-w-[180px]">
+                            <p class="text-xs font-medium text-slate-900 dark:text-slate-100 truncate" title="{{ r.playbook_name }}">{{ r.playbook_name }}</p>
+                            <p class="text-[10px] text-slate-400 dark:text-slate-500 truncate">{{ r.playbook_id }}</p>
+                        </td>
+                        <!-- Action -->
+                        <td class="px-4 py-3 max-w-[160px]">
+                            <p class="text-xs font-medium text-slate-900 dark:text-slate-100 truncate" title="{{ r.action_name }}">{{ r.action_name }}</p>
+                            <p class="text-[10px] text-slate-400 dark:text-slate-500 truncate">{{ r.action_type }}</p>
+                        </td>
+                        <!-- Target -->
+                        <td class="px-4 py-3 max-w-[140px]">
+                            {% if r.target %}
+                            <span class="font-mono text-xs text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700/40 px-1.5 py-0.5 rounded truncate block" title="{{ r.target }}">{{ r.target }}</span>
+                            {% else %}
+                            <span class="text-slate-400 dark:text-slate-600 text-xs">—</span>
+                            {% endif %}
+                        </td>
+                        <!-- Mode -->
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-sky-500/10 text-sky-400 border border-sky-500/20">{{ r.mode }}</span>
+                        </td>
+                        <!-- Status -->
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border {{ status_cls }}">{{ r.status }}</span>
+                        </td>
+                        <!-- Actor -->
+                        <td class="px-4 py-3 whitespace-nowrap text-xs text-slate-600 dark:text-slate-400">
+                            {{ r.executed_by or '—' }}
+                        </td>
+                        <!-- Decision -->
+                        <td class="px-4 py-3 whitespace-nowrap text-xs">
+                            {% if r.approved_by %}
+                            <div class="text-emerald-400">
+                                <span class="font-semibold">Approved</span>
+                                <div class="text-[10px] text-slate-400">{{ r.approved_by }}</div>
+                                {% if r.approved_at %}<div class="text-[10px] text-slate-500">{{ r.approved_at.strftime('%Y-%m-%d %H:%M') }}</div>{% endif %}
+                            </div>
+                            {% elif r.rejected_by %}
+                            <div class="text-slate-400">
+                                <span class="font-semibold">Rejected</span>
+                                <div class="text-[10px] text-slate-500">{{ r.rejected_by }}</div>
+                                {% if r.rejected_at %}<div class="text-[10px] text-slate-500">{{ r.rejected_at.strftime('%Y-%m-%d %H:%M') }}</div>{% endif %}
+                            </div>
+                            {% else %}
+                            <span class="text-slate-500 dark:text-slate-600">—</span>
+                            {% endif %}
+                        </td>
+                        <!-- Result -->
+                        <td class="px-4 py-3 max-w-[200px]">
+                            {% if r.result_message %}
+                            <p class="text-[11px] text-slate-600 dark:text-slate-400 truncate" title="{{ r.result_message }}">{{ r.result_message }}</p>
+                            {% endif %}
+                            {% if r.error_message %}
+                            <p class="text-[11px] text-red-400 truncate" title="{{ r.error_message }}">{{ r.error_message }}</p>
+                            {% endif %}
+                            {% if not r.result_message and not r.error_message %}
+                            <span class="text-slate-400 dark:text-slate-600 text-xs">—</span>
+                            {% endif %}
+                        </td>
+                        <!-- Actions -->
+                        <td class="px-4 py-3 whitespace-nowrap" id="row-actions-{{ r.id }}">
+                            {% if r.status == 'pending_approval' %}
+                            <button onclick="approveExecution({{ r.id }}, {{ r.alert_id }})"
+                                class="px-2 py-1 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/40 transition-colors mr-1">
+                                Approve
+                            </button>
+                            <button onclick="rejectExecution({{ r.id }}, {{ r.alert_id }})"
+                                class="px-2 py-1 rounded text-[10px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/30 hover:bg-slate-500/40 transition-colors">
+                                Reject
+                            </button>
+                            {% else %}
+                            <span class="text-slate-500 dark:text-slate-600 text-xs">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Footer note -->
+    <p class="text-xs text-slate-400 dark:text-slate-600">All executions are simulation-only. No real network changes are applied.</p>
+
+</div>
+
+<script>
+async function approveExecution(executionId, alertId) {
+    try {
+        const res = await fetch(`/api/alerts/${alertId}/soar/executions/${executionId}/approve`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({approved_by: 'analyst'}),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+        location.reload();
+    } catch (e) {
+        alert(`Approve failed: ${e.message}`);
+    }
+}
+
+async function rejectExecution(executionId, alertId) {
+    try {
+        const res = await fetch(`/api/alerts/${alertId}/soar/executions/${executionId}/reject`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({rejected_by: 'analyst'}),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+        location.reload();
+    } catch (e) {
+        alert(`Reject failed: ${e.message}`);
+    }
+}
+</script>
+{% endblock %}

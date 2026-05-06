@@ -1,7 +1,8 @@
 import os
+import hashlib
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from ... import models
@@ -13,8 +14,93 @@ from .correlation_engine import (
     get_process_event_buffer,
     get_dedup_cache,
 )
+from .ssh_bruteforce_engine import (
+    ENABLE_SSH_BRUTEFORCE_ENGINE,
+    SSHBruteForceEngine,
+    SSHBruteForceMatch,
+    get_ssh_failure_buffer,
+    get_ssh_bf_dedup,
+)
+
+from ...soar.auto_runner import trigger_soar_auto_run_for_alert
 
 logger = logging.getLogger("detection.active_runner")
+
+YAML_DEDUP_WINDOW_SECONDS = 60
+_GMT8 = timezone(timedelta(hours=8))
+
+
+def _extract_event_epoch(event: dict) -> float:
+    """Return a UTC epoch from the event, preferring embedded timestamps.
+
+    Priority: @timestamp → timestamp → event.created → datetime.utcnow().
+    Z suffix is normalised to +00:00 for Python 3.10 fromisoformat compatibility.
+    Naive datetimes are treated as UTC.
+    """
+    for key_path in [["@timestamp"], ["timestamp"], ["event", "created"]]:
+        try:
+            val = event
+            for k in key_path:
+                val = val[k]
+            if isinstance(val, (int, float)):
+                return float(val)
+            iso = str(val).replace("Z", "+00:00")
+            dt = datetime.fromisoformat(iso)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.timestamp()
+        except (KeyError, TypeError, ValueError):
+            continue
+    return datetime.utcnow().timestamp()
+
+
+def build_yaml_alert_dedup_key(
+    agent_id: str,
+    rule_id: str,
+    event: dict,
+    *,
+    bucket_seconds: int = YAML_DEDUP_WINDOW_SECONDS,
+) -> str:
+    """Return a stable dedup key for a YAML-engine alert.
+
+    Format: yaml:{agent_id}:{rule_id}:{content_hash}:{bucket_epoch}
+
+    content_hash  — SHA-256 hex (first 16 chars) of
+                    process.command_line → message → "" (first non-empty wins)
+    bucket_epoch  — floor(event_epoch / bucket_seconds) * bucket_seconds
+    """
+    process = event.get("process") or {}
+    raw_content = (
+        process.get("command_line")
+        or event.get("message")
+        or ""
+    )
+    content_hash = hashlib.sha256(raw_content.encode()).hexdigest()[:16]
+    ts = _extract_event_epoch(event)
+    bucket_epoch = int(ts / bucket_seconds) * bucket_seconds
+    return f"yaml:{agent_id}:{rule_id}:{content_hash}:{bucket_epoch}"
+
+
+def is_duplicate_yaml_alert(dedup_key: str, db) -> bool:
+    """Return True if an Alert row with this dedup_key already exists."""
+    return (
+        db.query(models.Alert)
+        .filter(models.Alert.dedup_key == dedup_key)
+        .first()
+        is not None
+    )
+
+
+def _get_technique_id(mitre: dict) -> str:
+    """Normalise MITRE technique field to a plain string ID.
+
+    Handles both dict form {'id': 'T1059.004', ...} and legacy string form 'T1059'.
+    """
+    tech = mitre.get("technique", {})
+    if isinstance(tech, dict):
+        return tech.get("id", "")
+    return str(tech) if tech else ""
+
 
 # Log types that carry no process-level events — skip correlation for these
 _NON_PROCESS_LOG_TYPES = frozenset({
@@ -53,11 +139,7 @@ class ActiveDetectionRunner:
             for candidate in candidates:
                 if candidate.matched and not candidate.suppressed:
                     self._create_alert(normalized_event, candidate)
-                    if candidate.mitre.get("technique", {}) in ("T1059.004", "T1059"):
-                        yaml_fired_t1059 = True
-                    # Check by dict id too
-                    tech = candidate.mitre.get("technique", {})
-                    if isinstance(tech, dict) and tech.get("id", "") in ("T1059.004", "T1059"):
+                    if _get_technique_id(candidate.mitre) in ("T1059", "T1059.004"):
                         yaml_fired_t1059 = True
                 elif candidate.matched and candidate.suppressed:
                     logger.info(f"[ACTIVE_RUNNER] SUPPRESSED match: {candidate.rule_id}")
@@ -69,6 +151,10 @@ class ActiveDetectionRunner:
         # --- Correlation Engine ---
         if ENABLE_CORRELATION_ENGINE:
             self._run_correlation(normalized_event, yaml_fired_t1059)
+
+        # --- SSH Brute Force Engine ---
+        if ENABLE_SSH_BRUTEFORCE_ENGINE:
+            self._run_ssh_bruteforce(normalized_event)
 
     # -----------------------------------------------------------------------
     # Correlation pass
@@ -184,6 +270,95 @@ class ActiveDetectionRunner:
             f"[CORR] ALERT CREATED: {match.rule_id} on {host} "
             f"(Risk: {match.risk_score}, delta={match.time_delta_seconds}s)"
         )
+        trigger_soar_auto_run_for_alert(alert.id, self.db)
+
+    # -----------------------------------------------------------------------
+    # SSH Brute Force pass
+    # -----------------------------------------------------------------------
+
+    def _run_ssh_bruteforce(self, event: Dict[str, Any]) -> None:
+        """Run SSH brute force threshold detection for authentication events."""
+        event_block = event.get("event") or {}
+        if not isinstance(event_block, dict):
+            return
+        if event_block.get("category") != "authentication":
+            return
+
+        try:
+            bf_engine = SSHBruteForceEngine(
+                buffer=get_ssh_failure_buffer(),
+                dedup=get_ssh_bf_dedup(),
+            )
+            match = bf_engine.evaluate(event)
+        except Exception as e:
+            logger.error(f"[SSH_BF] Engine error: {e}", exc_info=True)
+            return
+
+        if match:
+            self._create_ssh_bruteforce_alert(event, match)
+
+    def _create_ssh_bruteforce_alert(
+        self, event: Dict[str, Any], match: SSHBruteForceMatch
+    ) -> None:
+        """Create a standard Alert record for an SSH brute-force threshold hit."""
+        host = event.get("hostname", event.get("host", "unknown"))
+        if isinstance(host, dict):
+            host = host.get("name", "unknown")
+
+        detection_metadata = {
+            "rule_id": match.rule_id,
+            "rule_name": match.rule_name,
+            "source_ip": match.source_ip,
+            "user_name": match.user_name,
+            "failure_count": match.failure_count,
+            "threshold": match.threshold,
+            "time_window_seconds": match.time_window_seconds,
+            "dedup_seconds": match.dedup_seconds,
+            "match_reasons": match.match_reasons,
+            "recommended_actions": [
+                "Block source IP at firewall if brute-force is confirmed.",
+                "Check if any login eventually succeeded from the same source IP.",
+                "Review the targeted user account for signs of compromise.",
+                "Enable account lockout policy if not already configured.",
+                "Correlate with other auth logs for the same source IP across hosts.",
+            ],
+        }
+
+        description = (
+            f"{match.rule_name}. "
+            f"{match.failure_count} failed SSH login(s) from {match.source_ip} "
+            f"within {match.time_window_seconds}s."
+        )
+        if match.user_name:
+            description += f" Target user(s): {match.user_name}."
+        description += f"\n\nReasons: {', '.join(match.match_reasons)}"
+
+        alert = models.Alert(
+            timestamp=datetime.utcnow(),
+            host=str(host),
+            severity=match.severity.upper(),
+            title=f"[{match.rule_id}] {match.rule_name}",
+            description=description,
+            source=match.mitre_technique,
+
+            # v2.0.0 fields
+            agent_id=match.agent_id,
+            rule_id=match.rule_id,
+            rule_name=match.rule_name,
+            risk_score=match.risk_score,
+            mitre_tactic=match.mitre_tactic,
+            mitre_technique=match.mitre_technique,
+            detection_engine="SSHBruteForceEngine",
+            detection_metadata=json.dumps(detection_metadata),
+        )
+
+        self.db.add(alert)
+        self.db.commit()
+        logger.info(
+            f"[SSH_BF] ALERT CREATED: {match.rule_id} on {host} "
+            f"(source_ip={match.source_ip}, count={match.failure_count}, risk={match.risk_score})"
+        )
+        trigger_soar_auto_run_for_alert(alert.id, self.db)
 
     # -----------------------------------------------------------------------
     # Standard YAML alert creator (unchanged)
@@ -195,7 +370,22 @@ class ActiveDetectionRunner:
         """
         host = event.get("hostname", event.get("host", "unknown"))
         mitre_info = candidate.mitre or {}
-        
+
+        # YAML dedup guard — must come before any DB write or SOAR trigger
+        _agent_id = str(event.get("agent_id") or "")
+        _rule_id  = str(candidate.rule_id or "")
+        dedup_key = build_yaml_alert_dedup_key(_agent_id, _rule_id, event)
+        if is_duplicate_yaml_alert(dedup_key, self.db):
+            logger.info(
+                f"[ACTIVE_RUNNER] DUPLICATE SKIPPED: rule={candidate.rule_id} "
+                f"agent={_agent_id} dedup_key={dedup_key}"
+            )
+            return
+        # Bucket display timestamps — UTC + GMT+8; dedup logic uses UTC epoch only
+        _bucket_epoch = int(_extract_event_epoch(event) / YAML_DEDUP_WINDOW_SECONDS) * YAML_DEDUP_WINDOW_SECONDS
+        _bucket_time_utc  = datetime.fromtimestamp(_bucket_epoch, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+        _bucket_time_gmt8 = datetime.fromtimestamp(_bucket_epoch, tz=timezone.utc).astimezone(_GMT8).isoformat()
+
         # Build description
         description = f"{candidate.rule_name}. Reasons: {', '.join(candidate.match_reasons)}"
         if candidate.adjustment_reasons:
@@ -210,7 +400,12 @@ class ActiveDetectionRunner:
             "adjustment_reasons": candidate.adjustment_reasons,
             "base_risk_score": candidate.base_risk_score,
             "tags": candidate.tags,
-            "errors": candidate.errors
+            "errors": candidate.errors,
+            "dedup_key": dedup_key,
+            "dedup_window_seconds": YAML_DEDUP_WINDOW_SECONDS,
+            "dedup_bucket_epoch_utc": _bucket_epoch,
+            "dedup_bucket_time_utc": _bucket_time_utc,
+            "dedup_bucket_time_gmt8": _bucket_time_gmt8,
         }
 
         # Extract IDs from MITRE dictionaries if they are dicts
@@ -238,9 +433,11 @@ class ActiveDetectionRunner:
             mitre_tactic=str(tactic),
             mitre_technique=str(technique),
             detection_engine="YAML",
-            detection_metadata=json.dumps(metadata)
+            detection_metadata=json.dumps(metadata),
+            dedup_key=dedup_key,
         )
 
         self.db.add(alert)
         self.db.commit()
         logger.info(f"[ACTIVE_RUNNER] ALERT CREATED: {candidate.rule_id} on {host} (Risk: {candidate.risk_score})")
+        trigger_soar_auto_run_for_alert(alert.id, self.db)

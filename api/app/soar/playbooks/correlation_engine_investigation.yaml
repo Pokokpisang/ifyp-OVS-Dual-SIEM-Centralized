@@ -1,0 +1,26 @@
+id: correlation_engine_investigation
+name: Correlation Engine Investigation
+description: Recommend analyst investigation for correlated suspicious activity.
+enabled: true
+
+trigger:
+  detection_engine:
+    in:
+      - CorrelationEngine
+
+conditions:
+  all:
+    - field: severity
+      operator: exists
+
+actions:
+  - id: create_correlation_investigation_note
+    name: Create Correlation Investigation Note
+    type: create_case_note
+    target_field: rule_name
+    mode: simulation
+    requires_approval: false
+    rollback_supported: false
+    description: Records that the correlated alert should be investigated as a higher-confidence event.
+    automation:
+      auto_run_allowed: true

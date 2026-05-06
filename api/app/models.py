@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, Float
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Text, Boolean, Float
 from .db import Base
 from pydantic import BaseModel
 from datetime import datetime
@@ -49,6 +49,7 @@ class Alert(Base):
     mitre_technique = Column(String, nullable=True)
     detection_engine = Column(String, default="LEGACY") # YAML, LEGACY
     detection_metadata = Column(Text, nullable=True) # JSON match reasons/details
+    dedup_key = Column(String, nullable=True, index=True)
 
 class DetectionRule(Base):
     __tablename__ = "detection_rules"
@@ -130,11 +131,58 @@ class AgentRecord(Base):
     enable_metrics = Column(Boolean, default=True)
 
     # Lifecycle
-    status = Column(String, default="pending")  # pending | active | offline
+    status = Column(String, default="pending")  # pending | active | offline (computed from last_seen)
     hostname = Column(String, nullable=True)    # filled on registration
     ip_address = Column(String, nullable=True)  # filled on registration
     last_seen = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Soft-delete / inventory lifecycle fields
+    # lifecycle_status: pending_registration | active_inventory | deleted | retired | test_agent
+    is_deleted = Column(Boolean, default=False, nullable=False, server_default="false")
+    deleted_at = Column(DateTime, nullable=True)
+    deleted_reason = Column(String, nullable=True)
+    lifecycle_status = Column(String, default="pending_registration")
+
+
+class SOARActionExecution(Base):
+    __tablename__ = "soar_action_executions"
+
+    id                 = Column(Integer, primary_key=True, index=True)
+    alert_id           = Column(Integer, ForeignKey("alerts.id"), index=True, nullable=False)
+    playbook_id        = Column(String, nullable=False)
+    playbook_name      = Column(String, nullable=False)
+    action_id          = Column(String, nullable=False)
+    action_name        = Column(String, nullable=False)
+    action_type        = Column(String, nullable=False)
+    target             = Column(String, nullable=True)
+    mode               = Column(String, nullable=False)
+    status             = Column(String, nullable=False)  # "success" | "failed"
+    executed_by        = Column(String, nullable=True)
+    executed_at        = Column(DateTime, default=datetime.utcnow)
+    result_message     = Column(Text, nullable=True)
+    error_message      = Column(Text, nullable=True)
+    rollback_supported = Column(Boolean, default=False)
+    rollback_status    = Column(String, nullable=True)
+    exec_metadata      = Column(Text, nullable=True)  # JSON blob
+
+    # Approval workflow fields
+    requires_approval  = Column(Boolean, nullable=False, default=False)
+    approved_by        = Column(String, nullable=True)
+    approved_at        = Column(DateTime, nullable=True)
+    rejected_by        = Column(String, nullable=True)
+    rejected_at        = Column(DateTime, nullable=True)
+
+
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    key         = Column(String, unique=True, index=True, nullable=False)
+    value       = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    updated_at  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by  = Column(String, nullable=True)
 
 class SystemHealthRule(Base):
     __tablename__ = "system_health_rules"

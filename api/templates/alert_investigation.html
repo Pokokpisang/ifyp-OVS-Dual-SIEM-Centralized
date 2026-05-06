@@ -213,6 +213,38 @@
                 </div>
             </section>
 
+            <!-- Card: SOAR Response -->
+            <section id="soar-card" class="bg-primary/5 border border-primary/10 rounded-xl p-6 hidden">
+                <h4 class="text-sm font-bold text-primary mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">security</span>SOAR Response
+                    <span id="soar-mode-badge" class="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold border uppercase bg-slate-500/10 text-slate-400 border-slate-500/20 ml-auto"></span>
+                </h4>
+                <!-- recommendation area -->
+                <div id="soar-recommendation"></div>
+                <!-- history area -->
+                <div id="soar-history-wrapper" class="hidden mt-6">
+                    <p class="text-slate-400 text-[10px] uppercase font-bold mb-3">Response History</p>
+                    <div class="overflow-x-auto rounded-lg border border-primary/10">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-primary/10 text-slate-400 uppercase font-bold">
+                                <tr>
+                                    <th class="px-4 py-2">Time</th>
+                                    <th class="px-4 py-2">Playbook</th>
+                                    <th class="px-4 py-2">Action</th>
+                                    <th class="px-4 py-2">Target</th>
+                                    <th class="px-4 py-2">Mode</th>
+                                    <th class="px-4 py-2">Status</th>
+                                    <th class="px-4 py-2">Executed By</th>
+                                    <th class="px-4 py-2">Result</th>
+                                    <th class="px-4 py-2">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="soar-history-body" class="divide-y divide-primary/10"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
             <!-- Card: Correlated Events -->
             <section class="bg-primary/5 border border-primary/10 rounded-xl overflow-hidden">
                 <div class="p-6 border-b border-primary/10 flex justify-between items-center">
@@ -400,10 +432,20 @@ async function loadInvestigation() {
                 <span class="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
                     <span class="material-symbols-outlined text-[12px]">device_hub</span>CorrelationEngine
                 </span>`;
-        } else {
+        } else if (d.alert.detection_engine === 'SSHBruteForceEngine') {
+            engineEl.innerHTML = `
+                <span class="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                    <span class="material-symbols-outlined text-[12px]">lock_person</span>SSHBruteForceEngine
+                </span>`;
+        } else if (d.alert.detection_engine === 'LEGACY' || !d.alert.detection_engine) {
             engineEl.innerHTML = `
                 <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-slate-500/10 text-slate-400 border border-slate-500/20">
                     <span class="material-symbols-outlined text-[12px]">history</span>Legacy RuleEngine
+                </span>`;
+        } else {
+            engineEl.innerHTML = `
+                <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-slate-600/10 text-slate-400 border border-slate-600/20">
+                    <span class="material-symbols-outlined text-[12px]">help_outline</span>${d.alert.detection_engine}
                 </span>`;
         }
 
@@ -521,6 +563,70 @@ async function loadInvestigation() {
             } else {
                 adjContainer.classList.add('hidden');
             }
+        } else if (d.alert.detection_engine === 'SSHBruteForceEngine' && d.alert.detection_metadata) {
+            document.getElementById('yaml-metadata-section').classList.remove('hidden');
+            const meta = d.alert.detection_metadata;
+
+            // Risk gauge — rose tint for brute force
+            const risk = d.alert.risk_score || 0;
+            document.getElementById('risk-val').textContent = risk;
+            const circle = document.getElementById('risk-gauge-circle');
+            const circumference = 364.4;
+            const offset = circumference - (risk / 100) * circumference;
+            circle.style.strokeDashoffset = offset;
+            ['text-primary', 'text-severity-critical', 'text-emerald-400', 'text-amber-400'].forEach(c => circle.classList.remove(c));
+            circle.classList.add(risk >= 61 ? 'text-severity-critical' : 'text-amber-400');
+
+            // MITRE
+            document.getElementById('meta-tactic').textContent = d.alert.mitre_tactic || 'TA0006 — Credential Access';
+            document.getElementById('meta-technique').textContent = d.alert.mitre_technique || 'T1110 — Brute Force';
+            document.getElementById('meta-rule-id').textContent = d.alert.rule_id || '—';
+
+            // Build findings list
+            const reasonsList = document.getElementById('match-reasons-list');
+            reasonsList.innerHTML = '';
+
+            const bfDetails = [
+                `<strong>Source IP:</strong> ${meta.source_ip || '—'}`,
+                `<strong>Failure count:</strong> ${meta.failure_count ?? '—'} / ${meta.threshold ?? '—'}`,
+                `<strong>Time window:</strong> ${meta.time_window_seconds ?? '—'}s`,
+                `<strong>Dedup cooldown:</strong> ${meta.dedup_seconds ?? '—'}s`,
+                meta.user_name ? `<strong>Targeted user(s):</strong> ${meta.user_name}` : null,
+            ].filter(Boolean);
+
+            bfDetails.forEach(item => {
+                reasonsList.innerHTML += `
+                    <li class="flex items-start gap-2 text-[11px] text-slate-300">
+                        <span class="material-symbols-outlined text-rose-400 text-[14px] mt-0.5">lock_person</span>
+                        <span>${item}</span>
+                    </li>`;
+            });
+
+            (meta.match_reasons || []).forEach(r => {
+                reasonsList.innerHTML += `
+                    <li class="flex items-start gap-2 text-[11px] text-slate-300">
+                        <span class="material-symbols-outlined text-rose-400 text-[14px] mt-0.5">check_circle</span>
+                        ${r}
+                    </li>`;
+            });
+
+            // Recommended analyst actions
+            const adjContainer = document.getElementById('adj-reasons-container');
+            const adjList = document.getElementById('adj-reasons-list');
+            const actions = meta.recommended_actions || [];
+            if (actions.length > 0) {
+                adjContainer.classList.remove('hidden');
+                adjList.innerHTML = '';
+                actions.forEach(action => {
+                    adjList.innerHTML += `
+                        <li class="flex items-start gap-2 text-[11px] text-slate-300">
+                            <span class="material-symbols-outlined text-sky-400 text-[14px] mt-0.5">task_alt</span>
+                            ${action}
+                        </li>`;
+                });
+            } else {
+                adjContainer.classList.add('hidden');
+            }
         } else {
             document.getElementById('yaml-metadata-section').classList.add('hidden');
         }
@@ -599,6 +705,7 @@ function renderTimeline(items) {
     items.forEach((item, i) => {
         const isAlert   = item.is_alert;
         const isPending = item.is_pending;
+        const isSOAR    = item.is_soar;
         const isLast    = i === items.length - 1;
 
         const div = document.createElement('div');
@@ -613,19 +720,29 @@ function renderTimeline(items) {
 
         // Dot
         const dot = document.createElement('div');
-        dot.className = `absolute left-0 top-1 h-4 w-4 rounded-full border-2 
-            ${isAlert ? 'border-primary bg-primary/30' : isPending ? 'border-slate-600 bg-background-dark' : 'border-primary/60 bg-background-dark'}`;
+        let dotClass = 'border-primary/60 bg-background-dark';
+        if (isAlert)   dotClass = 'border-primary bg-primary/30';
+        if (isPending) dotClass = 'border-slate-600 bg-background-dark';
+        if (isSOAR)    dotClass = 'border-purple-500 bg-purple-500/20';
+        dot.className = `absolute left-0 top-1 h-4 w-4 rounded-full border-2 ${dotClass}`;
         div.appendChild(dot);
 
         // Timestamp
         const ts = document.createElement('p');
-        ts.className = `text-[10px] font-bold mb-0.5 ${isAlert ? 'text-primary' : 'text-slate-400'}`;
+        let tsClass = 'text-slate-400';
+        if (isAlert) tsClass = 'text-primary';
+        if (isSOAR)  tsClass = 'text-purple-400';
+        ts.className = `text-[10px] font-bold mb-0.5 ${tsClass}`;
         ts.textContent = item.ts;
         div.appendChild(ts);
 
         // Label
         const label = document.createElement('p');
-        label.className = `text-xs ${isAlert ? 'font-bold text-primary whitespace-pre-line' : isPending ? 'italic text-slate-500' : 'font-medium text-slate-200'}`;
+        let labelClass = 'font-medium text-slate-200';
+        if (isAlert)   labelClass = 'font-bold text-primary whitespace-pre-line';
+        if (isPending) labelClass = 'italic text-slate-500';
+        if (isSOAR)    labelClass = 'font-semibold text-purple-300';
+        label.className = `text-xs ${labelClass}`;
         label.textContent = item.label;
         div.appendChild(label);
 
@@ -718,7 +835,271 @@ function exportCSV() {
     a.click();
 }
 
+// ── SOAR Response ──────────────────────────────────────────────────────────
+async function loadSOAR(alertId) {
+    const card = document.getElementById('soar-card');
+    const recEl = document.getElementById('soar-recommendation');
+
+    let recs = [];
+    let history = [];
+    let soarMode = 'manual';
+    let soarModeLabel = 'Manual Approval';
+
+    try {
+        const [recRes, histRes, settingsRes] = await Promise.all([
+            fetch(`/api/alerts/${alertId}/soar/recommendations`),
+            fetch(`/api/alerts/${alertId}/soar/history`),
+            fetch(`/api/settings/soar`),
+        ]);
+        if (recRes.ok)      recs         = (await recRes.json()).recommendations || [];
+        if (histRes.ok)     history      = (await histRes.json()).history         || [];
+        if (settingsRes.ok) {
+            const s = await settingsRes.json();
+            soarMode      = s.soar_execution_mode || 'manual';
+            soarModeLabel = s.label               || 'Manual Approval';
+        }
+    } catch (_) { /* non-critical */ }
+
+    card.classList.remove('hidden');
+
+    // Mode badge in card header
+    const modeBadgeEl = document.getElementById('soar-mode-badge');
+    if (modeBadgeEl) {
+        const badgeCls = soarMode === 'automatic'
+            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+            : 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+        modeBadgeEl.className = `shrink-0 px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${badgeCls}`;
+        modeBadgeEl.textContent = soarModeLabel;
+    }
+
+    if (recs.length === 0) {
+        recEl.innerHTML = `
+            <p class="text-slate-500 text-xs italic flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">info</span>
+                No SOAR playbook matched this alert.
+            </p>`;
+    } else {
+        const r = recs[0];
+        const a = r.action;
+
+        // Determine already-executed or pending for this recommendation
+        const alreadyRun = history.some(h =>
+            h.playbook_id === r.playbook_id &&
+            h.action_id   === a.id          &&
+            (h.status === 'success' || h.status === 'executed')
+        );
+        const pendingApproval = history.some(h =>
+            h.playbook_id === r.playbook_id &&
+            h.action_id   === a.id          &&
+            h.status === 'pending_approval'
+        );
+
+        let actionWidget = '';
+        if (soarMode === 'automatic' && a.automation && a.automation.auto_run_allowed) {
+            if (alreadyRun) {
+                actionWidget = `
+                    <div class="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                        <span class="material-symbols-outlined text-[16px] text-emerald-400">check_circle</span>
+                        <span class="text-xs text-emerald-400 font-semibold">Auto-executed. See response history below.</span>
+                    </div>`;
+            } else {
+                actionWidget = `
+                    <div class="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20">
+                        <span class="material-symbols-outlined text-[16px] text-primary">auto_mode</span>
+                        <span class="text-xs text-primary font-semibold">Eligible for automatic simulation — will run on next page load.</span>
+                    </div>`;
+            }
+        } else if (pendingApproval) {
+            // Approval is in progress — show banner, no Run button
+            actionWidget = `
+                <div class="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <span class="material-symbols-outlined text-[16px] text-amber-400">pending</span>
+                    <span class="text-xs text-amber-400 font-semibold">Awaiting analyst approval — see history below.</span>
+                </div>`;
+        } else if (soarMode === 'automatic' && !(a.automation && a.automation.auto_run_allowed)) {
+            actionWidget = `
+                <div class="mt-2 space-y-2">
+                    <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                        <span class="material-symbols-outlined text-[14px] text-amber-400">lock</span>
+                        <span class="text-xs text-amber-400 font-semibold">Manual approval required — not eligible for auto-run.</span>
+                    </div>
+                    <button onclick="runSOARAction('${r.playbook_id}','${a.id}')"
+                        id="soar-run-btn"
+                        class="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20">
+                        <span class="material-symbols-outlined text-[16px]">play_arrow</span>Run Simulated Action
+                    </button>
+                    <p id="soar-run-msg" class="text-xs text-center hidden"></p>
+                </div>`;
+        } else {
+            // manual mode — show button (run immediately or queue for approval)
+            actionWidget = `
+                <button onclick="runSOARAction('${r.playbook_id}','${a.id}')"
+                    id="soar-run-btn"
+                    class="mt-2 w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20">
+                    <span class="material-symbols-outlined text-[16px]">play_arrow</span>Run Simulated Action
+                </button>
+                <p id="soar-run-msg" class="text-xs text-center hidden"></p>`;
+        }
+
+        recEl.innerHTML = `
+            <div class="space-y-3">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-bold text-slate-200">${r.playbook_name}</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">${r.playbook_description || ''}</p>
+                    </div>
+                    <span class="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 uppercase">
+                        ${a.mode}
+                    </span>
+                </div>
+                <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-[11px]">
+                    <div><span class="text-slate-500 uppercase text-[9px] font-bold">Action</span><p class="text-slate-200 mt-0.5">${a.name}</p></div>
+                    <div><span class="text-slate-500 uppercase text-[9px] font-bold">Type</span><p class="text-slate-300 mt-0.5 font-mono">${a.type}</p></div>
+                    <div><span class="text-slate-500 uppercase text-[9px] font-bold">Target Field</span><p class="text-slate-300 mt-0.5 font-mono">${a.target_field || '—'}</p></div>
+                    <div><span class="text-slate-500 uppercase text-[9px] font-bold">Resolved Target</span><p class="text-emerald-400 mt-0.5 font-mono font-bold">${r.resolved_target || '—'}</p></div>
+                    <div><span class="text-slate-500 uppercase text-[9px] font-bold">Requires Approval</span><p class="mt-0.5">${a.requires_approval ? '<span class="text-amber-400 font-bold">Yes</span>' : '<span class="text-slate-400">No</span>'}</p></div>
+                    <div><span class="text-slate-500 uppercase text-[9px] font-bold">Impact</span><p class="text-slate-400 mt-0.5">No real system change</p></div>
+                </div>
+                <p class="text-[11px] text-slate-400 italic">${a.description || ''}</p>
+                ${actionWidget}
+            </div>`;
+    }
+
+    renderSOARHistory(history);
+}
+
+function statusBadgeCls(status) {
+    if (status === 'success' || status === 'executed')
+        return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+    if (status === 'pending_approval')
+        return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+    if (status === 'rejected')
+        return 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+    return 'text-red-400 bg-red-500/10 border-red-500/20';
+}
+
+function renderSOARHistory(history) {
+    const wrapper = document.getElementById('soar-history-wrapper');
+    const tbody   = document.getElementById('soar-history-body');
+
+    if (!history || history.length === 0) {
+        wrapper.classList.add('hidden');
+        return;
+    }
+
+    wrapper.classList.remove('hidden');
+    tbody.innerHTML = '';
+    history.forEach(h => {
+        const sCls = statusBadgeCls(h.status);
+        const executedByCls = (h.executed_by || '').startsWith('system:')
+            ? 'text-primary font-mono'
+            : 'text-slate-400 font-mono';
+        const actionsCellHtml = (h.status === 'pending_approval' && h.execution_id)
+            ? `<td class="px-4 py-2 whitespace-nowrap">
+                   <button onclick="approveSOARAction(${h.execution_id})"
+                       class="px-2 py-1 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/40 transition-colors mr-1">
+                       Approve
+                   </button>
+                   <button onclick="rejectSOARAction(${h.execution_id})"
+                       class="px-2 py-1 rounded text-[10px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/30 hover:bg-slate-500/40 transition-colors">
+                       Reject
+                   </button>
+               </td>`
+            : `<td class="px-4 py-2 text-slate-600 text-[10px]">—</td>`;
+        tbody.innerHTML += `
+            <tr class="hover:bg-primary/5 transition-colors">
+                <td class="px-4 py-2 whitespace-nowrap text-slate-400 font-mono">${h.executed_at || '—'}</td>
+                <td class="px-4 py-2 text-slate-300">${h.playbook_name || '—'}</td>
+                <td class="px-4 py-2 text-slate-300">${h.action_name || '—'}</td>
+                <td class="px-4 py-2 text-emerald-400 font-mono font-bold">${h.target || '—'}</td>
+                <td class="px-4 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 uppercase">${h.mode || '—'}</span></td>
+                <td class="px-4 py-2"><span class="px-2 py-0.5 rounded border text-[10px] font-bold ${sCls} uppercase">${h.status || '—'}</span></td>
+                <td class="px-4 py-2 ${executedByCls}">${h.executed_by || 'analyst'}</td>
+                <td class="px-4 py-2 text-slate-400 max-w-xs truncate" title="${(h.result_message||'').replace(/"/g,'&quot;')}">${h.result_message || '—'}</td>
+                ${actionsCellHtml}
+            </tr>`;
+    });
+}
+
+async function runSOARAction(playbookId, actionId) {
+    const btn  = document.getElementById('soar-run-btn');
+    const msg  = document.getElementById('soar-run-msg');
+    if (!btn) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Running…';
+    msg.classList.add('hidden');
+
+    try {
+        const res = await fetch(`/api/alerts/${ALERT_ID}/soar/run`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ playbook_id: playbookId, action_id: actionId, executed_by: 'analyst' }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+
+        if (body.status === 'pending_approval') {
+            msg.textContent = body.message || 'Action queued for approval.';
+            msg.className = 'text-xs text-center text-amber-400';
+        } else {
+            msg.textContent = body.message || 'Action executed successfully.';
+            msg.className = 'text-xs text-center text-emerald-400';
+        }
+        msg.classList.remove('hidden');
+
+        // Reload SOAR card to show updated history and updated timeline
+        await loadSOAR(ALERT_ID);
+        const invRes = await fetch(`/api/alerts/${ALERT_ID}/investigation`);
+        if (invRes.ok) {
+            const d = await invRes.json();
+            renderTimeline(d.timeline || []);
+        }
+    } catch (e) {
+        msg.textContent = `Error: ${e.message}`;
+        msg.className = 'text-xs text-center text-red-400';
+        msg.classList.remove('hidden');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">play_arrow</span>Run Simulated Action';
+        }
+    }
+}
+
+async function approveSOARAction(executionId) {
+    try {
+        const res = await fetch(`/api/alerts/${ALERT_ID}/soar/executions/${executionId}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ approved_by: 'analyst' }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+        await loadSOAR(ALERT_ID);
+        const invRes = await fetch(`/api/alerts/${ALERT_ID}/investigation`);
+        if (invRes.ok) { const d = await invRes.json(); renderTimeline(d.timeline || []); }
+    } catch (e) {
+        alert(`Approve failed: ${e.message}`);
+    }
+}
+
+async function rejectSOARAction(executionId) {
+    try {
+        const res = await fetch(`/api/alerts/${ALERT_ID}/soar/executions/${executionId}/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rejected_by: 'analyst' }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+        await loadSOAR(ALERT_ID);
+    } catch (e) {
+        alert(`Reject failed: ${e.message}`);
+    }
+}
+
 // ── Boot ───────────────────────────────────────────────────────────────────
 loadInvestigation();
+loadSOAR(ALERT_ID);
 </script>
 {% endblock %}

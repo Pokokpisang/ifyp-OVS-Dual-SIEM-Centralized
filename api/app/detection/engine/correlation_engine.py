@@ -48,7 +48,7 @@ CORRELATION_DEDUP_SECONDS: int = _env_int("CORRELATION_DEDUP_SECONDS", 60)
 # ---------------------------------------------------------------------------
 
 # Process names that are considered network download tools (Event A)
-_DOWNLOAD_TOOLS: frozenset = frozenset({"curl", "wget"})
+_DOWNLOAD_TOOLS: frozenset = frozenset({"curl", "wget", "nc", "ncat", "socat", "openssl"})
 
 # Shell-related indicators in the command line that elevate Event A significance
 # (the download is fetching something shell-related)

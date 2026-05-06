@@ -1,0 +1,60 @@
+id: linux_t1110_ssh_bruteforce
+name: SSH Failed Authentication Event
+description: >
+  Detects a single failed SSH authentication event. Fires at low severity per failure
+  as an early indicator. For high-confidence brute-force escalation after repeated
+  failures from the same source IP, see SSHBruteForceEngine (T1110 threshold alert).
+enabled: true
+platform:
+  - linux
+log_source:
+  product: linux
+  service: auth
+severity: low
+risk_score: 35
+mitre:
+  tactic:
+    id: TA0006
+    name: Credential Access
+  technique:
+    id: T1110
+    name: Brute Force
+tags:
+  - Linux
+  - T1110
+  - Credential Access
+  - SSH
+  - Rule-Based Detection
+required_fields:
+  - event.outcome
+  - source.ip
+condition:
+  all:
+    - field: event.outcome
+      operator: equals
+      value: failure
+    - field: event.category
+      operator: equals
+      value: authentication
+    - field: service.name
+      operator: equals
+      value: ssh
+risk_adjustment:
+  increase_if:
+    - conditions:
+        all:
+          - field: source.ip
+            operator: exists
+      increase_by: 5
+      reason: "Source IP present — external actor confirmed"
+false_positives:
+  - Automated configuration management tools authenticating over SSH
+  - Misconfigured SSH clients retrying with wrong credentials
+investigation_guide: |
+  1. Identify the source IP and check if it belongs to known infrastructure.
+  2. Review the frequency and pattern of failures (targeted at one user or scanning many?).
+  3. Check if any authentication eventually succeeded from the same source IP.
+  4. Consider blocking the source IP if a brute-force pattern is confirmed.
+  5. Review /var/log/auth.log and SSH daemon config for additional context.
+references:
+  - https://attack.mitre.org/techniques/T1110/

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Agent History - OVS SIEM{% endblock %}
+{% block page_title %}Agent History{% endblock %}
+
+{% block main_content %}
+<div class="p-4 lg:p-8 space-y-6">
+
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h2 class="text-lg font-bold text-slate-200">Full Agent Lifecycle Records</h2>
+            <p class="text-xs text-slate-500 mt-1">Shows all agents across all lifecycle states — active, offline, pending, deleted, retired, and test.</p>
+        </div>
+        <a href="/agents"
+           class="border border-primary/20 text-slate-400 hover:text-primary hover:border-primary/50 px-5 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 self-start md:self-auto">
+            <span class="material-symbols-outlined text-lg">arrow_back</span>
+            Back to Fleet
+        </a>
+    </div>
+
+    <!-- Filter Pills + Search -->
+    <div class="flex flex-col md:flex-row md:items-center gap-4">
+        <!-- Lifecycle filter pills -->
+        <div class="flex flex-wrap gap-2">
+            {% set filters = [('all', 'All'), ('active', 'Active'), ('offline', 'Offline'), ('pending', 'Pending'), ('deleted', 'Deleted'), ('retired', 'Retired'), ('test', 'Test')] %}
+            {% for value, label in filters %}
+            <a href="/agents/history?lifecycle_filter={{ value }}{% if q %}&q={{ q }}{% endif %}"
+               class="px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border transition-all
+                      {% if lifecycle_filter == value %}bg-primary text-white border-primary{% else %}border-primary/20 text-slate-400 hover:border-primary/50 hover:text-primary{% endif %}">
+                {{ label }}
+            </a>
+            {% endfor %}
+        </div>
+
+        <!-- Search -->
+        <form method="GET" action="/agents/history" class="flex items-center gap-3 ml-auto">
+            <input type="hidden" name="lifecycle_filter" value="{{ lifecycle_filter }}">
+            <div class="relative">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+                <input name="q" value="{{ q }}" type="text"
+                    class="pl-10 pr-4 py-2 bg-white dark:bg-card-dark border border-primary/10 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all w-64"
+                    placeholder="Search name, hostname, IP, ID..." />
+            </div>
+            <button type="submit" class="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-all">Search</button>
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white dark:bg-card-dark rounded-xl border border-primary/5 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-primary/10 text-[10px] uppercase tracking-wider text-slate-500">
+                        <th class="px-4 py-3 font-bold">Agent Name</th>
+                        <th class="px-4 py-3 font-bold">Agent ID</th>
+                        <th class="px-4 py-3 font-bold">Hostname</th>
+                        <th class="px-4 py-3 font-bold">IP Address</th>
+                        <th class="px-4 py-3 font-bold">OS / Distro</th>
+                        <th class="px-4 py-3 font-bold">Status</th>
+                        <th class="px-4 py-3 font-bold">Lifecycle</th>
+                        <th class="px-4 py-3 font-bold">Created At</th>
+                        <th class="px-4 py-3 font-bold">Last Seen</th>
+                        <th class="px-4 py-3 font-bold">Deleted At</th>
+                        <th class="px-4 py-3 font-bold">Reason</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-primary/5">
+                    {% if agents %}
+                        {% for agent in agents %}
+                        <tr class="hover:bg-primary/5 transition-colors cursor-pointer" onclick="window.location='/agents/{{ agent.agent_id }}'">
+                            <td class="px-4 py-3 font-bold text-slate-200">{{ agent.agent_name }}</td>
+                            <td class="px-4 py-3 font-mono text-xs text-slate-500" title="{{ agent.agent_id }}">{{ agent.agent_id[:12] }}…</td>
+                            <td class="px-4 py-3 text-slate-400">{{ agent.hostname }}</td>
+                            <td class="px-4 py-3 text-slate-400 font-mono text-xs">{{ agent.ip_address }}</td>
+                            <td class="px-4 py-3 text-slate-400 text-xs">{{ agent.os_type }} / {{ agent.distribution }}</td>
+
+                            <!-- Runtime status badge -->
+                            <td class="px-4 py-3">
+                                {% if agent.status == 'active' %}
+                                <span class="flex items-center gap-1.5 w-fit px-2 py-0.5 bg-green-500/10 text-green-400 text-[9px] font-bold uppercase tracking-wider border border-green-500/30 rounded-full">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>ACTIVE
+                                </span>
+                                {% elif agent.status == 'offline' %}
+                                <span class="flex items-center gap-1.5 w-fit px-2 py-0.5 bg-red-500/10 text-red-400 text-[9px] font-bold uppercase tracking-wider border border-red-500/30 rounded-full">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>OFFLINE
+                                </span>
+                                {% else %}
+                                <span class="flex items-center gap-1.5 w-fit px-2 py-0.5 bg-yellow-500/10 text-yellow-400 text-[9px] font-bold uppercase tracking-wider border border-yellow-500/30 rounded-full">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>PENDING
+                                </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Lifecycle status badge -->
+                            <td class="px-4 py-3">
+                                {% set ls = agent.lifecycle_status or 'pending_registration' %}
+                                {% if ls == 'active_inventory' %}
+                                <span class="px-2 py-0.5 bg-green-500/10 text-green-400 text-[9px] font-bold uppercase tracking-wider border border-green-500/20 rounded">active</span>
+                                {% elif ls == 'deleted' %}
+                                <span class="px-2 py-0.5 bg-red-500/10 text-red-400 text-[9px] font-bold uppercase tracking-wider border border-red-500/20 rounded">deleted</span>
+                                {% elif ls == 'retired' %}
+                                <span class="px-2 py-0.5 bg-orange-500/10 text-orange-400 text-[9px] font-bold uppercase tracking-wider border border-orange-500/20 rounded">retired</span>
+                                {% elif ls == 'test_agent' %}
+                                <span class="px-2 py-0.5 bg-slate-500/20 text-slate-400 text-[9px] font-bold uppercase tracking-wider border border-slate-500/20 rounded">test</span>
+                                {% else %}
+                                <span class="px-2 py-0.5 bg-yellow-500/10 text-yellow-400 text-[9px] font-bold uppercase tracking-wider border border-yellow-500/20 rounded">pending</span>
+                                {% endif %}
+                            </td>
+
+                            <td class="px-4 py-3 text-xs text-slate-500 font-mono">{{ agent.created_at }}</td>
+                            <td class="px-4 py-3 text-xs text-slate-500 font-mono">{{ agent.last_seen }}</td>
+                            <td class="px-4 py-3 text-xs text-slate-500 font-mono">{{ agent.deleted_at or '—' }}</td>
+                            <td class="px-4 py-3 text-xs text-slate-500 max-w-xs truncate" title="{{ agent.deleted_reason or '' }}">{{ agent.deleted_reason or '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="11" class="px-6 py-12 text-center text-slate-500">
+                            <span class="material-symbols-outlined text-3xl block mb-2 text-slate-600">history</span>
+                            No agent records found{% if q %} matching "{{ q }}"{% endif %}{% if lifecycle_filter != 'all' %} with filter "{{ lifecycle_filter }}"{% endif %}.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <div class="px-6 py-4 border-t border-primary/5 flex items-center justify-between">
+            <span class="text-xs text-slate-500">Showing {{ agents|length }} of {{ total_count }} records</span>
+            <div class="flex gap-2">
+                {% if page > 1 %}
+                <a href="/agents/history?page={{ page - 1 }}&lifecycle_filter={{ lifecycle_filter }}{% if q %}&q={{ q }}{% endif %}"
+                   class="px-3 py-1.5 border border-primary/20 text-slate-400 text-xs font-medium rounded hover:border-primary/50 hover:text-primary transition-all">
+                    ← Previous
+                </a>
+                {% endif %}
+                {% if page < total_pages %}
+                <a href="/agents/history?page={{ page + 1 }}&lifecycle_filter={{ lifecycle_filter }}{% if q %}&q={{ q }}{% endif %}"
+                   class="px-3 py-1.5 border border-primary/20 text-slate-400 text-xs font-medium rounded hover:border-primary/50 hover:text-primary transition-all">
+                    Next →
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="px-6 py-3 border-t border-primary/5 text-xs text-slate-500">
+            Showing {{ agents|length }} of {{ total_count }} records
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

@@ -9,8 +9,9 @@ import os
 from datetime import datetime, timedelta
 from ..services.agent_service import (
     create_agent, list_agents, compute_agent_status,
-    get_agent_by_id, delete_agent_by_id,
-    get_latest_agent_metrics, get_recent_agent_alerts, get_recent_agent_logs
+    get_agent_by_id, delete_agent_by_id, purge_agent_by_id,
+    get_latest_agent_metrics, get_recent_agent_alerts, get_recent_agent_logs,
+    get_all_agents_for_history,
 )
 from ..services.server_address import get_server_address, normalize_server_url, validate_server_address
 
@@ -134,8 +135,8 @@ def view_agents(
     status_filter: str = "All",
     database: Session = Depends(db.get_db)
 ):
-    # --- AgentRecord-registered agents (have gone through /agents/new) ---
-    registered = list_agents(database)
+    # --- AgentRecord-registered agents (active inventory only — excludes deleted/retired/test) ---
+    registered = list_agents(database, include_deleted=False)
 
     # --- Legacy metric-only agents (appear via /ingest metrics without registration) ---
     hosts_with_metrics = {h[0] for h in database.query(models.Metric.host).distinct().all()}
@@ -330,6 +331,116 @@ def view_investigation(alert_id: int, request: Request, db: Session = Depends(db
     })
 
 
+@router.get("/agents/history", response_class=HTMLResponse)
+def view_agents_history(
+    request: Request,
+    page: int = 1,
+    q: str = "",
+    lifecycle_filter: str = "all",
+    database: Session = Depends(db.get_db),
+):
+    agents = get_all_agents_for_history(database, q=q, lifecycle_filter=lifecycle_filter)
+
+    # Inject cpu/ram metrics for display
+    for a in agents:
+        host = a.get("hostname", "")
+        if host and host != "—":
+            latest = (
+                database.query(models.Metric)
+                .filter(models.Metric.host == host)
+                .order_by(desc(models.Metric.timestamp))
+                .first()
+            )
+            a["cpu"] = round(float(latest.cpu_percent), 1) if latest else 0
+            a["ram"] = round(float(latest.ram_percent), 1) if latest else 0
+        else:
+            a["cpu"] = 0
+            a["ram"] = 0
+
+    limit = 20
+    total_count = len(agents)
+    total_pages = max(math.ceil(total_count / limit), 1)
+    offset = (page - 1) * limit
+    paginated = agents[offset:offset + limit]
+
+    return templates.TemplateResponse("agents_history.html", {
+        "request": request,
+        "agents": paginated,
+        "page": page,
+        "total_count": total_count,
+        "total_pages": total_pages,
+        "q": q,
+        "lifecycle_filter": lifecycle_filter,
+    })
+
+
+@router.get("/soar/settings", response_class=HTMLResponse)
+def view_soar_settings(request: Request):
+    return templates.TemplateResponse("soar_settings.html", {"request": request})
+
+
+@router.get("/soar/history", response_class=HTMLResponse)
+def view_soar_history(
+    request: Request,
+    status: str | None = None,
+    mode: str | None = None,
+    action_type: str | None = None,
+    alert_id: int | None = None,
+    database: Session = Depends(db.get_db),
+):
+    q = database.query(models.SOARActionExecution)
+
+    if status:
+        q = q.filter(models.SOARActionExecution.status == status)
+    if mode:
+        q = q.filter(models.SOARActionExecution.mode == mode)
+    if action_type:
+        q = q.filter(models.SOARActionExecution.action_type == action_type)
+    if alert_id:
+        q = q.filter(models.SOARActionExecution.alert_id == alert_id)
+
+    records = q.order_by(models.SOARActionExecution.id.desc()).limit(100).all()
+
+    # Summary counts (unfiltered)
+    all_rows = database.query(models.SOARActionExecution)
+    total = all_rows.count()
+    pending = all_rows.filter(models.SOARActionExecution.status == "pending_approval").count()
+    executed = all_rows.filter(models.SOARActionExecution.status.in_(["executed", "success"])).count()
+    failed = all_rows.filter(models.SOARActionExecution.status == "failed").count()
+    rejected = all_rows.filter(models.SOARActionExecution.status == "rejected").count()
+
+    # Distinct filter options
+    statuses = [r[0] for r in database.query(models.SOARActionExecution.status).distinct().all() if r[0]]
+    modes = [r[0] for r in database.query(models.SOARActionExecution.mode).distinct().all() if r[0]]
+    action_types = [r[0] for r in database.query(models.SOARActionExecution.action_type).distinct().all() if r[0]]
+
+    return templates.TemplateResponse(
+        "soar_history.html",
+        {
+            "request": request,
+            "records": records,
+            "filters": {
+                "status": status or "",
+                "mode": mode or "",
+                "action_type": action_type or "",
+                "alert_id": alert_id or "",
+            },
+            "summary": {
+                "total": total,
+                "pending": pending,
+                "executed": executed,
+                "failed": failed,
+                "rejected": rejected,
+            },
+            "filter_options": {
+                "statuses": statuses,
+                "modes": modes,
+                "action_types": action_types,
+            },
+        },
+    )
+
+
 @router.get("/agents/{agent_id}", response_class=HTMLResponse)
 def get_agent_detail(
     request: Request,
@@ -345,7 +456,7 @@ def get_agent_detail(
         raise HTTPException(status_code=404, detail="Agent not found")
 
     status = compute_agent_status(agent)
-    
+
     # Data matched by hostname (fallback to agent_name if hostname not yet filled)
     host_id = agent.hostname or agent.agent_name
     metrics = get_latest_agent_metrics(host_id, database)
@@ -358,7 +469,7 @@ def get_agent_detail(
         raw_server = get_server_address(request)
         port = int(os.getenv("SIEM_API_PORT", "8000"))
         normalized = normalize_server_url(raw_server, port)
-        
+
         reinstall_cmd = get_reinstall_command(
             server=normalized,
             port=port,
@@ -390,9 +501,28 @@ def get_agent_detail(
 @router.post("/agents/{agent_id}/delete")
 def delete_agent(
     agent_id: str,
+    reason: str = Form(""),
     database: Session = Depends(db.get_db),
 ):
-    success = delete_agent_by_id(agent_id, database)
+    success = delete_agent_by_id(agent_id, database, reason=reason or None)
+    if not success:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return RedirectResponse(url="/agents", status_code=303)
+
+
+@router.post("/agents/{agent_id}/purge")
+def purge_agent(
+    agent_id: str,
+    database: Session = Depends(db.get_db),
+):
+    environment = os.getenv("ENVIRONMENT", "development")
+    debug = os.getenv("DEBUG", "false").lower()
+    if environment == "production" or debug != "true":
+        raise HTTPException(
+            status_code=403,
+            detail="Hard purge is only available in development environments with DEBUG=true.",
+        )
+    success = purge_agent_by_id(agent_id, database)
     if not success:
         raise HTTPException(status_code=404, detail="Agent not found")
     return RedirectResponse(url="/agents", status_code=303)

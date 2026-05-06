@@ -1,10 +1,40 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from typing import List
 from . import models, db
-from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules
+from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings
 import pathlib
+
+
+def run_startup_migrations():
+    """Add lifecycle columns to agent_records if they don't exist yet. PostgreSQL only."""
+    db_url = str(db.engine.url)
+    if not (db_url.startswith("postgresql") or db_url.startswith("postgres")):
+        return
+    migrations = [
+        "ALTER TABLE agent_records ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE agent_records ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP",
+        "ALTER TABLE agent_records ADD COLUMN IF NOT EXISTS deleted_reason VARCHAR",
+        "ALTER TABLE agent_records ADD COLUMN IF NOT EXISTS lifecycle_status VARCHAR DEFAULT 'pending_registration'",
+        # Backfill: existing active agents should be active_inventory, not pending_registration
+        "UPDATE agent_records SET lifecycle_status = 'active_inventory' WHERE status = 'active' AND lifecycle_status = 'pending_registration'",
+        "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS dedup_key VARCHAR",
+        "CREATE INDEX IF NOT EXISTS ix_alerts_dedup_key ON alerts (dedup_key)",
+        "ALTER TABLE soar_action_executions ADD COLUMN IF NOT EXISTS requires_approval BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE soar_action_executions ADD COLUMN IF NOT EXISTS approved_by VARCHAR",
+        "ALTER TABLE soar_action_executions ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP",
+        "ALTER TABLE soar_action_executions ADD COLUMN IF NOT EXISTS rejected_by VARCHAR",
+        "ALTER TABLE soar_action_executions ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMP",
+    ]
+    with db.engine.connect() as conn:
+        for sql in migrations:
+            conn.execute(text(sql))
+        conn.commit()
+
+
+run_startup_migrations()
 
 # Create tables
 models.Base.metadata.create_all(bind=db.engine)
@@ -27,6 +57,8 @@ app.include_router(rules.router)
 app.include_router(collector.router)
 app.include_router(agents.router)
 app.include_router(system_health_rules.router)
+app.include_router(soar.router)
+app.include_router(settings.router)
 
 def seed_health_rules():
     database = db.SessionLocal()

@@ -18,7 +18,25 @@
 
 {% block main_content %}
 <div class="flex-1 overflow-y-auto custom-scrollbar p-8 bg-[#18161a] text-[#ededed]">
-    
+
+    {% if agent.is_deleted %}
+    <!-- Deleted Warning Banner -->
+    <div class="mb-6 flex items-start gap-3 bg-[#ce2e46]/10 border border-[#ce2e46]/40 p-4 rounded-lg">
+        <span class="material-symbols-outlined text-[#ce2e46] mt-0.5">warning</span>
+        <div>
+            <p class="text-sm font-bold text-[#ce2e46] uppercase tracking-wider">This agent has been removed from active inventory</p>
+            <p class="text-xs text-[#ededed]/60 mt-1">
+                Deleted: {{ agent.deleted_at.strftime('%Y-%m-%d %H:%M UTC') if agent.deleted_at else '—' }}
+                &nbsp;—&nbsp;
+                Reason: {{ agent.deleted_reason or 'No reason provided' }}
+            </p>
+            <a href="/agents/history" class="inline-flex items-center gap-1 text-[10px] text-[#ce2e46] hover:underline mt-2 uppercase font-bold tracking-widest">
+                <span class="material-symbols-outlined text-xs">arrow_back</span>Back to Agent History
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Section 1: Agent Header -->
     <header class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
@@ -67,11 +85,18 @@
         <!-- Actions Panel -->
         <div class="flex flex-wrap gap-3">
             <button class="px-4 py-2 bg-[#F05484]/10 text-[#F05484] text-[10px] font-bold uppercase tracking-widest border border-[#F05484] opacity-50 cursor-not-allowed" title="Coming Soon">Restart Agent</button>
+            {% if not agent.is_deleted %}
             <a href="?reinstall=true" class="px-4 py-2 bg-transparent text-[#ededed]/60 text-[10px] font-bold uppercase tracking-widest border border-[#ededed]/20 hover:border-[#ededed]/50 transition-all">Reinstall</a>
-            
-            <form action="/agents/{{ agent.agent_id }}/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this agent? This action cannot be undone.')">
-                <button type="submit" class="px-4 py-2 bg-[#ce2e46]/10 text-[#ce2e46] text-[10px] font-bold uppercase tracking-widest border border-[#ce2e46] hover:bg-[#ce2e46] hover:text-white transition-all">Delete Agent</button>
-            </form>
+            <button type="button" onclick="document.getElementById('delete-modal').classList.remove('hidden')"
+                class="px-4 py-2 bg-[#ce2e46]/10 text-[#ce2e46] text-[10px] font-bold uppercase tracking-widest border border-[#ce2e46] hover:bg-[#ce2e46] hover:text-white transition-all">
+                Delete Agent
+            </button>
+            {% else %}
+            <a href="/agents/history"
+               class="px-4 py-2 bg-transparent text-[#ededed]/40 text-[10px] font-bold uppercase tracking-widest border border-[#ededed]/10 hover:border-[#ededed]/30 transition-all flex items-center gap-1">
+                <span class="material-symbols-outlined text-xs">history</span>Agent History
+            </a>
+            {% endif %}
         </div>
     </header>
     
@@ -329,6 +354,37 @@
     </div>
 
 </div>
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+    <div class="bg-[#1e1c22] border border-[#ce2e46]/30 rounded-xl p-8 w-full max-w-md shadow-2xl">
+        <div class="flex items-center gap-3 mb-4">
+            <span class="material-symbols-outlined text-[#ce2e46] text-2xl">warning</span>
+            <h2 class="text-lg font-bold text-[#ededed]">Remove Agent from Inventory</h2>
+        </div>
+        <p class="text-sm text-[#ededed]/60 mb-6">
+            This removes <strong class="text-[#ededed]">{{ agent.agent_name }}</strong> from active inventory
+            but keeps it in <strong class="text-[#ededed]">Agent History</strong> for audit purposes.
+            This action does <em>not</em> uninstall the agent binary from the endpoint.
+        </p>
+        <form action="/agents/{{ agent.agent_id }}/delete" method="POST">
+            <label class="block text-[10px] text-[#ededed]/40 uppercase tracking-widest mb-2">Reason (optional)</label>
+            <textarea name="reason" rows="3" placeholder="e.g. Decommissioned, test machine, replaced by new agent..."
+                class="w-full bg-[#18161a] border border-[#ededed]/10 text-sm text-[#ededed] p-3 rounded mb-6 focus:border-[#ce2e46]/50 focus:outline-none resize-none"></textarea>
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('delete-modal').classList.add('hidden')"
+                    class="px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest border border-[#ededed]/20 text-[#ededed]/60 hover:border-[#ededed]/40 transition-all rounded">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest bg-[#ce2e46] text-white hover:bg-[#ce2e46]/80 transition-all rounded">
+                    Confirm Remove
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
