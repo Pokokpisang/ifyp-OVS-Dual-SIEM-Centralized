@@ -62,6 +62,86 @@ def run_action(
             detail="Playbook conditions no longer match this alert. Action was not executed.",
         )
 
+    # ── Approval gate ──────────────────────────────────────────────────────
+    if action.requires_approval:
+        # Idempotency: block if already pending, executed, or legacy "success".
+        # "rejected" rows ARE allowed to re-queue (analyst can change their mind).
+        existing = (
+            db.query(models.SOARActionExecution)
+            .filter(
+                models.SOARActionExecution.alert_id == alert_id,
+                models.SOARActionExecution.playbook_id == playbook.id,
+                models.SOARActionExecution.action_id == action.id,
+                models.SOARActionExecution.status.in_(
+                    ["pending_approval", "executed", "success"]
+                ),
+            )
+            .first()
+        )
+        if existing:
+            logger.info(
+                f"[SOAR_RUN] Returning existing record #{existing.id} "
+                f"(status={existing.status}) for alert #{alert_id}, action '{action.id}'"
+            )
+            return SOARExecutionResult(
+                success=False,
+                execution_id=existing.id,
+                status=existing.status,
+                playbook_id=playbook.id,
+                action_id=action.id,
+                action_type=action.type,
+                target=existing.target,
+                mode=action.mode,
+                message=(
+                    "Action is already pending approval."
+                    if existing.status == "pending_approval"
+                    else "Action has already been executed for this alert."
+                ),
+            )
+
+        pending_target: str | None = None
+        if action.target_field:
+            raw = ctx.get(action.target_field)
+            pending_target = str(raw) if raw is not None and raw != "" else None
+
+        exec_record = models.SOARActionExecution(
+            alert_id=alert_id,
+            playbook_id=playbook.id,
+            playbook_name=playbook.name,
+            action_id=action.id,
+            action_name=action.name,
+            action_type=action.type,
+            target=pending_target,
+            mode=action.mode,
+            status="pending_approval",
+            requires_approval=True,
+            executed_by=executed_by,
+            executed_at=None,
+            rollback_supported=action.rollback_supported,
+            rollback_status=None,
+            exec_metadata=json.dumps(
+                {"match_reasons": [r.match_reasons for r in recommendations]}
+            ),
+        )
+        db.add(exec_record)
+        db.commit()
+        logger.info(
+            f"[SOAR_RUN] Created pending_approval record #{exec_record.id} "
+            f"for alert #{alert_id}, action '{action.id}'"
+        )
+        return SOARExecutionResult(
+            success=False,
+            execution_id=exec_record.id,
+            status="pending_approval",
+            playbook_id=playbook.id,
+            action_id=action.id,
+            action_type=action.type,
+            target=pending_target,
+            mode=action.mode,
+            message="Action requires approval. Awaiting analyst approval.",
+        )
+
+    # ── Immediate execution (requires_approval=False) ──────────────────────
     result = execute_action(ctx, playbook, action)
 
     exec_record = models.SOARActionExecution(
@@ -73,7 +153,8 @@ def run_action(
         action_type=action.type,
         target=result.target,
         mode=action.mode,
-        status="success" if result.success else "failed",
+        status="executed" if result.success else "failed",
+        requires_approval=False,
         executed_by=executed_by,
         executed_at=datetime.utcnow(),
         result_message=result.message,
@@ -85,7 +166,131 @@ def run_action(
     db.add(exec_record)
     db.commit()
 
-    return result
+    return SOARExecutionResult(
+        success=result.success,
+        execution_id=exec_record.id,
+        status="executed" if result.success else "failed",
+        playbook_id=result.playbook_id,
+        action_id=result.action_id,
+        action_type=result.action_type,
+        target=result.target,
+        mode=result.mode,
+        message=result.message,
+        error=result.error,
+    )
+
+
+def approve_action(
+    alert_id: int,
+    execution_id: int,
+    db: Session,
+    approved_by: str = "analyst",
+) -> SOARExecutionResult:
+    exec_record = (
+        db.query(models.SOARActionExecution)
+        .filter_by(id=execution_id, alert_id=alert_id)
+        .first()
+    )
+    if not exec_record:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Execution #{execution_id} not found for alert #{alert_id}",
+        )
+    if exec_record.status != "pending_approval":
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Execution #{execution_id} is not pending approval "
+                f"(current status: '{exec_record.status}')"
+            ),
+        )
+
+    alert = db.query(models.Alert).filter(models.Alert.id == alert_id).first()
+    if not alert:
+        raise HTTPException(status_code=404, detail=f"Alert #{alert_id} not found")
+
+    loader = PlaybookLoader()
+    playbooks = loader.load_all_playbooks()
+    playbook = next((p for p in playbooks if p.id == exec_record.playbook_id), None)
+    if not playbook:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Playbook '{exec_record.playbook_id}' not found",
+        )
+    action = next((a for a in playbook.actions if a.id == exec_record.action_id), None)
+    if not action:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Action '{exec_record.action_id}' not found in playbook '{exec_record.playbook_id}'",
+        )
+
+    ctx = _build_alert_context(alert)
+    result = execute_action(ctx, playbook, action)
+
+    exec_record.status = "executed" if result.success else "failed"
+    exec_record.approved_by = approved_by
+    exec_record.approved_at = datetime.utcnow()
+    exec_record.executed_at = datetime.utcnow()
+    exec_record.result_message = result.message
+    exec_record.error_message = result.error
+    if result.target:
+        exec_record.target = result.target
+    db.commit()
+
+    logger.info(
+        f"[SOAR_APPROVE] Execution #{execution_id} approved by '{approved_by}' "
+        f"for alert #{alert_id} — status={exec_record.status}"
+    )
+
+    return SOARExecutionResult(
+        success=result.success,
+        execution_id=execution_id,
+        status=exec_record.status,
+        playbook_id=playbook.id,
+        action_id=action.id,
+        action_type=action.type,
+        target=result.target,
+        mode=action.mode,
+        message=result.message,
+        error=result.error,
+    )
+
+
+def reject_action(
+    alert_id: int,
+    execution_id: int,
+    db: Session,
+    rejected_by: str = "analyst",
+) -> Dict[str, Any]:
+    exec_record = (
+        db.query(models.SOARActionExecution)
+        .filter_by(id=execution_id, alert_id=alert_id)
+        .first()
+    )
+    if not exec_record:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Execution #{execution_id} not found for alert #{alert_id}",
+        )
+    if exec_record.status != "pending_approval":
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Execution #{execution_id} is not pending approval "
+                f"(current status: '{exec_record.status}')"
+            ),
+        )
+
+    exec_record.status = "rejected"
+    exec_record.rejected_by = rejected_by
+    exec_record.rejected_at = datetime.utcnow()
+    db.commit()
+
+    logger.info(
+        f"[SOAR_REJECT] Execution #{execution_id} rejected by '{rejected_by}' "
+        f"for alert #{alert_id}"
+    )
+    return {"execution_id": execution_id, "status": "rejected"}
 
 
 def get_history(alert_id: int, db: Session) -> List[Dict[str, Any]]:
@@ -194,6 +399,7 @@ def auto_run_for_alert(
 def _row_to_dict(r: models.SOARActionExecution) -> Dict[str, Any]:
     return {
         "id": r.id,
+        "execution_id": r.id,
         "alert_id": r.alert_id,
         "playbook_id": r.playbook_id,
         "playbook_name": r.playbook_name,
@@ -209,4 +415,9 @@ def _row_to_dict(r: models.SOARActionExecution) -> Dict[str, Any]:
         "error_message": r.error_message,
         "rollback_supported": r.rollback_supported,
         "rollback_status": r.rollback_status,
+        "requires_approval": r.requires_approval if r.requires_approval is not None else False,
+        "approved_by": r.approved_by,
+        "approved_at": r.approved_at.strftime("%Y-%m-%d %H:%M:%S") if r.approved_at else None,
+        "rejected_by": r.rejected_by,
+        "rejected_at": r.rejected_at.strftime("%Y-%m-%d %H:%M:%S") if r.rejected_at else None,
     }

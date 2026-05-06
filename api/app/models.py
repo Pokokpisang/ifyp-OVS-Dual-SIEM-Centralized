@@ -166,6 +166,13 @@ class SOARActionExecution(Base):
     rollback_status    = Column(String, nullable=True)
     exec_metadata      = Column(Text, nullable=True)  # JSON blob
 
+    # Approval workflow fields
+    requires_approval  = Column(Boolean, nullable=False, default=False)
+    approved_by        = Column(String, nullable=True)
+    approved_at        = Column(DateTime, nullable=True)
+    rejected_by        = Column(String, nullable=True)
+    rejected_at        = Column(DateTime, nullable=True)
+
 
 class SystemSetting(Base):
     __tablename__ = "system_settings"
