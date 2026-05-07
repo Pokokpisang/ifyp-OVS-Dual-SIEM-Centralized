@@ -88,6 +88,36 @@ def test_t1543_matches_suspicious_service_creation(engine):
     assert t1543.suppressed is False
 
 
+def test_t1543_matches_bash_pipe_attack_pattern(engine):
+    """
+    Realistic curl|bash attack: the process that creates the service file is
+    bash with command_line='bash' — no ExecStart= or /tmp/ in the command line.
+    The rule must match via the process.name branch of the any condition.
+    """
+    event = {
+        "event": {"category": "file", "type": "change", "action": "created"},
+        "file": {
+            "path": "/etc/systemd/system/threatactor-backdoor.service",
+            "name": "threatactor-backdoor.service",
+        },
+        "process": {
+            "name": "bash",
+            "command_line": "bash",
+            "executable": "/bin/bash",
+        },
+        "user": {"name": "root"},
+        "host": {"name": "prod1"},
+    }
+    candidates = engine.evaluate_event(event, return_unmatched=True)
+    t1543 = next((c for c in candidates if c.rule_id == RULE_ID), None)
+    assert t1543 is not None, f"Expected {RULE_ID} candidate"
+    assert t1543.matched is True, (
+        f"T1543.002 must match when bash creates a service file. "
+        f"missing_fields={t1543.missing_fields} reasons={t1543.match_reasons}"
+    )
+    assert t1543.suppressed is False
+
+
 # ---------------------------------------------------------------------------
 # Negative detection tests
 # ---------------------------------------------------------------------------

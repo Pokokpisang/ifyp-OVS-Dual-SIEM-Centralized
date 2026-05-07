@@ -16,13 +16,14 @@ type LogPaths struct {
 }
 
 type Config struct {
-	ServerURL     string   `yaml:"server_url"`
-	AgentName     string   `yaml:"agent_name"`
-	AgentKey      string   `yaml:"agent_key"`
-	EnableLogs    bool     `yaml:"enable_logs"`
-	EnableFIM     bool     `yaml:"enable_fim"`
-	EnableMetrics bool     `yaml:"enable_metrics"`
-	LogPaths      LogPaths `yaml:"log_paths"`
+	ServerURL          string   `yaml:"server_url"`
+	AgentName          string   `yaml:"agent_name"`
+	AgentKey           string   `yaml:"agent_key"`
+	EnableLogs         bool     `yaml:"enable_logs"`
+	EnableFIM          bool     `yaml:"enable_fim"`
+	EnableMetrics      bool     `yaml:"enable_metrics"`
+	EnableAuditdSetup  bool     `yaml:"enable_auditd_setup"`
+	LogPaths           LogPaths `yaml:"log_paths"`
 
 	// Runtime info
 	DetectedOS string

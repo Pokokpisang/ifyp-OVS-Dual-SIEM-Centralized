@@ -7,6 +7,7 @@ import (
 	"agent/internal/queue"
 	"agent/internal/rules"
 	"agent/internal/sender"
+	"agent/internal/setup"
 	"agent/internal/tailer"
 	"fmt"
 	"log"
@@ -26,9 +27,10 @@ func main() {
 	fmt.Printf("Detected OS   : %s\n", cfg.DetectedOS)
 	fmt.Printf("Agent Name    : %s\n", cfg.AgentName)
 	fmt.Printf("Server URL    : %s\n", cfg.ServerURL)
-	fmt.Printf("Logs Enabled  : %v\n", cfg.EnableLogs)
+	fmt.Printf("Logs Enabled   : %v\n", cfg.EnableLogs)
 	fmt.Printf("Metrics Enabled: %v\n", cfg.EnableMetrics)
 	fmt.Printf("FIM Enabled    : %v\n", cfg.EnableFIM)
+	fmt.Printf("Auditd Setup   : %v\n", cfg.EnableAuditdSetup)
 	fmt.Println("========================================")
 
 	if cfg.EnableLogs {
@@ -66,6 +68,14 @@ func main() {
 	snd.DrainQueue()
 
 	host, _ := os.Hostname()
+
+	// Bootstrap: ensure auditd is installed and SIEM rules are active.
+	if cfg.EnableAuditdSetup {
+		log.Println("[setup] Ensuring auditd is installed and SIEM audit rules are active…")
+		if err := setup.EnsureAuditd(log.Default()); err != nil {
+			log.Printf("[setup] auditd setup warning: %v", err)
+		}
+	}
 
 	// 1. Start Log Tailers if enabled
 	if cfg.EnableLogs {
