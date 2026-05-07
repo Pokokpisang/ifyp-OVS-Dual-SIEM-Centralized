@@ -52,23 +52,35 @@ condition:
         - modified
         - write
         - change
-    - field: process.command_line
-      operator: contains_any
-      value:
-        - "ExecStart="
-        - "/tmp/"
-        - "/var/tmp/"
-        - "/dev/shm/"
-        - "curl "
-        - "wget "
-        - "ncat"
-        - "socat"
-        - "bash -c"
-        - "sh -c"
-        - "chmod +x"
-        - "base64"
-        - "python -c"
-        - "perl -e"
+    - any:
+        - field: process.command_line
+          operator: contains_any
+          value:
+            - "ExecStart="
+            - "/tmp/"
+            - "/var/tmp/"
+            - "/dev/shm/"
+            - "curl "
+            - "wget "
+            - "ncat"
+            - "socat"
+            - "bash -c"
+            - "sh -c"
+            - "chmod +x"
+            - "base64"
+            - "python -c"
+            - "perl -e"
+        - field: process.name
+          operator: in
+          value:
+            - bash
+            - sh
+            - dash
+            - zsh
+            - python3
+            - python
+            - perl
+            - ruby
 risk_adjustment:
   increase_if:
     - field: process.command_line

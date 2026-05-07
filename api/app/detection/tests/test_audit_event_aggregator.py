@@ -276,23 +276,26 @@ def test_audit_metadata_attached():
 
 def test_t1543_detection_on_merged_auditd_event():
     """
-    Full pipeline simulation with realistic auditd record ordering:
+    Full pipeline simulation with realistic curl|bash attack ordering.
 
-    1. SYSCALL  — process identity (arrives first)
-    2. EXECVE   — command-line arguments → process.command_line
-    3. PATH (PARENT)  — parent directory record that auditd always emits first
-    4. PATH (CREATE)  — the actual .service file being written (arrives after PARENT)
+    The process writing the service file is bash running a piped script —
+    its command_line is just "bash", NOT "bash -c ExecStart=...".
+    Detection must succeed via the process.name branch of the T1543 rule's
+    any condition, not the command_line branch.
 
-    The deep-merge must let the CREATE record's file.path overwrite the
-    PARENT record's directory path so the T1543.002 regex check can pass.
+    Record order matches real auditd output:
+    1. SYSCALL  — process identity (comm=bash)
+    2. EXECVE   — a0=bash only (no ExecStart= in command line)
+    3. PATH (PARENT) — /etc/systemd/system (directory, arrives first)
+    4. PATH (CREATE) — /etc/systemd/system/threatactor-backdoor.service
     """
     agg = AuditEventAggregator(ttl_seconds=2)
 
-    # 1. SYSCALL — process context
+    # 1. SYSCALL — process context; comm=bash gives process.name
     raw_syscall = {
         "message": (
             f"type=SYSCALL msg=audit({AUDIT_ID}): "
-            "arch=c000003e syscall=2 success=yes pid=1234 ppid=1 uid=0 "
+            "arch=c000003e syscall=2 success=yes pid=3070 ppid=3069 uid=0 "
             "comm=bash exe=/bin/bash"
         ),
         "log_type": "auditd",
@@ -300,18 +303,18 @@ def test_t1543_detection_on_merged_auditd_event():
         "hostname": "prod1",
     }
 
-    # 2. EXECVE — command line with ExecStart indicator
+    # 2. EXECVE — realistic: bash running a piped script has only a0=bash
     raw_execve = {
         "message": (
             f"type=EXECVE msg=audit({AUDIT_ID}): "
-            "a0=bash a1=-c a2=ExecStart=/tmp/backdoor.sh"
+            "a0=bash"
         ),
         "log_type": "auditd",
         "agent_id": AGENT_ID,
         "hostname": "prod1",
     }
 
-    # 3. PATH PARENT — directory record (auditd always emits this first)
+    # 3. PATH PARENT — directory (auditd always emits this before CREATE)
     raw_path_parent = {
         "message": (
             f"type=PATH msg=audit({AUDIT_ID}): "
@@ -326,47 +329,46 @@ def test_t1543_detection_on_merged_auditd_event():
     raw_path_create = {
         "message": (
             f"type=PATH msg=audit({AUDIT_ID}): "
-            "item=1 name=/etc/systemd/system/backdoor.service nametype=CREATE"
+            "item=1 name=/etc/systemd/system/threatactor-backdoor.service nametype=CREATE"
         ),
         "log_type": "auditd",
         "agent_id": AGENT_ID,
         "hostname": "prod1",
     }
 
-    norm_syscall      = AuditdParser.normalize_log(raw_syscall)
-    norm_execve       = AuditdParser.normalize_log(raw_execve)
-    norm_path_parent  = AuditdParser.normalize_log(raw_path_parent)
-    norm_path_create  = AuditdParser.normalize_log(raw_path_create)
+    norm_syscall     = AuditdParser.normalize_log(raw_syscall)
+    norm_execve      = AuditdParser.normalize_log(raw_execve)
+    norm_path_parent = AuditdParser.normalize_log(raw_path_parent)
+    norm_path_create = AuditdParser.normalize_log(raw_path_create)
 
-    # Sanity: EXECVE produces command_line, PARENT sets directory, CREATE sets file
-    assert "ExecStart=" in norm_execve.get("process", {}).get("command_line", "")
+    # Sanity: SYSCALL gives process.name, EXECVE gives plain "bash" command_line
+    assert norm_syscall.get("process", {}).get("name") == "bash"
+    assert norm_execve.get("process", {}).get("command_line") == "bash"
     assert norm_path_parent.get("file", {}).get("path") == "/etc/systemd/system"
-    assert norm_path_create.get("file", {}).get("path") == "/etc/systemd/system/backdoor.service"
+    assert norm_path_create.get("file", {}).get("path") == (
+        "/etc/systemd/system/threatactor-backdoor.service"
+    )
     assert norm_path_create.get("event", {}).get("action") == "created"
 
     # --- Aggregate in realistic auditd order ---
     agg.add_record(AGENT_ID, AUDIT_ID, norm_syscall)
     agg.add_record(AGENT_ID, AUDIT_ID, norm_execve)
-    agg.add_record(AGENT_ID, AUDIT_ID, norm_path_parent)  # sets file.path = directory
-    agg.add_record(AGENT_ID, AUDIT_ID, norm_path_create)  # must overwrite with .service path
+    agg.add_record(AGENT_ID, AUDIT_ID, norm_path_parent)  # file.path = directory
+    agg.add_record(AGENT_ID, AUDIT_ID, norm_path_create)  # overwrites with .service path
     completed = agg.flush_all()
 
     assert len(completed) == 1, "Expected exactly one merged event"
     merged = completed[0]
 
-    # All three T1543.002 required fields must be present in the merged event
-    assert "ExecStart=" in merged["process"]["command_line"], (
-        "process.command_line missing from merged event"
+    # Merged event fields
+    assert merged["process"]["name"] == "bash"
+    assert merged["process"]["command_line"] == "bash"   # no ExecStart= — realistic
+    assert merged["file"]["path"] == "/etc/systemd/system/threatactor-backdoor.service", (
+        "CREATE PATH record must overwrite PARENT directory path"
     )
-    assert merged["file"]["path"] == "/etc/systemd/system/backdoor.service", (
-        "file.path is the PARENT directory, not the service file — "
-        "CREATE PATH record did not overwrite PARENT PATH record"
-    )
-    assert merged["event"]["action"] == "created", (
-        "event.action is not 'created' — CREATE PATH record did not overwrite PARENT"
-    )
+    assert merged["event"]["action"] == "created"
 
-    # --- Detection ---
+    # --- Detection: must fire via process.name branch, NOT command_line branch ---
     engine = YAMLDetectionEngine()
     candidates = engine.evaluate_event(merged, return_unmatched=True)
 
@@ -378,7 +380,7 @@ def test_t1543_detection_on_merged_auditd_event():
         "T1543.002 rule not evaluated — check rule file exists and is enabled"
     )
     assert t1543.matched is True, (
-        f"T1543.002 did not match on merged event. "
+        f"T1543.002 must match via process.name='bash' branch. "
         f"missing_fields={t1543.missing_fields} match_reasons={t1543.match_reasons}"
     )
     assert not t1543.suppressed, "T1543.002 alert should not be suppressed"
