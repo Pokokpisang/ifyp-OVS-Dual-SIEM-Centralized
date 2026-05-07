@@ -102,6 +102,25 @@ def _get_technique_id(mitre: dict) -> str:
     return str(tech) if tech else ""
 
 
+def _build_event_context(event: dict) -> dict:
+    """Extract key ECS fields from a normalized event for investigation evidence display.
+
+    Returns only non-None values so the UI can render present fields and omit absent ones.
+    """
+    ctx = {
+        "file.path":            event.get("file", {}).get("path"),
+        "file.name":            event.get("file", {}).get("name"),
+        "process.name":         event.get("process", {}).get("name"),
+        "process.command_line": event.get("process", {}).get("command_line"),
+        "process.executable":   event.get("process", {}).get("executable"),
+        "user.name":            event.get("user", {}).get("name"),
+        "host.name":            event.get("host", {}).get("name") or event.get("hostname"),
+        "event.action":         event.get("event", {}).get("action"),
+        "audit.event_id":       event.get("audit", {}).get("event_id"),
+    }
+    return {k: v for k, v in ctx.items() if v is not None}
+
+
 # Log types that carry no process-level events — skip correlation for these
 _NON_PROCESS_LOG_TYPES = frozenset({
     "metric",
@@ -407,6 +426,7 @@ class ActiveDetectionRunner:
             "dedup_bucket_time_utc": _bucket_time_utc,
             "dedup_bucket_time_gmt8": _bucket_time_gmt8,
         }
+        metadata["event_context"] = _build_event_context(event)
 
         # Extract IDs from MITRE dictionaries if they are dicts
         tactic = mitre_info.get("tactic", "Unknown")

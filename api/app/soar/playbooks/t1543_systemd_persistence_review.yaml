@@ -1,0 +1,33 @@
+id: t1543_systemd_persistence_review
+name: T1543 Systemd Persistence Review
+description: Recommend investigation workflow for suspected systemd service persistence. Simulation-only — no destructive actions taken.
+enabled: true
+
+trigger:
+  mitre_technique:
+    in:
+      - T1543
+      - T1543.001
+      - T1543.002
+      - T1543.003
+      - T1543.004
+
+conditions:
+  all:
+    - field: rule_name
+      operator: exists
+
+actions:
+  - id: create_t1543_persistence_investigation_note
+    name: Create T1543 Persistence Investigation Note
+    type: create_case_note
+    target_field: rule_name
+    mode: simulation
+    requires_approval: false
+    rollback_supported: false
+    description: >
+      A systemd service file was created or modified. Review the service unit file,
+      verify whether it is authorized, check file ownership and contents, and confirm
+      whether the service is enabled for startup persistence.
+    automation:
+      auto_run_allowed: true

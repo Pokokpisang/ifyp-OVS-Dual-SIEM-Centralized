@@ -174,6 +174,24 @@
                             <!-- filled by JS -->
                         </ul>
                     </div>
+
+                    <!-- Evidence Summary -->
+                    <div id="evidence-summary-section" class="hidden mt-2">
+                        <p class="text-slate-400 text-[10px] uppercase font-bold mb-2">Evidence Summary</p>
+                        <div id="evidence-narrative" class="text-[11px] text-slate-400 italic mb-3"></div>
+                        <ul id="evidence-fields-list" class="space-y-1.5">
+                            <!-- filled by JS -->
+                        </ul>
+                    </div>
+
+                    <!-- Raw Metadata (collapsible) -->
+                    <details id="raw-metadata-details" class="mt-4 group">
+                        <summary class="cursor-pointer text-[10px] text-slate-500 uppercase font-bold hover:text-slate-300 transition-colors select-none flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[12px] group-open:rotate-90 transition-transform">chevron_right</span>
+                            Raw Detection Metadata
+                        </summary>
+                        <pre id="raw-metadata-pre" class="mt-2 text-[10px] text-slate-400 bg-black/40 rounded-lg p-3 border border-white/5 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed"></pre>
+                    </details>
                 </div>
             </section>
 
@@ -498,6 +516,67 @@ async function loadInvestigation() {
             } else {
                 adjContainer.classList.add('hidden');
             }
+
+            // Evidence Summary
+            const evidenceSection = document.getElementById('evidence-summary-section');
+            const evidenceNarrative = document.getElementById('evidence-narrative');
+            const evidenceList = document.getElementById('evidence-fields-list');
+            const tags = meta.tags || [];
+            const isT1543 = tags.some(t => t === 'T1543' || t === 'T1543.002');
+            const isT1059 = tags.some(t => t === 'T1059' || t === 'T1059.004');
+
+            if (isT1543) {
+                evidenceNarrative.textContent = 'This alert was raised because a systemd service unit file was created or modified on the endpoint. Creating or modifying systemd service files can be used by attackers to maintain persistence after reboot.';
+            } else if (isT1059) {
+                evidenceNarrative.textContent = 'This alert was raised because a shell process executed with network-download behaviour. Review the command line and correlation context for indicators of compromise.';
+            } else {
+                evidenceNarrative.textContent = 'This alert was raised because the event matched a YAML detection rule. Review the Analysis Findings above for specific match conditions.';
+            }
+
+            const EVIDENCE_LABELS = {
+                'file.path':            'File path',
+                'file.name':            'File name',
+                'process.name':         'Process',
+                'process.command_line': 'Command line',
+                'process.executable':   'Executable',
+                'user.name':            'User',
+                'host.name':            'Host',
+                'event.action':         'Event action',
+                'audit.event_id':       'Audit event ID',
+            };
+
+            const ctx = meta.event_context || {};
+            const ctxEntries = Object.entries(EVIDENCE_LABELS)
+                .filter(([k]) => ctx[k] !== undefined && ctx[k] !== null && ctx[k] !== '')
+                .map(([k, label]) => ({ label, value: ctx[k] }));
+
+            if (ctxEntries.length > 0) {
+                evidenceList.innerHTML = '';
+                ctxEntries.forEach(({ label, value }) => {
+                    evidenceList.innerHTML += `
+                        <li class="flex items-start gap-2 text-[11px] text-slate-300">
+                            <span class="material-symbols-outlined text-sky-400 text-[14px] mt-0.5 shrink-0">arrow_right</span>
+                            <span><span class="text-slate-500 font-medium">${label}:</span> <span class="font-mono">${value}</span></span>
+                        </li>`;
+                });
+
+                // MITRE mapping line
+                const tech = d.alert.mitre_technique || '';
+                const techLabel = isT1543 ? 'T1543.002 Systemd Service' : isT1059 ? 'T1059.004 Unix Shell' : tech;
+                if (techLabel) {
+                    evidenceList.innerHTML += `
+                        <li class="flex items-start gap-2 text-[11px] text-slate-300">
+                            <span class="material-symbols-outlined text-sky-400 text-[14px] mt-0.5 shrink-0">arrow_right</span>
+                            <span><span class="text-slate-500 font-medium">MITRE mapping:</span> <span class="font-mono">${techLabel}</span></span>
+                        </li>`;
+                }
+                evidenceSection.classList.remove('hidden');
+            }
+
+            // Raw Metadata (pretty-print)
+            const rawPre = document.getElementById('raw-metadata-pre');
+            if (rawPre) rawPre.textContent = JSON.stringify(meta, null, 2);
+
         } else if (d.alert.detection_engine === 'CorrelationEngine' && d.alert.detection_metadata) {
             // Render correlation evidence inside the shared metadata section
             document.getElementById('yaml-metadata-section').classList.remove('hidden');
@@ -563,6 +642,9 @@ async function loadInvestigation() {
             } else {
                 adjContainer.classList.add('hidden');
             }
+            // Raw Metadata
+            const corrRawPre = document.getElementById('raw-metadata-pre');
+            if (corrRawPre) corrRawPre.textContent = JSON.stringify(meta, null, 2);
         } else if (d.alert.detection_engine === 'SSHBruteForceEngine' && d.alert.detection_metadata) {
             document.getElementById('yaml-metadata-section').classList.remove('hidden');
             const meta = d.alert.detection_metadata;
@@ -627,6 +709,9 @@ async function loadInvestigation() {
             } else {
                 adjContainer.classList.add('hidden');
             }
+            // Raw Metadata
+            const sshRawPre = document.getElementById('raw-metadata-pre');
+            if (sshRawPre) sshRawPre.textContent = JSON.stringify(meta, null, 2);
         } else {
             document.getElementById('yaml-metadata-section').classList.add('hidden');
         }

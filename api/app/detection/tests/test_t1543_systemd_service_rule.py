@@ -172,3 +172,48 @@ def test_t1543_skips_missing_file_path(engine):
     assert t1543 is not None
     assert t1543.matched is False
     assert "file.path" in t1543.missing_fields
+
+
+# ---------------------------------------------------------------------------
+# v2.4.1 — Investigation evidence tests
+# ---------------------------------------------------------------------------
+
+
+def test_t1543_match_reasons_contain_systemd_path_evidence(engine):
+    """match_reasons must reference the /etc/systemd/system/ path so the UI can show file.path evidence."""
+    candidates = engine.evaluate_event(_suspicious_service_creation_event())
+    t1543 = next((c for c in candidates if c.rule_id == RULE_ID), None)
+    assert t1543 is not None
+    assert t1543.matched is True
+    assert any("/etc/systemd/system/" in r for r in t1543.match_reasons), (
+        f"Expected a match_reason referencing /etc/systemd/system/ — got: {t1543.match_reasons}"
+    )
+
+
+def test_t1543_match_reasons_present_for_minimal_bash_event(engine):
+    """A minimal event where bash creates a .service file (no ExecStart in cmd_line) must still produce match_reasons."""
+    event = {
+        "event": {"category": "file", "type": "change", "action": "created"},
+        "file": {
+            "path": "/etc/systemd/system/threatactor-backdoor.service",
+            "name": "threatactor-backdoor.service",
+        },
+        "process": {"name": "bash", "command_line": "bash"},
+        "user": {"name": "root"},
+        "host": {"name": "prod1"},
+    }
+    candidates = engine.evaluate_event(event)
+    t1543 = next((c for c in candidates if c.rule_id == RULE_ID), None)
+    assert t1543 is not None
+    assert t1543.matched is True
+    assert len(t1543.match_reasons) >= 1, "Evidence summary requires at least one match_reason"
+
+
+def test_t1543_mitre_subtechnique_is_t1543_002(engine):
+    """Regression guard: the rule's sub-technique ID must be T1543.002."""
+    candidates = engine.evaluate_event(_suspicious_service_creation_event(), include_disabled=True)
+    t1543 = next((c for c in candidates if c.rule_id == RULE_ID), None)
+    assert t1543 is not None
+    assert t1543.mitre.get("subtechnique", {}).get("id") == "T1543.002", (
+        f"Expected subtechnique T1543.002 — got: {t1543.mitre}"
+    )
