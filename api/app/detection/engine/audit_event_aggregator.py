@@ -137,13 +137,13 @@ class AuditEventAggregator:
 
         Rules:
         - Nested dicts are merged recursively.
-        - A non-empty value in *base* is kept; an incoming value is only
-          used to fill a missing or falsy base value.
+        - For leaf values: last non-empty write wins.  This is critical for
+          auditd PATH records where the PARENT record (directory) always
+          precedes the CREATE record (the actual file path).  The CREATE
+          record must overwrite the PARENT's directory path, not be dropped.
+        - Incoming None / empty string / empty dict does NOT overwrite an
+          existing non-empty value (prevents blanking out useful fields).
         - Keys absent from *base* are added from *incoming*.
-
-        This ensures that PATH record fields (file.path, event.action) and
-        EXECVE/PROCTITLE fields (process.command_line) are both preserved
-        regardless of arrival order.
         """
         result = dict(base)
         for key, value in incoming.items():
@@ -151,10 +151,11 @@ class AuditEventAggregator:
                 existing = result[key]
                 if isinstance(existing, dict) and isinstance(value, dict):
                     result[key] = self._deep_merge(existing, value)
-                elif not existing and value:
-                    # Overwrite falsy/empty with useful incoming value.
+                elif value:
+                    # Incoming is non-empty: take it (last-write wins for
+                    # leaf values so CREATE PATH beats PARENT PATH).
                     result[key] = value
-                # else: keep existing non-empty value
+                # else: incoming is falsy — keep existing non-empty value
             else:
                 result[key] = value
         return result

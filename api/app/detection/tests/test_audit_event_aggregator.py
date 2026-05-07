@@ -96,26 +96,45 @@ def test_deep_merge_nested_dict():
     }
     merged = agg._deep_merge(base, incoming)
 
-    # Existing non-empty kept
+    # Incoming has no "name" key → existing value kept
     assert merged["process"]["name"] == "bash"
-    # Empty overwritten by incoming
+    # Base command_line was empty → incoming fills it
     assert merged["process"]["command_line"] == "bash -c whoami"
-    # New key added
+    # New key added from incoming
     assert merged["process"]["executable"] == "/bin/bash"
     assert merged["file"]["path"] == "/etc/systemd/system/evil.service"
     # Unrelated key untouched
     assert merged["user"]["id"] == "0"
 
 
-def test_deep_merge_preserves_nonempty_existing():
+def test_deep_merge_preserves_nonempty_existing_when_incoming_empty():
+    """Incoming None / empty string must NOT blank out a useful existing value."""
     agg = AuditEventAggregator()
     base = {"event": {"action": "created", "category": "file"}}
     incoming = {"event": {"action": None, "category": "", "type": "change"}}
     merged = agg._deep_merge(base, incoming)
 
     assert merged["event"]["action"] == "created"   # kept — incoming is None
-    assert merged["event"]["category"] == "file"    # kept — incoming is empty
-    assert merged["event"]["type"] == "change"      # added from incoming
+    assert merged["event"]["category"] == "file"    # kept — incoming is empty string
+    assert merged["event"]["type"] == "change"      # new key added from incoming
+
+
+def test_deep_merge_last_write_wins_for_nonempty_leaf():
+    """
+    When both base and incoming have non-empty leaf values the incoming
+    (later) value must win.  This is the critical case for auditd PATH
+    records: PARENT record sets file.path to the directory, then the CREATE
+    record sets it to the actual file — the file path must survive.
+    """
+    agg = AuditEventAggregator()
+    base     = {"file": {"path": "/etc/systemd/system"},
+                "event": {"action": "change"}}
+    incoming = {"file": {"path": "/etc/systemd/system/backdoor.service"},
+                "event": {"action": "created"}}
+    merged = agg._deep_merge(base, incoming)
+
+    assert merged["file"]["path"] == "/etc/systemd/system/backdoor.service"
+    assert merged["event"]["action"] == "created"
 
 
 # ---------------------------------------------------------------------------
@@ -257,16 +276,31 @@ def test_audit_metadata_attached():
 
 def test_t1543_detection_on_merged_auditd_event():
     """
-    Full pipeline simulation:
-    1. Normalise a raw EXECVE record (provides process.command_line).
-    2. Normalise a raw PATH record (provides file.path + event.action).
-    3. Aggregate both under the same audit event ID.
-    4. Pass the merged event to YAMLDetectionEngine.
-    5. T1543.002 must match without modifying the YAML rule.
+    Full pipeline simulation with realistic auditd record ordering:
+
+    1. SYSCALL  — process identity (arrives first)
+    2. EXECVE   — command-line arguments → process.command_line
+    3. PATH (PARENT)  — parent directory record that auditd always emits first
+    4. PATH (CREATE)  — the actual .service file being written (arrives after PARENT)
+
+    The deep-merge must let the CREATE record's file.path overwrite the
+    PARENT record's directory path so the T1543.002 regex check can pass.
     """
     agg = AuditEventAggregator(ttl_seconds=2)
 
-    # --- EXECVE record: bash writing service file containing ExecStart ---
+    # 1. SYSCALL — process context
+    raw_syscall = {
+        "message": (
+            f"type=SYSCALL msg=audit({AUDIT_ID}): "
+            "arch=c000003e syscall=2 success=yes pid=1234 ppid=1 uid=0 "
+            "comm=bash exe=/bin/bash"
+        ),
+        "log_type": "auditd",
+        "agent_id": AGENT_ID,
+        "hostname": "prod1",
+    }
+
+    # 2. EXECVE — command line with ExecStart indicator
     raw_execve = {
         "message": (
             f"type=EXECVE msg=audit({AUDIT_ID}): "
@@ -274,44 +308,62 @@ def test_t1543_detection_on_merged_auditd_event():
         ),
         "log_type": "auditd",
         "agent_id": AGENT_ID,
-        "hostname": "test-host",
+        "hostname": "prod1",
     }
-    norm_execve = AuditdParser.normalize_log(raw_execve)
 
-    # --- PATH record: .service file created under /etc/systemd/system/ ---
-    raw_path = {
+    # 3. PATH PARENT — directory record (auditd always emits this first)
+    raw_path_parent = {
         "message": (
             f"type=PATH msg=audit({AUDIT_ID}): "
-            "name=/etc/systemd/system/backdoor.service nametype=CREATE"
+            "item=0 name=/etc/systemd/system nametype=PARENT"
         ),
         "log_type": "auditd",
         "agent_id": AGENT_ID,
-        "hostname": "test-host",
+        "hostname": "prod1",
     }
-    norm_path = AuditdParser.normalize_log(raw_path)
 
-    # Verify each individual normalised event has only its own fields
+    # 4. PATH CREATE — the actual .service file (arrives after PARENT)
+    raw_path_create = {
+        "message": (
+            f"type=PATH msg=audit({AUDIT_ID}): "
+            "item=1 name=/etc/systemd/system/backdoor.service nametype=CREATE"
+        ),
+        "log_type": "auditd",
+        "agent_id": AGENT_ID,
+        "hostname": "prod1",
+    }
+
+    norm_syscall      = AuditdParser.normalize_log(raw_syscall)
+    norm_execve       = AuditdParser.normalize_log(raw_execve)
+    norm_path_parent  = AuditdParser.normalize_log(raw_path_parent)
+    norm_path_create  = AuditdParser.normalize_log(raw_path_create)
+
+    # Sanity: EXECVE produces command_line, PARENT sets directory, CREATE sets file
     assert "ExecStart=" in norm_execve.get("process", {}).get("command_line", "")
-    assert norm_path.get("file", {}).get("path") == "/etc/systemd/system/backdoor.service"
-    assert norm_path.get("event", {}).get("action") == "created"
+    assert norm_path_parent.get("file", {}).get("path") == "/etc/systemd/system"
+    assert norm_path_create.get("file", {}).get("path") == "/etc/systemd/system/backdoor.service"
+    assert norm_path_create.get("event", {}).get("action") == "created"
 
-    # --- Aggregate ---
+    # --- Aggregate in realistic auditd order ---
+    agg.add_record(AGENT_ID, AUDIT_ID, norm_syscall)
     agg.add_record(AGENT_ID, AUDIT_ID, norm_execve)
-    agg.add_record(AGENT_ID, AUDIT_ID, norm_path)
+    agg.add_record(AGENT_ID, AUDIT_ID, norm_path_parent)  # sets file.path = directory
+    agg.add_record(AGENT_ID, AUDIT_ID, norm_path_create)  # must overwrite with .service path
     completed = agg.flush_all()
 
     assert len(completed) == 1, "Expected exactly one merged event"
     merged = completed[0]
 
-    # Merged event must carry all three fields required by T1543.002
+    # All three T1543.002 required fields must be present in the merged event
     assert "ExecStart=" in merged["process"]["command_line"], (
         "process.command_line missing from merged event"
     )
     assert merged["file"]["path"] == "/etc/systemd/system/backdoor.service", (
-        "file.path missing from merged event"
+        "file.path is the PARENT directory, not the service file — "
+        "CREATE PATH record did not overwrite PARENT PATH record"
     )
     assert merged["event"]["action"] == "created", (
-        "event.action missing from merged event"
+        "event.action is not 'created' — CREATE PATH record did not overwrite PARENT"
     )
 
     # --- Detection ---
@@ -327,6 +379,6 @@ def test_t1543_detection_on_merged_auditd_event():
     )
     assert t1543.matched is True, (
         f"T1543.002 did not match on merged event. "
-        f"missing_fields={t1543.missing_fields} reasons={t1543.match_reasons}"
+        f"missing_fields={t1543.missing_fields} match_reasons={t1543.match_reasons}"
     )
     assert not t1543.suppressed, "T1543.002 alert should not be suppressed"
