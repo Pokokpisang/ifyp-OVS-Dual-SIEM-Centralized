@@ -76,6 +76,29 @@ class AuditdParser:
         if "source" not in raw_log:
             raw_log["source"] = {}
 
+        # Handle type=PATH records — required for file-based detection rules (e.g. T1543)
+        # auditd emits PATH records when a watched path is accessed; they carry the file name
+        # and access type but no process command line (that lives in SYSCALL/EXECVE/PROCTITLE).
+        if "type=PATH" in message or message.lstrip().startswith("type=PATH"):
+            file_path = extracted.get("name")
+            if file_path:
+                file_path = file_path.strip('"')
+                raw_log.setdefault("file", {})
+                raw_log["file"]["path"] = file_path
+                raw_log["file"]["name"] = file_path.rsplit("/", 1)[-1]
+
+                nametype_map = {
+                    "CREATE":  "created",
+                    "DELETE":  "deleted",
+                    "NORMAL":  "write",
+                    "PARENT":  "change",
+                    "UNKNOWN": "change",
+                }
+                nametype = extracted.get("nametype", "NORMAL").strip('"')
+                raw_log["event"]["action"]   = nametype_map.get(nametype, "change")
+                raw_log["event"]["category"] = "file"
+                raw_log["event"]["type"]     = "change"
+
         # Map host fields if they exist at root
         if "hostname" in raw_log:
             raw_log["host"]["name"] = raw_log["hostname"]
