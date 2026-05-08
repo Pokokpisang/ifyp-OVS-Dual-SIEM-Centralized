@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 from app.detection.engine.active_runner import (
     _get_technique_id,
     _extract_event_epoch,
+    _build_event_context,
     build_yaml_alert_dedup_key,
     is_duplicate_yaml_alert,
     YAML_DEDUP_WINDOW_SECONDS,
@@ -171,3 +172,60 @@ class TestIsDuplicateYamlAlert:
         db = self._db(None)
         is_duplicate_yaml_alert("key", db)
         db.query.assert_called_once_with(models.Alert)
+
+
+# ---------------------------------------------------------------------------
+# _build_event_context
+# ---------------------------------------------------------------------------
+
+class TestBuildDetectionMetadataEventContext:
+
+    def _t1543_event(self):
+        return {
+            "file": {"path": "/etc/systemd/system/backdoor.service", "name": "backdoor.service"},
+            "process": {"name": "bash", "command_line": "bash", "executable": "/bin/bash"},
+            "user": {"name": "root"},
+            "host": {"name": "prod1"},
+            "event": {"action": "created"},
+            "audit": {"event_id": "1710000000.123:456"},
+        }
+
+    def test_includes_file_path(self):
+        ctx = _build_event_context(self._t1543_event())
+        assert ctx["file.path"] == "/etc/systemd/system/backdoor.service"
+
+    def test_includes_process_name(self):
+        ctx = _build_event_context(self._t1543_event())
+        assert ctx["process.name"] == "bash"
+
+    def test_includes_event_action(self):
+        ctx = _build_event_context(self._t1543_event())
+        assert ctx["event.action"] == "created"
+
+    def test_includes_audit_event_id(self):
+        ctx = _build_event_context(self._t1543_event())
+        assert ctx["audit.event_id"] == "1710000000.123:456"
+
+    def test_omits_missing_fields(self):
+        event = {
+            "file": {"path": "/etc/systemd/system/backdoor.service"},
+            "process": {"name": "bash"},
+        }
+        ctx = _build_event_context(event)
+        assert "process.executable" not in ctx
+        assert "user.name" not in ctx
+        assert "audit.event_id" not in ctx
+
+    def test_empty_event_returns_empty_dict(self):
+        ctx = _build_event_context({})
+        assert ctx == {}
+
+    def test_host_name_falls_back_to_hostname_key(self):
+        event = {"hostname": "fallback-host"}
+        ctx = _build_event_context(event)
+        assert ctx["host.name"] == "fallback-host"
+
+    def test_host_name_prefers_host_dict(self):
+        event = {"host": {"name": "primary-host"}, "hostname": "fallback-host"}
+        ctx = _build_event_context(event)
+        assert ctx["host.name"] == "primary-host"
