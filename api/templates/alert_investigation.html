@@ -231,6 +231,51 @@
                 </div>
             </section>
 
+            <!-- Card: AI Alert Triage (v2.5.0) -->
+            <section id="ai-triage-card" class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+                <h4 class="text-sm font-bold text-primary mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">psychology</span>AI Alert Triage
+                    <span class="text-[10px] font-normal text-slate-500 ml-1">(Advisory Only — AI output requires analyst review)</span>
+                    <span id="ai-triage-status-badge" class="ml-auto px-2 py-0.5 rounded text-[10px] font-bold border uppercase hidden"></span>
+                </h4>
+
+                <!-- Loading state -->
+                <div id="ai-triage-loading" class="hidden text-slate-500 text-xs flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">progress_activity</span>Running AI analysis&hellip;
+                </div>
+
+                <!-- Result area (populated by renderAITriage) -->
+                <div id="ai-triage-result" class="hidden space-y-4"></div>
+
+                <!-- Error state -->
+                <div id="ai-triage-error" class="hidden text-xs text-red-400"></div>
+
+                <!-- No triage yet -->
+                <div id="ai-triage-none" class="space-y-3">
+                    <p class="text-slate-500 text-xs italic">No AI triage has been run for this alert yet.</p>
+                    <button id="ai-triage-run-btn" onclick="runAITriage()"
+                        class="px-4 py-2 bg-primary text-white rounded-lg text-xs font-bold hover:bg-primary/80 transition-colors flex items-center gap-2 shadow-lg shadow-primary/20">
+                        <span class="material-symbols-outlined text-[14px]">psychology</span>Run AI Triage
+                    </button>
+                </div>
+
+                <!-- Re-run button (shown after a completed triage) -->
+                <div id="ai-triage-rerun" class="hidden mt-4">
+                    <button onclick="runAITriage()"
+                        class="px-3 py-1.5 border border-primary/30 text-primary rounded-lg text-xs font-bold hover:bg-primary/10 transition-colors flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[13px]">refresh</span>Re-run AI Triage
+                    </button>
+                </div>
+
+                <!-- Raw output (collapsible) -->
+                <details id="ai-triage-raw-details" class="mt-4 hidden">
+                    <summary class="cursor-pointer text-[10px] text-slate-500 uppercase font-bold hover:text-slate-300 transition-colors select-none flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[12px]">chevron_right</span>View Raw AI Output
+                    </summary>
+                    <pre id="ai-triage-raw-pre" class="mt-2 text-[10px] text-slate-400 bg-black/40 rounded-lg p-3 border border-white/5 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed"></pre>
+                </details>
+            </section>
+
             <!-- Card: SOAR Response -->
             <section id="soar-card" class="bg-primary/5 border border-primary/10 rounded-xl p-6 hidden">
                 <h4 class="text-sm font-bold text-primary mb-4 flex items-center gap-2">
@@ -1183,8 +1228,184 @@ async function rejectSOARAction(executionId) {
     }
 }
 
+// ── AI Alert Triage (v2.5.0) ───────────────────────────────────────────────
+
+const _AI_TRIAGE_PRIORITY_COLORS = {
+    low:      'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+    medium:   'text-yellow-400 border-yellow-500/30 bg-yellow-500/10',
+    high:     'text-orange-400 border-orange-500/30 bg-orange-500/10',
+    critical: 'text-red-400 border-red-500/30 bg-red-500/10',
+};
+
+const _AI_TRIAGE_STATUS_COLORS = {
+    success:        'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+    failed:         'text-red-400 border-red-500/30 bg-red-500/10',
+    invalid_output: 'text-orange-400 border-orange-500/30 bg-orange-500/10',
+    disabled:       'text-slate-400 border-slate-500/30 bg-slate-500/10',
+    config_error:   'text-red-400 border-red-500/30 bg-red-500/10',
+};
+
+function _setAITriageBadge(status) {
+    const badge = document.getElementById('ai-triage-status-badge');
+    if (!badge) return;
+    badge.className = `ml-auto px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${_AI_TRIAGE_STATUS_COLORS[status] || 'text-slate-400 border-slate-500/30'}`;
+    badge.textContent = status.replace('_', ' ');
+    badge.classList.remove('hidden');
+}
+
+function renderAITriage(triage) {
+    document.getElementById('ai-triage-none').classList.add('hidden');
+    document.getElementById('ai-triage-loading').classList.add('hidden');
+    document.getElementById('ai-triage-error').classList.add('hidden');
+
+    _setAITriageBadge(triage.triage_status);
+
+    const priorityColor = _AI_TRIAGE_PRIORITY_COLORS[triage.priority] || 'text-slate-400 border-slate-500/30 bg-slate-500/10';
+
+    const keyReasonsHTML = (triage.key_reasons || []).map(r =>
+        `<li class="flex items-start gap-1.5"><span class="material-symbols-outlined text-[12px] text-primary mt-0.5 shrink-0">arrow_right</span>${_esc(r)}</li>`
+    ).join('');
+
+    const nextStepsHTML = (triage.recommended_next_steps || []).map((s, i) =>
+        `<li class="flex items-start gap-1.5"><span class="text-primary font-bold shrink-0">${i + 1}.</span>${_esc(s)}</li>`
+    ).join('');
+
+    let soarHTML = '';
+    if (triage.soar_recommendation && triage.soar_recommendation.recommended) {
+        const rec = triage.soar_recommendation;
+        soarHTML = `
+            <div class="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs space-y-1">
+                <p class="font-bold text-amber-400 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">info</span>
+                    AI Advisory — SOAR Suggestion
+                </p>
+                <p class="text-slate-300">Suggested action: <span class="font-mono text-amber-300">${_esc(rec.action || 'N/A')}</span></p>
+                <p class="text-slate-400">${_esc(rec.reason || '')}</p>
+                <p class="text-slate-500 italic">Analyst approval required. Use the SOAR Response section above to take action.</p>
+            </div>`;
+    }
+
+    const resultEl = document.getElementById('ai-triage-result');
+    resultEl.innerHTML = `
+        <p class="text-slate-400 text-[10px] uppercase font-bold">AI Summary</p>
+        <p class="text-sm text-slate-200">${_esc(triage.summary || '')}</p>
+
+        <div class="grid grid-cols-3 gap-3 mt-2">
+            <div class="bg-black/20 rounded-lg p-3 border border-white/5 text-center">
+                <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Priority</p>
+                <span class="px-2 py-0.5 rounded text-[11px] font-bold border ${priorityColor} uppercase">${_esc(triage.priority || 'N/A')}</span>
+            </div>
+            <div class="bg-black/20 rounded-lg p-3 border border-white/5 text-center">
+                <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">Confidence</p>
+                <span class="text-xs font-bold text-slate-200 capitalize">${_esc(triage.confidence || 'N/A')}</span>
+            </div>
+            <div class="bg-black/20 rounded-lg p-3 border border-white/5 text-center">
+                <p class="text-[10px] text-slate-500 uppercase font-bold mb-1">False Positive</p>
+                <span class="text-xs font-bold text-slate-200 capitalize">${_esc(triage.false_positive_likelihood || 'N/A')}</span>
+            </div>
+        </div>
+
+        ${keyReasonsHTML ? `
+        <div>
+            <p class="text-slate-400 text-[10px] uppercase font-bold mb-2">Key Reasons</p>
+            <ul class="space-y-1 text-xs text-slate-300">${keyReasonsHTML}</ul>
+        </div>` : ''}
+
+        ${nextStepsHTML ? `
+        <div>
+            <p class="text-slate-400 text-[10px] uppercase font-bold mb-2">Recommended Next Steps</p>
+            <ol class="space-y-1 text-xs text-slate-300">${nextStepsHTML}</ol>
+        </div>` : ''}
+
+        ${soarHTML}
+
+        <p class="text-[10px] text-slate-600 mt-2">
+            Provider: ${_esc(triage.provider)} / ${_esc(triage.model_name)} &mdash; ${_esc(triage.created_at || '')}
+        </p>
+    `;
+    resultEl.classList.remove('hidden');
+
+    // Show re-run button
+    document.getElementById('ai-triage-rerun').classList.remove('hidden');
+
+    // Show raw output if available (fetched via the stored result — no extra round-trip needed)
+    const rawPre = document.getElementById('ai-triage-raw-pre');
+    if (rawPre && triage._raw) {
+        rawPre.textContent = JSON.stringify(JSON.parse(triage._raw), null, 2);
+        document.getElementById('ai-triage-raw-details').classList.remove('hidden');
+    }
+}
+
+function renderAITriageError(triage) {
+    document.getElementById('ai-triage-none').classList.add('hidden');
+    document.getElementById('ai-triage-loading').classList.add('hidden');
+    document.getElementById('ai-triage-result').classList.add('hidden');
+    _setAITriageBadge(triage.triage_status);
+    const errEl = document.getElementById('ai-triage-error');
+    errEl.textContent = triage.error_message || `AI triage ${triage.triage_status}.`;
+    errEl.classList.remove('hidden');
+    document.getElementById('ai-triage-rerun').classList.remove('hidden');
+}
+
+function _esc(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function loadAITriage() {
+    try {
+        const res = await fetch(`/api/alerts/${ALERT_ID}/ai-triage/latest`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.triage) return;
+        if (data.triage.triage_status === 'success') {
+            renderAITriage(data.triage);
+        } else {
+            renderAITriageError(data.triage);
+        }
+    } catch (_) { /* non-critical — investigation page must not break */ }
+}
+
+async function runAITriage() {
+    const runBtn = document.getElementById('ai-triage-run-btn');
+    const rerunBtns = document.querySelectorAll('#ai-triage-rerun button');
+
+    // Disable all triage buttons immediately to prevent duplicate submissions
+    if (runBtn) runBtn.disabled = true;
+    rerunBtns.forEach(b => b.disabled = true);
+
+    document.getElementById('ai-triage-none').classList.add('hidden');
+    document.getElementById('ai-triage-result').classList.add('hidden');
+    document.getElementById('ai-triage-error').classList.add('hidden');
+    document.getElementById('ai-triage-rerun').classList.add('hidden');
+    document.getElementById('ai-triage-loading').classList.remove('hidden');
+
+    try {
+        const res = await fetch(`/api/alerts/${ALERT_ID}/ai-triage`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        document.getElementById('ai-triage-loading').classList.add('hidden');
+        if (!res.ok) {
+            throw new Error(data.detail || `Server error (HTTP ${res.status})`);
+        }
+        if (data.triage_status === 'success') {
+            renderAITriage(data);
+        } else {
+            renderAITriageError(data);
+        }
+    } catch (e) {
+        document.getElementById('ai-triage-loading').classList.add('hidden');
+        const errEl = document.getElementById('ai-triage-error');
+        errEl.textContent = `Triage failed: ${e.message}`;
+        errEl.classList.remove('hidden');
+        // Re-enable buttons so analyst can retry
+        if (runBtn) runBtn.disabled = false;
+        rerunBtns.forEach(b => b.disabled = false);
+        document.getElementById('ai-triage-none').classList.remove('hidden');
+    }
+}
+
 // ── Boot ───────────────────────────────────────────────────────────────────
 loadInvestigation();
 loadSOAR(ALERT_ID);
+loadAITriage();
 </script>
 {% endblock %}
