@@ -171,6 +171,7 @@ class TestIsDuplicateYamlAlert:
         from app import models
         db = self._db(None)
         is_duplicate_yaml_alert("key", db)
+        db.query.assert_called_once_with(models.Alert)
 
 
 # ---------------------------------------------------------------------------

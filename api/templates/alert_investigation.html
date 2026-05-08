@@ -175,7 +175,7 @@
                         </ul>
                     </div>
 
-                    <!-- Evidence Summary -->
+                    <!-- Evidence Summary (filled by JS for YAML alerts) -->
                     <div id="evidence-summary-section" class="hidden mt-2">
                         <p class="text-slate-400 text-[10px] uppercase font-bold mb-2">Evidence Summary</p>
                         <div id="evidence-narrative" class="text-[11px] text-slate-400 italic mb-3"></div>
@@ -184,7 +184,7 @@
                         </ul>
                     </div>
 
-                    <!-- Raw Metadata (collapsible) -->
+                    <!-- Raw Detection Metadata (collapsible, filled by JS) -->
                     <details id="raw-metadata-details" class="mt-4 group">
                         <summary class="cursor-pointer text-[10px] text-slate-500 uppercase font-bold hover:text-slate-300 transition-colors select-none flex items-center gap-1">
                             <span class="material-symbols-outlined text-[12px] group-open:rotate-90 transition-transform">chevron_right</span>
@@ -573,7 +573,7 @@ async function loadInvestigation() {
                 evidenceSection.classList.remove('hidden');
             }
 
-            // Raw Metadata (pretty-print)
+            // Raw Metadata (pretty-print, all engine types share the same pre element)
             const rawPre = document.getElementById('raw-metadata-pre');
             if (rawPre) rawPre.textContent = JSON.stringify(meta, null, 2);
 
