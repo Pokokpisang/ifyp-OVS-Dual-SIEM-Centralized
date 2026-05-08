@@ -100,6 +100,30 @@ class AlertAssessment(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class AIAlertTriage(Base):
+    # v2.5.0 — one-to-many: an alert may have multiple triage runs (re-run history)
+    __tablename__ = "ai_alert_triages"
+
+    id                          = Column(Integer, primary_key=True, index=True)
+    alert_id                    = Column(Integer, ForeignKey("alerts.id"), index=True, nullable=False)
+    provider                    = Column(String, nullable=False)   # "gemini"
+    model_name                  = Column(String, nullable=False)
+    # success | failed | invalid_output | disabled | config_error
+    triage_status               = Column(String, nullable=False)
+    summary                     = Column(Text, nullable=True)
+    priority                    = Column(String, nullable=True)    # low|medium|high|critical
+    confidence                  = Column(String, nullable=True)    # low|medium|high
+    false_positive_likelihood   = Column(String, nullable=True)    # unlikely|possible|likely
+    key_reasons_json            = Column(Text, nullable=True)      # JSON array
+    recommended_next_steps_json = Column(Text, nullable=True)      # JSON array
+    soar_recommendation_json    = Column(Text, nullable=True)      # JSON object (advisory only)
+    input_context_json          = Column(Text, nullable=True)      # audit trail of what was sent
+    raw_output_json             = Column(Text, nullable=True)      # stored when AI_TRIAGE_STORE_RAW_OUTPUT=true
+    error_message               = Column(Text, nullable=True)
+    created_at                  = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at                  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class AgentRecord(Base):
     """
     Represents a registered (or pending) monitoring agent.
