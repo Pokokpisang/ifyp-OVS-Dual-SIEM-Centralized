@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from .. import models, db
+from ..auth.dependencies import require_api_auth
 from typing import List, Literal, Optional
 from datetime import datetime, timedelta
 import re
@@ -121,7 +122,7 @@ def ingest_metric(
 
     return {"status": "ok"}
 
-@router.get("/metrics/summary")
+@router.get("/metrics/summary", dependencies=[Depends(require_api_auth)])
 def get_metrics_summary(host: str = Query(None), db: Session = Depends(db.get_db)):
     # Get latest metric
     query = db.query(models.Metric)
@@ -155,7 +156,7 @@ def get_metrics_summary(host: str = Query(None), db: Session = Depends(db.get_db
         "net_out_rate": max(0, net_out_rate)
     }
 
-@router.get("/metrics/timeseries")
+@router.get("/metrics/timeseries", dependencies=[Depends(require_api_auth)])
 def get_metrics_timeseries(host: str = Query(None), minutes: int = 10, db: Session = Depends(db.get_db)):
     since = datetime.utcnow() - timedelta(minutes=minutes)
     query = db.query(models.Metric).filter(models.Metric.timestamp > since)
@@ -202,14 +203,14 @@ def get_metrics_timeseries(host: str = Query(None), minutes: int = 10, db: Sessi
         
     return result
 
-@router.get("/alerts/recent")
+@router.get("/alerts/recent", dependencies=[Depends(require_api_auth)])
 def get_recent_alerts(limit: int = 20, host: str = Query(None), db: Session = Depends(db.get_db)):
     query = db.query(models.Alert)
     if host:
         query = query.filter(models.Alert.host == host)
     return query.order_by(desc(models.Alert.timestamp)).limit(limit).all()
 
-@router.get("/alerts/threats")
+@router.get("/alerts/threats", dependencies=[Depends(require_api_auth)])
 def get_threat_alerts(limit: int = 30, db: Session = Depends(db.get_db)):
     """Returns MITRE-tagged threat alerts (T1059 etc.) for the dedicated threat panel."""
     mitre_alerts = db.query(models.Alert).filter(
@@ -229,7 +230,7 @@ def get_threat_alerts(limit: int = 30, db: Session = Depends(db.get_db)):
         for a in mitre_alerts
     ]
 
-@router.put("/alerts/{alert_id}/read")
+@router.put("/alerts/{alert_id}/read", dependencies=[Depends(require_api_auth)])
 def mark_alert_read(alert_id: int, db: Session = Depends(db.get_db)):
     alert = db.query(models.Alert).filter(models.Alert.id == alert_id).first()
     if alert:
@@ -237,13 +238,13 @@ def mark_alert_read(alert_id: int, db: Session = Depends(db.get_db)):
         db.commit()
     return {"status": "ok"}
 
-@router.post("/alerts/mark-all-read")
+@router.post("/alerts/mark-all-read", dependencies=[Depends(require_api_auth)])
 def mark_all_read(db: Session = Depends(db.get_db)):
     db.query(models.Alert).filter(models.Alert.is_read == False).update({models.Alert.is_read: True})
     db.commit()
     return {"status": "ok"}
 
-@router.get("/alerts/stats")
+@router.get("/alerts/stats", dependencies=[Depends(require_api_auth)])
 def get_alert_stats(db: Session = Depends(db.get_db)):
     """Returns aggregated alert counts for dashboard KPI cards."""
     from sqlalchemy import func
@@ -279,7 +280,7 @@ def get_alert_stats(db: Session = Depends(db.get_db)):
 # Alert Investigation — data endpoint
 # ---------------------------------------------------------------------------
 
-@router.get("/alerts/{alert_id}/investigation")
+@router.get("/alerts/{alert_id}/investigation", dependencies=[Depends(require_api_auth)])
 def get_investigation_data(alert_id: int, db: Session = Depends(db.get_db)):
     """Return all data needed by the Alert Investigation page as JSON."""
     # 1. Load alert (validate)
@@ -482,7 +483,7 @@ class AssessmentIn(_BaseModel):
     status: str
     analyst_notes: str = ""
 
-@router.put("/alerts/{alert_id}/assessment")
+@router.put("/alerts/{alert_id}/assessment", dependencies=[Depends(require_api_auth)])
 def save_assessment(alert_id: int, payload: AssessmentIn, db: Session = Depends(db.get_db)):
     # Validate alert exists
     alert = db.query(models.Alert).filter(models.Alert.id == alert_id).first()

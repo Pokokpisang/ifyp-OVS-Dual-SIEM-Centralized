@@ -1,10 +1,17 @@
-from fastapi import FastAPI, Depends, HTTPException
+import os
+
+from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from starlette.middleware.sessions import SessionMiddleware
 from typing import List
 from . import models, db
 from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings, ai_triage
+from .routers import auth as auth_router_module
+from .auth.dependencies import require_html_auth, require_api_auth
+from .auth.exceptions import LoginRequiredException
 import pathlib
 
 
@@ -68,6 +75,20 @@ import asyncio
 
 app = FastAPI(title="SIEM Ingestion API")
 
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET_KEY", "change-me-in-production"),
+    session_cookie="session",
+    same_site="lax",
+    https_only=False,
+)
+
+
+@app.exception_handler(LoginRequiredException)
+async def _login_redirect(request: Request, exc: LoginRequiredException):
+    return RedirectResponse(url="/login", status_code=302)
+
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Serve agent binary downloads — create dir if missing so the app doesn't crash
@@ -75,15 +96,22 @@ _downloads_dir = pathlib.Path("downloads")
 _downloads_dir.mkdir(exist_ok=True)
 app.mount("/downloads", StaticFiles(directory="downloads"), name="downloads")
 
-app.include_router(dashboard.router)
+# Public routes — no dashboard auth required
+app.include_router(auth_router_module.router)
+app.include_router(collector.router)     # POST /ingest/log — X-Agent-Key only
+app.include_router(agents.router)        # agent registration, heartbeat, install scripts
+
+# Protected HTML dashboard routes — unauthenticated browser → 302 /login
+app.include_router(dashboard.router, dependencies=[Depends(require_html_auth)])
+app.include_router(rules.router, dependencies=[Depends(require_html_auth)])
+
+# Protected JSON API routes — unauthenticated request → 401
+# api_metrics includes POST /api/metrics (agent ingestion, must stay open) so auth is per-route there
 app.include_router(api_metrics.router)
-app.include_router(rules.router)
-app.include_router(collector.router)
-app.include_router(agents.router)
-app.include_router(system_health_rules.router)
-app.include_router(soar.router)
-app.include_router(settings.router)
-app.include_router(ai_triage.router)
+app.include_router(soar.router, dependencies=[Depends(require_api_auth)])
+app.include_router(ai_triage.router, dependencies=[Depends(require_api_auth)])
+app.include_router(settings.router, dependencies=[Depends(require_api_auth)])
+app.include_router(system_health_rules.router, dependencies=[Depends(require_api_auth)])
 
 def seed_health_rules():
     database = db.SessionLocal()
@@ -142,7 +170,7 @@ from .detection.engine.detection_engine import RuleEngine
 
 # Old ingest logic moved to collector.py router
 
-@app.get("/logs/recent", response_model=List[models.LogOut])
+@app.get("/logs/recent", response_model=List[models.LogOut], dependencies=[Depends(require_api_auth)])
 def get_recent_logs(limit: int = 50, db: Session = Depends(db.get_db)):
     logs = db.query(models.Log).order_by(models.Log.timestamp.desc()).limit(limit).all()
     return logs
