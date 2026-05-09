@@ -13,6 +13,10 @@ from .routers import auth as auth_router_module
 from .auth.dependencies import require_html_auth, require_api_auth
 from .auth.exceptions import LoginRequiredException
 import pathlib
+from .auth.startup import validate_session_secret as _validate_session_secret
+from .routers.auth import limiter as _login_limiter
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 
 def run_startup_migrations():
@@ -73,14 +77,21 @@ models.Base.metadata.create_all(bind=db.engine)
 import asyncio
 # from .services.opensearch_poller import poll_opensearch_loop
 
+# RF-1: Validate session secret at startup — fail fast if absent or insecure.
+_SESSION_SECRET = os.getenv("SESSION_SECRET_KEY", "")
+_validate_session_secret(_SESSION_SECRET)
+_https_only = os.getenv("SESSION_COOKIE_SECURE", "true").lower() == "true"
+
 app = FastAPI(title="SIEM Ingestion API")
+app.state.limiter = _login_limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv("SESSION_SECRET_KEY", "change-me-in-production"),
+    secret_key=_SESSION_SECRET,
     session_cookie="session",
     same_site="lax",
-    https_only=False,
+    https_only=_https_only,
 )
 
 
