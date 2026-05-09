@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List
 from . import models, db
-from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings
+from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings, ai_triage
 import pathlib
 
 
@@ -27,6 +27,30 @@ def run_startup_migrations():
         "ALTER TABLE soar_action_executions ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP",
         "ALTER TABLE soar_action_executions ADD COLUMN IF NOT EXISTS rejected_by VARCHAR",
         "ALTER TABLE soar_action_executions ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMP",
+        # v2.5.0 AI Alert Triage
+        (
+            "CREATE TABLE IF NOT EXISTS ai_alert_triages ("
+            "  id SERIAL PRIMARY KEY,"
+            "  alert_id INTEGER NOT NULL REFERENCES alerts(id),"
+            "  provider VARCHAR NOT NULL,"
+            "  model_name VARCHAR NOT NULL,"
+            "  triage_status VARCHAR NOT NULL,"
+            "  summary TEXT,"
+            "  priority VARCHAR,"
+            "  confidence VARCHAR,"
+            "  false_positive_likelihood VARCHAR,"
+            "  key_reasons_json TEXT,"
+            "  recommended_next_steps_json TEXT,"
+            "  soar_recommendation_json TEXT,"
+            "  input_context_json TEXT,"
+            "  raw_output_json TEXT,"
+            "  error_message TEXT,"
+            "  created_at TIMESTAMP DEFAULT NOW(),"
+            "  updated_at TIMESTAMP DEFAULT NOW()"
+            ")"
+        ),
+        "CREATE INDEX IF NOT EXISTS ix_ai_alert_triages_alert_id ON ai_alert_triages (alert_id)",
+        "CREATE INDEX IF NOT EXISTS ix_ai_alert_triages_created_at ON ai_alert_triages (created_at)",
     ]
     with db.engine.connect() as conn:
         for sql in migrations:
@@ -59,6 +83,7 @@ app.include_router(agents.router)
 app.include_router(system_health_rules.router)
 app.include_router(soar.router)
 app.include_router(settings.router)
+app.include_router(ai_triage.router)
 
 def seed_health_rules():
     database = db.SessionLocal()
