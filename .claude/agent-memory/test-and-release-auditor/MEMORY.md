@@ -1,0 +1,1 @@
+- [Security Authentication Feature Audit — May 2026](project_auth_feature_audit.md) — NO-GO blockers and conditions for feature/security-authentication branch audit on 2026-05-09
