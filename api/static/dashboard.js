@@ -40,76 +40,134 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function escapeHtml(s) {
-        return String(s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    function severityBadge(sev) {
+    function buildSeverityBadge(sev) {
         const s = (sev || '').toUpperCase();
+        const span = document.createElement('span');
+        span.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold';
+        const dot = document.createElement('span');
+        dot.className = 'w-1 h-1 rounded-full inline-block';
         if (s === 'HIGH' || s === 'CRITICAL') {
-            return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-                        <span class="w-1 h-1 rounded-full bg-red-400 inline-block"></span>${s}
-                    </span>`;
+            span.classList.add('bg-red-500/10', 'text-red-400', 'border', 'border-red-500/20');
+            dot.classList.add('bg-red-400');
+        } else if (s === 'MED' || s === 'MEDIUM' || s === 'WARNING') {
+            span.classList.add('bg-amber-500/10', 'text-amber-400', 'border', 'border-amber-500/20');
+            dot.classList.add('bg-amber-400');
+        } else {
+            span.classList.add('bg-blue-500/10', 'text-blue-400', 'border', 'border-blue-500/20');
+            dot.classList.add('bg-blue-400');
         }
-        if (s === 'MED' || s === 'MEDIUM' || s === 'WARNING') {
-            return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        <span class="w-1 h-1 rounded-full bg-amber-400 inline-block"></span>${s}
-                    </span>`;
-        }
-        return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                    <span class="w-1 h-1 rounded-full bg-blue-400 inline-block"></span>${escapeHtml(s) || 'INFO'}
-                </span>`;
+        span.appendChild(dot);
+        span.appendChild(document.createTextNode(s || 'INFO'));
+        return span;
     }
 
-    function mitreBadge(mitre_id) {
-        if (!mitre_id || !mitre_id.startsWith('T')) return '';
-        return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-violet-500/10 text-violet-400 border border-violet-500/20">
-                    <span class="material-symbols-outlined text-[10px]">shield</span>${escapeHtml(mitre_id)}
-                </span>`;
+    function buildMitreBadge(mitre_id) {
+        if (!mitre_id || !mitre_id.startsWith('T')) return null;
+        const span = document.createElement('span');
+        span.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-violet-500/10 text-violet-400 border border-violet-500/20';
+        const icon = document.createElement('span');
+        icon.className = 'material-symbols-outlined text-[10px]';
+        icon.textContent = 'shield';
+        span.appendChild(icon);
+        span.appendChild(document.createTextNode(mitre_id));
+        return span;
     }
 
-    function renderAlertCard(a) {
+    function buildAlertCard(a) {
         const isMitre = a.source && a.source.startsWith && a.source.startsWith('T');
         const mitre_id = isMitre ? a.source : (a.mitre_id || '');
         const ts = new Date(a.timestamp || a.timestamp_utc);
         const cmdMatch = (a.description || '').match(/Command(?:\s+Line)?:\s*(.+?)\.\s*Agent/i);
         const cmdExcerpt = cmdMatch ? cmdMatch[1] : '';
         const alertId = parseInt(a.id, 10) || 0;
+        const isHigh = (a.severity || '').toUpperCase() === 'HIGH' || (a.severity || '').toUpperCase() === 'CRITICAL';
 
-        return `<div class="group p-3.5 rounded-xl border transition-all duration-200 relative ${
-            (a.severity||'').toUpperCase() === 'HIGH' || (a.severity||'').toUpperCase() === 'CRITICAL'
-                ? 'border-red-500/25 bg-red-500/5 hover:bg-red-500/10'
-                : 'border-slate-200/20 bg-slate-800/30 hover:bg-slate-700/20'
-        } ${!a.is_read ? 'ring-1 ring-primary/20 shadow-lg shadow-primary/5' : ''}">
-            ${!a.is_read ? '<span class="absolute top-2 right-2 flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span></span>' : ''}
-            
-            <div class="flex items-start justify-between gap-2 mb-2">
-                <div class="flex items-center gap-1.5 flex-wrap">
-                    ${severityBadge(a.severity)}
-                    ${mitreBadge(mitre_id)}
-                    ${!a.is_read ? '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary text-white uppercase">New</span>' : ''}
-                </div>
-                <span class="text-[10px] text-slate-500 whitespace-nowrap">${ts.toLocaleTimeString()}</span>
-            </div>
-            <p class="text-xs font-semibold text-slate-200 mb-1 leading-snug">${escapeHtml(a.title || 'Alert')}</p>
-            ${cmdExcerpt ? `<code class="block text-[10px] px-2 py-1 mt-1 rounded bg-slate-900/60 text-amber-300 font-mono truncate" title="${escapeHtml(cmdExcerpt)}">${escapeHtml(cmdExcerpt)}</code>` : ''}
-            
-            <div class="flex items-center justify-between mt-2">
-                <div class="flex items-center gap-2 text-[10px] text-slate-500">
-                    <span class="material-symbols-outlined text-[11px]">terminal</span>
-                    <span class="font-mono">${escapeHtml(a.host || '-')}</span>
-                </div>
-                ${!a.is_read ? `
-                <button onclick="markAsRead(${alertId})" class="p-1 rounded bg-slate-700 hover:bg-primary text-slate-400 hover:text-white transition-colors title="Mark as read">
-                    <span class="material-symbols-outlined text-xs">done</span>
-                </button>` : ''}
-            </div>
-        </div>`;
+        // Root card
+        const card = document.createElement('div');
+        card.className = [
+            'group p-3.5 rounded-xl border transition-all duration-200 relative',
+            isHigh ? 'border-red-500/25 bg-red-500/5 hover:bg-red-500/10'
+                   : 'border-slate-200/20 bg-slate-800/30 hover:bg-slate-700/20',
+            !a.is_read ? 'ring-1 ring-primary/20 shadow-lg shadow-primary/5' : ''
+        ].filter(Boolean).join(' ');
+
+        // Unread ping indicator — static markup, no server data
+        if (!a.is_read) {
+            const ping = document.createElement('span');
+            ping.className = 'absolute top-2 right-2 flex h-2 w-2';
+            ping.innerHTML = '<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>'
+                           + '<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>';
+            card.appendChild(ping);
+        }
+
+        // Header row: badges + timestamp
+        const header = document.createElement('div');
+        header.className = 'flex items-start justify-between gap-2 mb-2';
+
+        const badgeGroup = document.createElement('div');
+        badgeGroup.className = 'flex items-center gap-1.5 flex-wrap';
+        badgeGroup.appendChild(buildSeverityBadge(a.severity));
+        const mitreBadgeEl = buildMitreBadge(mitre_id);
+        if (mitreBadgeEl) badgeGroup.appendChild(mitreBadgeEl);
+        if (!a.is_read) {
+            const newBadge = document.createElement('span');
+            newBadge.className = 'text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary text-white uppercase';
+            newBadge.textContent = 'New';
+            badgeGroup.appendChild(newBadge);
+        }
+        header.appendChild(badgeGroup);
+
+        const timeEl = document.createElement('span');
+        timeEl.className = 'text-[10px] text-slate-500 whitespace-nowrap';
+        timeEl.textContent = ts.toLocaleTimeString();
+        header.appendChild(timeEl);
+        card.appendChild(header);
+
+        // Alert title
+        const titleEl = document.createElement('p');
+        titleEl.className = 'text-xs font-semibold text-slate-200 mb-1 leading-snug';
+        titleEl.textContent = a.title || 'Alert';
+        card.appendChild(titleEl);
+
+        // Command excerpt (conditional)
+        if (cmdExcerpt) {
+            const code = document.createElement('code');
+            code.className = 'block text-[10px] px-2 py-1 mt-1 rounded bg-slate-900/60 text-amber-300 font-mono truncate';
+            code.setAttribute('title', cmdExcerpt);
+            code.textContent = cmdExcerpt;
+            card.appendChild(code);
+        }
+
+        // Footer row: host + mark-read button
+        const footer = document.createElement('div');
+        footer.className = 'flex items-center justify-between mt-2';
+
+        const hostGroup = document.createElement('div');
+        hostGroup.className = 'flex items-center gap-2 text-[10px] text-slate-500';
+        const termIcon = document.createElement('span');
+        termIcon.className = 'material-symbols-outlined text-[11px]';
+        termIcon.textContent = 'terminal';
+        hostGroup.appendChild(termIcon);
+        const hostSpan = document.createElement('span');
+        hostSpan.className = 'font-mono';
+        hostSpan.textContent = a.host || '-';
+        hostGroup.appendChild(hostSpan);
+        footer.appendChild(hostGroup);
+
+        if (!a.is_read) {
+            const btn = document.createElement('button');
+            btn.className = 'p-1 rounded bg-slate-700 hover:bg-primary text-slate-400 hover:text-white transition-colors';
+            btn.setAttribute('title', 'Mark as read');
+            btn.addEventListener('click', () => window.markAsRead(alertId));
+            const doneIcon = document.createElement('span');
+            doneIcon.className = 'material-symbols-outlined text-xs';
+            doneIcon.textContent = 'done';
+            btn.appendChild(doneIcon);
+            footer.appendChild(btn);
+        }
+        card.appendChild(footer);
+
+        return card;
     }
 
     window.markAsRead = async (id) => {
@@ -191,7 +249,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="text-xs text-slate-500 py-4">No MITRE detections yet. System monitoring...</p>
                 </div>`;
             } else {
-                container.innerHTML = threats.slice(0, 15).map(renderAlertCard).join('');
+                const frag = document.createDocumentFragment();
+                threats.slice(0, 15).forEach(a => frag.appendChild(buildAlertCard(a)));
+                container.replaceChildren(frag);
             }
         } catch (e) {
             // Fallback to generic recent alerts
@@ -199,7 +259,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`/api/alerts/recent?limit=20&host=${host}`);
                 const alerts = await res.json();
                 const container = document.getElementById('alert-container');
-                container.innerHTML = alerts.map(renderAlertCard).join('');
+                const frag2 = document.createDocumentFragment();
+                alerts.forEach(a => frag2.appendChild(buildAlertCard(a)));
+                container.replaceChildren(frag2);
             } catch(e2) { console.error('Alerts error:', e2); }
         }
     }
