@@ -12,3 +12,7 @@ agent.log
 .env.*
 api/.env
 api/.env.*
+
+# Python virtual environments
+.venv/
+api/.venv/
