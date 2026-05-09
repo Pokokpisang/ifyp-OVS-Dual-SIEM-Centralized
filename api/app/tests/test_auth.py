@@ -371,6 +371,7 @@ def test_logout_emits_auth_logout_log(caplog):
     with caplog.at_level(logging.INFO, logger="ovs.auth"):
         _post_form("/logout", data={}, cookies={"session": session_cookie} if session_cookie else {})
     assert "AUTH_LOGOUT" in caplog.text
+    assert _TEST_USER in caplog.text
 
 
 # ---------------------------------------------------------------------------

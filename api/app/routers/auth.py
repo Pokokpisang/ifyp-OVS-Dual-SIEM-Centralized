@@ -50,6 +50,7 @@ async def login(
         # RF-2: Clear any stale session data before writing authenticated state.
         request.session.clear()
         request.session["authenticated"] = True
+        request.session["username"] = username
         logger.info("AUTH_SUCCESS username=%s ip=%s", username, get_remote_address(request))
         return RedirectResponse(url="/dashboard", status_code=303)
 
