@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Request, Depends, Header
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Depends, Header
 from pydantic import BaseModel, ConfigDict
 from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
@@ -44,11 +44,13 @@ async def collect_agent_logs(
     database: Session = Depends(db.get_db),
     x_agent_key: Optional[str] = Header(None, alias="X-Agent-Key")
 ):
-    # 0. Update Last Seen if key provided
-    agent_meta = None
-    if x_agent_key:
-        update_last_seen(agent_key=x_agent_key, db=database)
-        agent_meta = get_agent_metadata_by_key(agent_key=x_agent_key, db=database)
+    # 0. Authenticate — reject requests from unknown or missing agent keys
+    if not x_agent_key:
+        raise HTTPException(status_code=401, detail="X-Agent-Key header is required.")
+    agent_meta = get_agent_metadata_by_key(agent_key=x_agent_key, db=database)
+    if agent_meta is None:
+        raise HTTPException(status_code=401, detail="Invalid or unregistered agent key.")
+    update_last_seen(agent_key=x_agent_key, db=database)
 
     # 1. Read Raw JSON
     try:
@@ -62,27 +64,26 @@ async def collect_agent_logs(
     payload["agent_received_at"] = ingestion_time
     
     # Enrichment with Agent Identity (v2.0.0 Requirement)
-    if agent_meta:
-        payload["agent_id"] = agent_meta["agent_id"]
-        payload["hostname"] = agent_meta["hostname"]
-        payload["ip_address"] = agent_meta["ip_address"]
-        payload["os_type"] = agent_meta["os_type"]
-        payload["distribution"] = agent_meta["distribution"]
-        payload["agent_name"] = agent_meta["agent_name"]
-        
-        # ECS compatibility fields
-        payload["host"] = {
-            "name": agent_meta["hostname"],
-            "ip": agent_meta["ip_address"],
-            "os": {
-                "type": agent_meta["os_type"].lower(),
-                "name": agent_meta["distribution"]
-            }
+    payload["agent_id"] = agent_meta["agent_id"]
+    payload["hostname"] = agent_meta["hostname"]
+    payload["ip_address"] = agent_meta["ip_address"]
+    payload["os_type"] = agent_meta["os_type"]
+    payload["distribution"] = agent_meta["distribution"]
+    payload["agent_name"] = agent_meta["agent_name"]
+
+    # ECS compatibility fields
+    payload["host"] = {
+        "name": agent_meta["hostname"],
+        "ip": agent_meta["ip_address"],
+        "os": {
+            "type": agent_meta["os_type"].lower(),
+            "name": agent_meta["distribution"]
         }
-        payload["agent"] = {
-            "id": agent_meta["agent_id"],
-            "name": agent_meta["agent_name"]
-        }
+    }
+    payload["agent"] = {
+        "id": agent_meta["agent_id"],
+        "name": agent_meta["agent_name"]
+    }
     # 2. Save to PostgreSQL (for Dashboard / System Logs UI)
     try:
         # Use server ingestion time or the one provided by agent if reliable
