@@ -40,6 +40,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    function escapeHtml(s) {
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     function severityBadge(sev) {
         const s = (sev || '').toUpperCase();
         if (s === 'HIGH' || s === 'CRITICAL') {
@@ -53,14 +62,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     </span>`;
         }
         return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                    <span class="w-1 h-1 rounded-full bg-blue-400 inline-block"></span>${s || 'INFO'}
+                    <span class="w-1 h-1 rounded-full bg-blue-400 inline-block"></span>${escapeHtml(s) || 'INFO'}
                 </span>`;
     }
 
     function mitreBadge(mitre_id) {
         if (!mitre_id || !mitre_id.startsWith('T')) return '';
         return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-violet-500/10 text-violet-400 border border-violet-500/20">
-                    <span class="material-symbols-outlined text-[10px]">shield</span>${mitre_id}
+                    <span class="material-symbols-outlined text-[10px]">shield</span>${escapeHtml(mitre_id)}
                 </span>`;
     }
 
@@ -70,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ts = new Date(a.timestamp || a.timestamp_utc);
         const cmdMatch = (a.description || '').match(/Command(?:\s+Line)?:\s*(.+?)\.\s*Agent/i);
         const cmdExcerpt = cmdMatch ? cmdMatch[1] : '';
+        const alertId = parseInt(a.id, 10) || 0;
 
         return `<div class="group p-3.5 rounded-xl border transition-all duration-200 relative ${
             (a.severity||'').toUpperCase() === 'HIGH' || (a.severity||'').toUpperCase() === 'CRITICAL'
@@ -86,16 +96,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <span class="text-[10px] text-slate-500 whitespace-nowrap">${ts.toLocaleTimeString()}</span>
             </div>
-            <p class="text-xs font-semibold text-slate-200 mb-1 leading-snug">${a.title || 'Alert'}</p>
-            ${cmdExcerpt ? `<code class="block text-[10px] px-2 py-1 mt-1 rounded bg-slate-900/60 text-amber-300 font-mono truncate" title="${cmdExcerpt}">${cmdExcerpt}</code>` : ''}
+            <p class="text-xs font-semibold text-slate-200 mb-1 leading-snug">${escapeHtml(a.title || 'Alert')}</p>
+            ${cmdExcerpt ? `<code class="block text-[10px] px-2 py-1 mt-1 rounded bg-slate-900/60 text-amber-300 font-mono truncate" title="${escapeHtml(cmdExcerpt)}">${escapeHtml(cmdExcerpt)}</code>` : ''}
             
             <div class="flex items-center justify-between mt-2">
                 <div class="flex items-center gap-2 text-[10px] text-slate-500">
                     <span class="material-symbols-outlined text-[11px]">terminal</span>
-                    <span class="font-mono">${a.host || '-'}</span>
+                    <span class="font-mono">${escapeHtml(a.host || '-')}</span>
                 </div>
                 ${!a.is_read ? `
-                <button onclick="markAsRead(${a.id})" class="p-1 rounded bg-slate-700 hover:bg-primary text-slate-400 hover:text-white transition-colors title="Mark as read">
+                <button onclick="markAsRead(${alertId})" class="p-1 rounded bg-slate-700 hover:bg-primary text-slate-400 hover:text-white transition-colors title="Mark as read">
                     <span class="material-symbols-outlined text-xs">done</span>
                 </button>` : ''}
             </div>
@@ -139,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const el = document.getElementById('kpi-mitre');
             if (el) {
                 if (stats.unread_mitre > 0) {
-                    el.innerHTML = `${stats.mitre_detections} <span class="text-[10px] font-bold bg-primary/20 text-primary px-1.5 py-0.5 rounded-full ml-2">+${stats.unread_mitre} NEW</span>`;
+                    el.innerHTML = `${parseInt(stats.mitre_detections, 10) || 0} <span class="text-[10px] font-bold bg-primary/20 text-primary px-1.5 py-0.5 rounded-full ml-2">+${parseInt(stats.unread_mitre, 10) || 0} NEW</span>`;
                 } else {
                     el.innerText = stats.mitre_detections || 0;
                 }
@@ -148,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const el2 = document.getElementById('kpi-high-severity');
             if (el2) {
                 if (stats.unread_high > 0) {
-                    el2.innerHTML = `${stats.high_severity} <span class="text-[10px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full ml-2">+${stats.unread_high} NEW</span>`;
+                    el2.innerHTML = `${parseInt(stats.high_severity, 10) || 0} <span class="text-[10px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full ml-2">+${parseInt(stats.unread_high, 10) || 0} NEW</span>`;
                 } else {
                     el2.innerText = stats.high_severity || 0;
                 }
