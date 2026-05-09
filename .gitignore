@@ -6,3 +6,13 @@ __pycache__/
 .pytest_cache/
 *.log
 agent.log
+
+# Environment files — never commit secrets
+.env
+.env.*
+api/.env
+api/.env.*
+
+# Python virtual environments
+.venv/
+api/.venv/
