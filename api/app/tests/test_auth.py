@@ -61,9 +61,12 @@ _TEST_HASH: str = ""
 
 
 def setup_module(_module):
+    import base64
     import bcrypt
     global _TEST_HASH
-    _TEST_HASH = bcrypt.hashpw(_TEST_PASS.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    # Store as base64 (the format DASHBOARD_PASSWORD_HASH uses in .env)
+    raw = bcrypt.hashpw(_TEST_PASS.encode("utf-8"), bcrypt.gensalt())
+    _TEST_HASH = base64.b64encode(raw).decode("utf-8")
 
 
 # ---------------------------------------------------------------------------

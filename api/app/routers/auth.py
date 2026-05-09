@@ -19,10 +19,17 @@ async def login(
     username: str = Form(...),
     password: str = Form(...),
 ):
+    import base64
     import bcrypt as _bcrypt
 
     expected_user = os.getenv("DASHBOARD_USERNAME", "")
-    expected_hash = os.getenv("DASHBOARD_PASSWORD_HASH", "")
+    # Hash is stored as base64 in the env to avoid `$` interpolation issues
+    # with docker-compose env_file processing.
+    hash_b64 = os.getenv("DASHBOARD_PASSWORD_HASH", "")
+    try:
+        expected_hash = base64.b64decode(hash_b64 + "==").decode("utf-8") if hash_b64 else ""
+    except Exception:
+        expected_hash = ""
 
     try:
         password_matches = bool(expected_hash) and _bcrypt.checkpw(
