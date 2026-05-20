@@ -374,6 +374,57 @@ def view_agents_history(
     })
 
 
+@router.get("/network", response_class=HTMLResponse)
+def view_network(request: Request, database: Session = Depends(db.get_db)):
+    """Network Investigation page — agent network status, suspicious activity, SOAR actions."""
+    registered = list_agents(database, include_deleted=False)
+
+    # Build agent list with real status and metrics
+    now = datetime.utcnow()
+    agent_rows = []
+    for a in registered:
+        host = a.get("hostname") or a.get("agent_name", "")
+        latest = (
+            database.query(models.Metric)
+            .filter(models.Metric.host == host)
+            .order_by(desc(models.Metric.timestamp))
+            .first()
+        ) if host else None
+        is_offline = (now - latest.timestamp) > timedelta(minutes=5) if latest else True
+        net_in = int(float(latest.net_in_bytes)) if latest else 0
+        net_out = int(float(latest.net_out_bytes)) if latest else 0
+        agent_rows.append({
+            "name": a.get("agent_name", "—"),
+            "host": a.get("ip_address", "—"),
+            "status": a.get("status", "offline"),
+            "last_seen": a.get("last_seen", "—"),
+            "net_in": net_in,
+            "net_out": net_out,
+            "risk": "low",  # TODO: derive from alert severity when network alert model exists
+        })
+
+    # Recent alerts for alert-chip linking
+    recent_alerts = (
+        database.query(models.Alert)
+        .order_by(desc(models.Alert.timestamp))
+        .limit(20)
+        .all()
+    )
+    alert_map = {a.id: {"id": a.id, "title": a.title, "severity": a.severity} for a in recent_alerts}
+
+    # Counts for metric cards
+    total_agents = len(agent_rows)
+    online_agents = sum(1 for a in agent_rows if a["status"] in ("active", "HIGH LOAD"))
+
+    return templates.TemplateResponse("network_investigation.html", {
+        "request": request,
+        "agent_rows": agent_rows,
+        "alert_map": alert_map,
+        "total_agents": total_agents,
+        "online_agents": online_agents,
+    })
+
+
 @router.get("/soar/settings", response_class=HTMLResponse)
 def view_soar_settings(request: Request):
     return templates.TemplateResponse("soar_settings.html", {"request": request})

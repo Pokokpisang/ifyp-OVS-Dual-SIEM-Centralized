@@ -1,0 +1,1054 @@
+{% extends "base.html" %}
+{% block title %}Network Investigation · OVS SIEM{% endblock %}
+{% block page_title %}Network Investigation{% endblock %}
+
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+    --rc-critical-fg: #ff6680; --rc-critical-bg: rgba(206,46,70,0.14); --rc-critical-bd: rgba(206,46,70,0.45);
+    --rc-high-fg:     #ffb86b; --rc-high-bg:     rgba(245,155,0,0.14);  --rc-high-bd:     rgba(245,155,0,0.45);
+    --rc-medium-fg:   #ffd166; --rc-medium-bg:   rgba(245,209,102,0.10);--rc-medium-bd:   rgba(245,209,102,0.35);
+    --rc-low-fg:      #9bd3a3; --rc-low-bg:      rgba(74,222,128,0.10); --rc-low-bd:      rgba(74,222,128,0.30);
+  }
+  .ni-mono { font-family: var(--mono); font-size: 12px; color: #ededed; white-space: nowrap; }
+  .ni-mono.dim { color: #8b8590; }
+  .ni-mono.in  { color: #5fa8ff; }
+  .ni-mono.out { color: #f59b00; }
+  .ni-mono.danger { color: #ff8a9c; }
+
+  .risk-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .risk-pill .dot { width: 6px; height: 6px; border-radius: 999px; flex-shrink: 0; }
+  .risk-critical { background: var(--rc-critical-bg); border: 1px solid var(--rc-critical-bd); color: var(--rc-critical-fg); }
+  .risk-critical .dot { background: var(--rc-critical-fg); box-shadow: 0 0 8px var(--rc-critical-fg); }
+  .risk-high    { background: var(--rc-high-bg);     border: 1px solid var(--rc-high-bd);     color: var(--rc-high-fg); }
+  .risk-high .dot    { background: var(--rc-high-fg);    box-shadow: 0 0 8px var(--rc-high-fg); }
+  .risk-medium  { background: var(--rc-medium-bg);   border: 1px solid var(--rc-medium-bd);   color: var(--rc-medium-fg); }
+  .risk-medium .dot  { background: var(--rc-medium-fg);  box-shadow: 0 0 8px var(--rc-medium-fg); }
+  .risk-low     { background: var(--rc-low-bg);      border: 1px solid var(--rc-low-bd);      color: var(--rc-low-fg); }
+  .risk-low .dot     { background: var(--rc-low-fg);     box-shadow: 0 0 8px var(--rc-low-fg); }
+
+  .ni-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .ni-table th {
+    text-align: left; padding: 8px 12px;
+    font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: #6b6670; font-weight: 600;
+    background: #1a181c; border-bottom: 1px solid #2a262f;
+    position: sticky; top: 0; white-space: nowrap;
+  }
+  .ni-table td {
+    padding: 8px 12px; border-bottom: 1px solid #221f25;
+    vertical-align: middle; white-space: nowrap;
+  }
+  .ni-table tbody tr { cursor: pointer; border-left: 2px solid transparent; transition: background 80ms; }
+  .ni-table tbody tr:hover td { background: rgba(240,84,132,0.04); }
+  .ni-table tbody tr.selected { background: rgba(240,84,132,0.08); border-left-color: #F05484; }
+  .ni-table tbody tr.row-critical { border-left: 2px solid rgba(206,46,70,0.5); }
+  .ni-table tbody tr.row-critical td { background: rgba(206,46,70,0.02); }
+  .ni-table tbody tr.row-critical.selected { border-left-color: #F05484; }
+
+  .alert-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 1px 6px; border-radius: 4px;
+    background: rgba(240,84,132,0.10); border: 1px solid rgba(240,84,132,0.35);
+    color: #F05484; font-family: var(--mono); font-size: 11px;
+    cursor: pointer; text-decoration: none; white-space: nowrap;
+  }
+  .alert-chip:hover { background: rgba(240,84,132,0.20); }
+
+  .ni-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all 120ms ease; white-space: nowrap; border: 1px solid;
+  }
+  .ni-btn-sm { padding: 5px 10px; }
+  .ni-btn-ghost { background: transparent; border-color: #3a3640; color: #d4cdda; }
+  .ni-btn-ghost:hover { background: #26222b; }
+  .ni-btn-danger { background: transparent; border-color: rgba(206,46,70,0.5); color: #ff7a8c; }
+  .ni-btn-danger:hover { background: rgba(206,46,70,0.12); }
+  .ni-btn-warn   { background: transparent; border-color: rgba(245,155,0,0.5);  color: #ffb86b; }
+  .ni-btn-warn:hover { background: rgba(245,155,0,0.12); }
+  .ni-btn-primary { background: #F05484; border-color: #F05484; color: #1a0a13; }
+  .ni-btn-primary:hover { background: #ff6f97; }
+  .ni-btn-solid { background: #26222b; border-color: #3a3640; color: #ededed; }
+  .ni-btn-solid:hover { background: #2f2a36; }
+
+  .ni-card { background: #1c1a1f; border: 1px solid #2a262f; border-radius: 8px; }
+  .ni-section-hdr {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    padding: 14px 18px 12px; border-bottom: 1px solid #2a262f;
+  }
+  .ni-section-kicker { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #8b8590; font-weight: 600; margin-bottom: 4px; }
+  .ni-section-title { margin: 0; font-size: 14px; font-weight: 600; color: #ededed; letter-spacing: -0.01em; }
+  .ni-section-count { font-size: 12px; color: #56505c; font-family: var(--mono); margin-left: 10px; }
+  .ni-section-sub { font-size: 11px; color: #6b6670; margin-top: 4px; }
+
+  .dir-in  { color: #5fa8ff; font-family: var(--mono); font-size: 11px; font-weight: 600; }
+  .dir-out { color: #f59b00; font-family: var(--mono); font-size: 11px; font-weight: 600; }
+
+  .status-dot {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: #bdb6c2; font-size: 12px;
+  }
+  .status-dot::before {
+    content: ""; display: inline-block;
+    width: 6px; height: 6px; border-radius: 999px;
+  }
+  .status-online::before  { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+  .status-degraded::before{ background: #f59b00; box-shadow: 0 0 6px #f59b00; }
+  .status-offline::before { background: #6b6670; }
+
+  @keyframes pulse-ring {
+    0% { transform: scale(1); opacity: 0.5; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+  .pulse-dot { animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(74,222,128,0.6)} 50%{opacity:.7;box-shadow:0 0 0 6px rgba(74,222,128,0)} }
+
+  select.ni-select {
+    background: #221f25; border: 1px solid #2d2a31; border-radius: 6px;
+    color: #ededed; padding: 6px 8px; font-size: 12px; font-family: var(--mono);
+    outline: none; cursor: pointer; min-width: 110px;
+  }
+  select.ni-select option { background: #221f25; color: #ededed; }
+  select.ni-select:focus { outline: 1px solid #F05484; }
+
+  .metric-card { background: #1c1a1f; padding: 16px 18px; border-top: 2px solid transparent; transition: background 120ms; cursor: default; }
+  .metric-card:hover { background: #201d23; }
+  .metric-card.active { background: #221f25; }
+  .metric-card-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #8b8590; font-weight: 600; }
+  .metric-card-value { font-size: 24px; font-weight: 600; color: #ededed; letter-spacing: -0.02em; line-height: 1.1; margin-top: 8px; }
+  .metric-card-sub { font-size: 11px; color: #8b8590; margin-top: 6px; font-family: var(--mono); }
+
+  /* Exposure colors in ports table */
+  .exp-public   { color: #ff8a9c; font-family: var(--mono); font-size: 11px; }
+  .exp-internal { color: #ffb86b; font-family: var(--mono); font-size: 11px; }
+  .exp-loopback { color: #9bd3a3; font-family: var(--mono); font-size: 11px; }
+
+  .new-badge {
+    display: inline-block; margin-left: 6px; padding: 1px 5px;
+    font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+    color: #F05484; background: rgba(240,84,132,0.12);
+    border: 1px solid rgba(240,84,132,0.4); border-radius: 3px;
+  }
+
+  #ni-toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 200;
+    padding: 12px 16px; background: #221f25;
+    border: 1px solid #3a3640; border-radius: 6px; min-width: 280px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+    display: none;
+    border-left: 3px solid #F05484;
+  }
+  #ni-toast.show { display: block; }
+  #ni-toast-title { font-size: 11px; color: #8b8590; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
+  #ni-toast-body  { font-size: 13px; color: #ededed; margin-top: 4px; font-family: var(--mono); }
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-2">
+  <div class="flex items-center gap-6 px-3 py-1 rounded-md bg-green-500/10 border border-green-500/25">
+    <span class="pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-green-400"></span>
+    <span class="text-xs text-green-300 font-semibold uppercase tracking-wide ml-1">Live</span>
+  </div>
+</div>
+{% endblock %}
+
+{% block main_content %}
+<!-- ========== TIME RANGE BAR ========== -->
+<div class="sticky top-0 z-10 flex items-center justify-between px-6 py-2 border-b border-primary/10 bg-background-dark/90 backdrop-blur-md">
+  <div class="flex items-center gap-3 text-xs text-slate-400 font-mono">
+    <span class="text-slate-500">tenant</span>
+    <span class="text-slate-300">ovs-siem</span>
+    <span class="text-slate-600">/</span>
+    <span class="text-slate-300">network</span>
+  </div>
+  <div class="flex items-center gap-2">
+    <div id="time-range-btns" class="flex items-center gap-1 p-1 rounded-md border border-slate-700/50 bg-card-dark">
+      {% for r in ["15m","1h","6h","24h","7d"] %}
+      <button onclick="setTimeRange('{{ r }}')" data-range="{{ r }}" class="time-range-btn px-2.5 py-1 text-xs font-mono font-semibold rounded text-slate-400 hover:text-slate-200 transition-colors">{{ r }}</button>
+      {% endfor %}
+    </div>
+    <button onclick="refreshPage()" class="ni-btn ni-btn-ghost ni-btn-sm text-xs gap-1">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></svg>
+      Refresh
+    </button>
+  </div>
+</div>
+
+<!-- ========== METRIC CARDS ========== -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-b border-slate-700/30" style="gap:1px;background:#2a262f;">
+  <!-- Agents Reporting -->
+  <div class="metric-card" id="mc-agents" style="border-top-color:#5fa8ff;">
+    <div class="flex items-center justify-between mb-2">
+      <div class="metric-card-label">Agents Reporting</div>
+      <svg viewBox="0 0 56 18" width="56" height="18" style="overflow:visible"><polyline points="0,15 8,12 16,13 24,10 32,11 40,8 48,9 56,7" fill="none" stroke="#5fa8ff" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </div>
+    <div class="metric-card-value" id="mc-agents-val">{{ online_agents }}</div>
+    <div class="metric-card-sub">of {{ total_agents }} registered</div>
+  </div>
+  <!-- Active Connections -->
+  <div class="metric-card" id="mc-conns" style="border-top-color:#ededed;">
+    <div class="flex items-center justify-between mb-2">
+      <div class="metric-card-label">Active Connections</div>
+      <svg viewBox="0 0 56 18" width="56" height="18" style="overflow:visible"><polyline points="0,14 8,11 16,13 24,9 32,10 40,7 48,9 56,6" fill="none" stroke="#ededed" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </div>
+    <div class="metric-card-value">—</div>
+    <!-- TODO: populate from real network telemetry when connection tracking backend exists -->
+    <div class="metric-card-sub">live connections</div>
+  </div>
+  <!-- Inbound Traffic -->
+  <div class="metric-card" id="mc-in" style="border-top-color:#5fa8ff;">
+    <div class="flex items-center justify-between mb-2">
+      <div class="metric-card-label">Inbound Traffic</div>
+      <svg viewBox="0 0 56 18" width="56" height="18" style="overflow:visible"><polyline points="0,13 8,11 16,12 24,9 32,10 40,8 48,9 56,7" fill="none" stroke="#5fa8ff" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </div>
+    <div class="metric-card-value" id="mc-in-val">—</div>
+    <!-- TODO: compute from Metric.net_in_bytes deltas when rate calculation is implemented -->
+    <div class="metric-card-sub">bytes/s inbound</div>
+  </div>
+  <!-- Outbound Traffic -->
+  <div class="metric-card" id="mc-out" style="border-top-color:#f59b00;">
+    <div class="flex items-center justify-between mb-2">
+      <div class="metric-card-label">Outbound Traffic</div>
+      <svg viewBox="0 0 56 18" width="56" height="18" style="overflow:visible"><polyline points="0,12 8,11 16,12 24,13 32,15 40,11 48,8 56,9" fill="none" stroke="#f59b00" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </div>
+    <div class="metric-card-value" id="mc-out-val">—</div>
+    <div class="metric-card-sub">bytes/s outbound</div>
+  </div>
+  <!-- Response Actions -->
+  <div class="metric-card" id="mc-act" style="border-top-color:#ce2e46;">
+    <div class="flex items-center justify-between mb-2">
+      <div class="metric-card-label">Response Actions</div>
+      <svg viewBox="0 0 56 18" width="56" height="18" style="overflow:visible"><polyline points="0,16 8,15 16,14 24,13 32,12 40,10 48,8 56,5" fill="none" stroke="#ce2e46" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </div>
+    <div class="metric-card-value" id="mc-act-val">0</div>
+    <div class="metric-card-sub">pending approval</div>
+  </div>
+  <!-- Suspicious Events -->
+  <div class="metric-card" id="mc-sus" style="border-top-color:#F05484;">
+    <div class="flex items-center justify-between mb-2">
+      <div class="metric-card-label">Suspicious Events</div>
+      <svg viewBox="0 0 56 18" width="56" height="18" style="overflow:visible"><polyline points="0,16 8,15 16,14 24,12 32,12 40,10 48,8 56,7" fill="none" stroke="#F05484" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </div>
+    <div class="metric-card-value" id="mc-sus-val">{{ demo_suspicious_count|default(8) }}</div>
+    <div class="metric-card-sub" id="mc-sus-sub">demo · critical + high</div>
+  </div>
+</div>
+
+<!-- ========== TRAFFIC CHART + TOPOLOGY ========== -->
+<div class="grid border-b border-slate-700/30" style="grid-template-columns:1.55fr 1fr;gap:1px;background:#2a262f;">
+  <!-- Traffic Chart -->
+  <div style="background:#1c1a1f;">
+    <div class="ni-section-hdr">
+      <div>
+        <div class="ni-section-kicker">Telemetry</div>
+        <div style="display:flex;align-items:baseline;gap:10px;">
+          <h3 class="ni-section-title">Network Traffic</h3>
+        </div>
+        <div class="ni-section-sub">Inbound / outbound throughput · response actions overlaid · demo data</div>
+      </div>
+      <div class="flex gap-1">
+        <a href="/logs" class="ni-btn ni-btn-ghost ni-btn-sm">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M14 4h6v6M20 4 10 14M10 6H4v14h14v-6"/></svg>
+          Pivot to Logs
+        </a>
+      </div>
+    </div>
+    <div style="padding:16px 18px 18px;position:relative;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;font-size:11px;color:#bdb6c2;">
+        <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:18px;height:2px;background:#5fa8ff;display:inline-block;"></span>Inbound</span>
+        <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:18px;height:2px;background:#f59b00;display:inline-block;"></span>Outbound</span>
+        <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:18px;height:2px;background:#ce2e46;display:inline-block;border-top:2px dashed #ce2e46;"></span>Response Actions</span>
+        <span style="margin-left:auto;color:#6b6670;font-family:var(--mono);font-size:11px;">Mbps · last 60m · demo</span>
+      </div>
+      <!-- TODO: replace SVG demo chart with real metric deltas from Metric.net_in_bytes/net_out_bytes -->
+      <svg id="traffic-chart" viewBox="0 0 720 220" style="width:100%;height:220px;display:block;"></svg>
+    </div>
+  </div>
+
+  <!-- Active Topology -->
+  <!-- TODO: topology positions are static demo; replace with agent-driven layout when network topology backend exists -->
+  <div style="background:#1c1a1f;">
+    <div class="ni-section-hdr">
+      <div>
+        <div class="ni-section-kicker">Topology</div>
+        <div style="display:flex;align-items:baseline;gap:10px;">
+          <h3 class="ni-section-title">Active Topology</h3>
+          <span class="ni-section-count">demo</span>
+        </div>
+        <div class="ni-section-sub">Click an agent to filter connections · static demo layout</div>
+      </div>
+    </div>
+    <div style="padding:16px;">
+      <svg id="topology-svg" viewBox="0 0 420 320" style="width:100%;height:300px;"></svg>
+      <div style="display:flex;gap:12px;margin-top:8px;font-size:10px;color:#8b8590;font-family:var(--mono);">
+        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:2px;background:#ff6680;display:inline-block;"></span>critical</span>
+        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:2px;background:#ffb86b;display:inline-block;"></span>high</span>
+        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:2px;background:#ffd166;display:inline-block;"></span>medium</span>
+        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:2px;background:#9bd3a3;display:inline-block;"></span>low</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SOAR ACTION BAR ========== -->
+<div id="soar-bar" style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:#1a181c;border-top:1px solid #2a262f;border-bottom:1px solid #2a262f;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:9;">
+  <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+    <span style="font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#8b8590;font-weight:600;">SOAR</span>
+    <span style="width:1px;height:16px;background:#2a262f;"></span>
+    <div id="soar-target" style="font-size:12px;color:#6b6670;">Select a connection or suspicious event to scope an action.</div>
+  </div>
+  <div class="flex gap-2 flex-wrap">
+    <!-- TODO: wire to /api/alerts/{alert_id}/soar/run when a network alert_id is scoped -->
+    <button onclick="niAction('block')" class="ni-btn ni-btn-danger ni-btn-sm">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="m5.5 5.5 13 13"/></svg>
+      Request IP Block
+    </button>
+    <button onclick="niAction('contain')" class="ni-btn ni-btn-warn ni-btn-sm">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+      Request Containment
+    </button>
+    <button onclick="niAction('note')" class="ni-btn ni-btn-ghost ni-btn-sm">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 4h12l4 4v12H4z"/><path d="M14 4v6h6"/></svg>
+      Create Case Note
+    </button>
+    <button onclick="niAction('invest')" class="ni-btn ni-btn-primary ni-btn-sm">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 21V4h12l-2 4 2 4H4"/></svg>
+      Mark as Investigating
+    </button>
+  </div>
+</div>
+
+<!-- ========== RECENT CONNECTIONS ========== -->
+<section id="conns-section" style="background:#1c1a1f;border-bottom:1px solid #2a262f;">
+  <div class="ni-section-hdr">
+    <div>
+      <div class="ni-section-kicker">Investigation</div>
+      <div style="display:flex;align-items:baseline;gap:10px;">
+        <h3 class="ni-section-title">Recent Connections</h3>
+        <span class="ni-section-count" id="conn-count">24 rows · demo</span>
+      </div>
+      <div class="ni-section-sub">Click a row to scope SOAR actions · demo telemetry data</div>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="toggleTailLive()" id="tail-btn" class="ni-btn ni-btn-ghost ni-btn-sm">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>
+        Tail Live
+      </button>
+      <button onclick="exportCSV()" class="ni-btn ni-btn-ghost ni-btn-sm">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M14 4h6v6M20 4 10 14M10 6H4v14h14v-6"/></svg>
+        Export CSV
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters bar -->
+  <div style="display:flex;gap:10px;align-items:flex-end;padding:12px 18px;border-bottom:1px solid #2a262f;background:#1a181c;flex-wrap:wrap;">
+    <label style="display:flex;flex-direction:column;gap:3px;flex:1 1 240px;min-width:200px;">
+      <span style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:#6b6670;font-weight:600;">Search</span>
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:#221f25;border:1px solid #2d2a31;border-radius:6px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b6670" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="conn-q" oninput="filterConns()" placeholder="IP, agent, process…"
+          style="background:transparent;border:none;outline:none;color:#ededed;font-size:12px;font-family:var(--mono);flex:1;" />
+      </div>
+    </label>
+    <label style="display:flex;flex-direction:column;gap:3px;">
+      <span style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:#6b6670;font-weight:600;">Agent</span>
+      <select id="conn-agent" class="ni-select" onchange="filterConns()">
+        <option value="all">all</option>
+      </select>
+    </label>
+    <label style="display:flex;flex-direction:column;gap:3px;">
+      <span style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:#6b6670;font-weight:600;">Direction</span>
+      <select id="conn-dir" class="ni-select" onchange="filterConns()">
+        <option value="all">all</option>
+        <option value="in">in</option>
+        <option value="out">out</option>
+      </select>
+    </label>
+    <label style="display:flex;flex-direction:column;gap:3px;">
+      <span style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:#6b6670;font-weight:600;">Protocol</span>
+      <select id="conn-proto" class="ni-select" onchange="filterConns()">
+        <option value="all">all</option>
+        <option value="TCP">TCP</option>
+        <option value="UDP">UDP</option>
+        <option value="TLS">TLS</option>
+      </select>
+    </label>
+    <label style="display:flex;flex-direction:column;gap:3px;">
+      <span style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:#6b6670;font-weight:600;">Risk</span>
+      <select id="conn-risk" class="ni-select" onchange="filterConns()">
+        <option value="all">all</option>
+        <option value="critical">critical</option>
+        <option value="high">high</option>
+        <option value="medium">medium</option>
+        <option value="low">low</option>
+      </select>
+    </label>
+    <label style="display:flex;flex-direction:column;gap:3px;">
+      <span style="font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:#6b6670;font-weight:600;">Time Range</span>
+      <select id="conn-range" class="ni-select" onchange="filterConns()">
+        <option>last 5m</option>
+        <option selected>last 15m</option>
+        <option>last 1h</option>
+        <option>last 6h</option>
+        <option>last 24h</option>
+      </select>
+    </label>
+    <button onclick="resetConnFilters()" class="ni-btn ni-btn-ghost ni-btn-sm" style="align-self:flex-end;">Reset</button>
+  </div>
+
+  <!-- Connections table -->
+  <div style="overflow-x:auto;">
+    <table class="ni-table" id="conn-table">
+      <thead>
+        <tr>
+          <th>Time</th><th>Agent</th><th>Dir</th>
+          <th>Source IP</th><th>Sport</th>
+          <th>Destination IP</th><th>Dport</th>
+          <th>Proto</th><th>Process</th><th>Country</th>
+          <th>Status</th><th>Risk</th><th>Alert</th>
+        </tr>
+      </thead>
+      <tbody id="conn-tbody">
+        <!-- populated by JS -->
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ========== AGENT NETWORK SUMMARY + SUSPICIOUS ACTIVITY ========== -->
+<div class="grid border-b border-slate-700/30" style="grid-template-columns:1.5fr 1fr;gap:1px;background:#2a262f;margin-top:1px;">
+
+  <!-- Agent Network Summary -->
+  <div style="background:#1c1a1f;">
+    <div class="ni-section-hdr">
+      <div>
+        <div class="ni-section-kicker">Fleet</div>
+        <div style="display:flex;align-items:baseline;gap:10px;">
+          <h3 class="ni-section-title">Agent Network Summary</h3>
+          <span class="ni-section-count">{{ agent_rows|length }} agents</span>
+        </div>
+      </div>
+      <a href="/agents" class="ni-btn ni-btn-ghost ni-btn-sm">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M14 4h6v6M20 4 10 14M10 6H4v14h14v-6"/></svg>
+        All agents
+      </a>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="ni-table" id="agent-table">
+        <thead>
+          <tr>
+            <th>Agent</th><th>Host IP</th><th>Status</th>
+            <th>Net In (bytes)</th><th>Net Out (bytes)</th>
+            <th>Last Seen</th><th>Risk</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if agent_rows %}
+            {% for a in agent_rows %}
+            <tr onclick="selectAgent('{{ a.name }}')" class="agent-row" data-agent="{{ a.name }}">
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="width:5px;height:5px;border-radius:999px;background:{% if a.status in ('active','HIGH LOAD') %}#4ade80{% elif a.status == 'offline' %}#6b6670{% else %}#f59b00{% endif %};flex-shrink:0;"></span>
+                  <span class="ni-mono">{{ a.name }}</span>
+                </div>
+              </td>
+              <td><span class="ni-mono dim">{{ a.host or "—" }}</span></td>
+              <td>
+                <span class="status-dot {% if a.status in ('active','HIGH LOAD') %}status-online{% elif a.status == 'offline' %}status-offline{% else %}status-degraded{% endif %}">
+                  {% if a.status in ('active','HIGH LOAD') %}online{% elif a.status == 'offline' %}offline{% else %}{{ a.status }}{% endif %}
+                </span>
+              </td>
+              <td><span class="ni-mono in">{{ "{:,}".format(a.net_in) }}</span></td>
+              <td><span class="ni-mono out">{{ "{:,}".format(a.net_out) }}</span></td>
+              <td><span class="ni-mono dim">{{ a.last_seen }}</span></td>
+              <td>
+                <span class="risk-pill risk-{{ a.risk }}">
+                  <span class="dot"></span>{{ a.risk }}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="7" style="text-align:center;padding:32px;color:#6b6670;">No agents registered. <a href="/agents/new" style="color:#F05484;">Register an agent →</a></td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Suspicious Network Activity -->
+  <div style="background:#1c1a1f;">
+    <div class="ni-section-hdr">
+      <div>
+        <div class="ni-section-kicker">Detections</div>
+        <div style="display:flex;align-items:baseline;gap:10px;">
+          <h3 class="ni-section-title">Suspicious Network Activity</h3>
+          <span class="ni-section-count" id="sus-count">8 events · demo</span>
+        </div>
+      </div>
+      <a href="/rules" class="ni-btn ni-btn-ghost ni-btn-sm">Tune rules</a>
+    </div>
+    <div id="suspicious-feed" style="display:flex;flex-direction:column;">
+      <!-- populated by JS demo data -->
+    </div>
+  </div>
+</div>
+
+<!-- ========== OPEN PORTS / LISTENING SERVICES ========== -->
+<section style="background:#1c1a1f;border-top:1px solid #2a262f;">
+  <div class="ni-section-hdr">
+    <div>
+      <div class="ni-section-kicker">Surface</div>
+      <div style="display:flex;align-items:baseline;gap:10px;">
+        <h3 class="ni-section-title">Open Ports / Listening Services</h3>
+        <span class="ni-section-count" id="ports-count">demo · 13 listeners</span>
+      </div>
+      <div class="ni-section-sub">Externally exposed services elevated · new listeners flagged · demo data</div>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="filterPorts('all')" id="ports-all-btn" class="ni-btn ni-btn-solid ni-btn-sm">All exposures</button>
+      <button onclick="filterPorts('public')" id="ports-pub-btn" class="ni-btn ni-btn-ghost ni-btn-sm">Public only</button>
+    </div>
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="ni-table" id="ports-table">
+      <thead>
+        <tr><th>Agent</th><th>Local Address</th><th>Port</th><th>Proto</th><th>Process</th><th>Service</th><th>Exposure</th><th>Risk</th></tr>
+      </thead>
+      <tbody id="ports-tbody">
+        <!-- populated by JS -->
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer style="padding:16px 24px;border-top:1px solid #2a262f;display:flex;justify-content:space-between;color:#6b6670;font-size:11px;font-family:var(--mono);">
+  <span>ovs-siem · network investigation · demo telemetry active</span>
+  <span>v2.0.0 · <a href="/agents" style="color:#6b6670;text-decoration:none;">{{ total_agents }} agents</a></span>
+</footer>
+
+<!-- Toast notification -->
+<div id="ni-toast">
+  <div id="ni-toast-title"></div>
+  <div id="ni-toast-body"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Demo data (TODO: replace with real network telemetry when backend supports it) ──
+const DEMO_CONNECTIONS = [
+  { time:4,   agent:"web-prod-01", dir:"out", sip:"10.4.12.18",   sport:51244, dip:"185.220.101.45", dport:4444,  proto:"TCP", proc:"/bin/bash",         cc:"🇷🇺 RU", status:"established", risk:"critical", alert:"ALR-7841" },
+  { time:11,  agent:"db-prod-01",  dir:"out", sip:"10.4.20.7",    sport:49120, dip:"104.21.234.18",  dport:443,   proto:"TLS", proc:"node /app/api.js",  cc:"🇺🇸 US", status:"established", risk:"low",      alert:null },
+  { time:28,  agent:"web-prod-01", dir:"in",  sip:"203.0.113.42", sport:41201, dip:"10.4.12.18",     dport:22,    proto:"TCP", proc:"/usr/sbin/sshd",    cc:"🇨🇳 CN", status:"rejected",    risk:"high",     alert:"ALR-7836" },
+  { time:44,  agent:"api-edge-03", dir:"in",  sip:"198.51.100.7", sport:55812, dip:"10.4.8.34",      dport:443,   proto:"TLS", proc:"nginx: worker",     cc:"🇩🇪 DE", status:"established", risk:"low",      alert:null },
+  { time:61,  agent:"jump-vps-01", dir:"out", sip:"10.4.2.11",    sport:50012, dip:"45.155.205.232", dport:8080,  proto:"TCP", proc:"/usr/bin/curl",     cc:"🇳🇱 NL", status:"established", risk:"critical", alert:"ALR-7829" },
+  { time:88,  agent:"web-prod-02", dir:"in",  sip:"104.28.42.18", sport:60014, dip:"10.4.12.19",     dport:443,   proto:"TLS", proc:"nginx: worker",     cc:"🇬🇧 GB", status:"established", risk:"low",      alert:null },
+  { time:102, agent:"auth-svc-01", dir:"out", sip:"10.4.16.4",    sport:47002, dip:"8.8.8.8",        dport:53,    proto:"UDP", proc:"systemd-resolved",  cc:"🇺🇸 US", status:"established", risk:"low",      alert:null },
+  { time:124, agent:"web-prod-01", dir:"out", sip:"10.4.12.18",   sport:51301, dip:"185.220.101.45", dport:4444,  proto:"TCP", proc:"/bin/bash",         cc:"🇷🇺 RU", status:"established", risk:"critical", alert:"ALR-7841" },
+  { time:156, agent:"jump-vps-01", dir:"in",  sip:"121.4.99.12",  sport:39014, dip:"10.4.2.11",      dport:22,    proto:"TCP", proc:"/usr/sbin/sshd",    cc:"🇨🇳 CN", status:"rejected",    risk:"high",     alert:"ALR-7836" },
+  { time:188, agent:"k8s-node-04", dir:"out", sip:"10.4.40.14",   sport:32014, dip:"10.4.20.7",      dport:5432,  proto:"TCP", proc:"containerd-shim",   cc:"—",      status:"established", risk:"low",      alert:null },
+  { time:211, agent:"db-prod-01",  dir:"out", sip:"10.4.20.7",    sport:49801, dip:"175.45.176.12",  dport:443,   proto:"TLS", proc:"/usr/bin/curl",     cc:"🇰🇵 KP", status:"established", risk:"critical", alert:"ALR-7820" },
+  { time:244, agent:"ci-runner-2", dir:"out", sip:"10.4.6.61",    sport:41122, dip:"140.82.114.4",   dport:443,   proto:"TLS", proc:"/usr/bin/curl",     cc:"🇺🇸 US", status:"established", risk:"low",      alert:null },
+  { time:290, agent:"web-prod-01", dir:"in",  sip:"203.0.113.42", sport:41205, dip:"10.4.12.18",     dport:22,    proto:"TCP", proc:"/usr/sbin/sshd",    cc:"🇨🇳 CN", status:"rejected",    risk:"high",     alert:"ALR-7836" },
+  { time:322, agent:"api-edge-03", dir:"out", sip:"10.4.8.34",    sport:51120, dip:"52.96.179.34",   dport:443,   proto:"TLS", proc:"node /app/api.js",  cc:"🇺🇸 US", status:"established", risk:"low",      alert:null },
+  { time:359, agent:"web-prod-02", dir:"out", sip:"10.4.12.19",   sport:50112, dip:"94.142.241.111", dport:6667,  proto:"TCP", proc:"python3 worker.py", cc:"🇳🇱 NL", status:"established", risk:"high",     alert:"ALR-7811" },
+  { time:401, agent:"auth-svc-01", dir:"in",  sip:"10.4.12.18",   sport:47881, dip:"10.4.16.4",      dport:8443,  proto:"TLS", proc:"node /app/api.js",  cc:"—",      status:"established", risk:"low",      alert:null },
+  { time:442, agent:"web-prod-01", dir:"out", sip:"10.4.12.18",   sport:51422, dip:"185.220.101.45", dport:4444,  proto:"TCP", proc:"/bin/bash",         cc:"🇷🇺 RU", status:"established", risk:"critical", alert:"ALR-7841" },
+  { time:488, agent:"db-prod-01",  dir:"in",  sip:"10.4.40.14",   sport:32018, dip:"10.4.20.7",      dport:5432,  proto:"TCP", proc:"postgres: 14/main", cc:"—",      status:"established", risk:"low",      alert:null },
+  { time:521, agent:"jump-vps-01", dir:"out", sip:"10.4.2.11",    sport:50114, dip:"45.155.205.232", dport:8080,  proto:"TCP", proc:"/usr/bin/curl",     cc:"🇳🇱 NL", status:"established", risk:"critical", alert:"ALR-7829" },
+  { time:564, agent:"k8s-node-04", dir:"in",  sip:"10.4.8.34",    sport:51120, dip:"10.4.40.14",     dport:6443,  proto:"TLS", proc:"dockerd",           cc:"—",      status:"established", risk:"low",      alert:null },
+  { time:612, agent:"web-prod-02", dir:"in",  sip:"8.8.42.221",   sport:38122, dip:"10.4.12.19",     dport:80,    proto:"TCP", proc:"nginx: worker",     cc:"🇧🇷 BR", status:"established", risk:"medium",   alert:"ALR-7802" },
+  { time:661, agent:"web-prod-01", dir:"out", sip:"10.4.12.18",   sport:51544, dip:"1.1.1.1",        dport:53,    proto:"UDP", proc:"systemd-resolved",  cc:"🇺🇸 US", status:"established", risk:"low",      alert:null },
+  { time:702, agent:"api-edge-03", dir:"in",  sip:"13.107.42.14", sport:41001, dip:"10.4.8.34",      dport:443,   proto:"TLS", proc:"nginx: worker",     cc:"🇺🇸 US", status:"established", risk:"low",      alert:null },
+  { time:744, agent:"jump-vps-01", dir:"in",  sip:"121.4.99.12",  sport:39028, dip:"10.4.2.11",      dport:22,    proto:"TCP", proc:"/usr/sbin/sshd",    cc:"🇨🇳 CN", status:"rejected",    risk:"high",     alert:"ALR-7836" },
+];
+
+const DEMO_SUSPICIOUS = [
+  { sev:"critical", agent:"web-prod-01", reason:"Shell process made outbound connection",                ip:"→ 185.220.101.45:4444",  proc:"/bin/bash",         time:4,   alert:"ALR-7841" },
+  { sev:"critical", agent:"db-prod-01",  reason:"Connection to unusual country (DPRK)",                 ip:"→ 175.45.176.12:443",    proc:"/usr/bin/curl",     time:211, alert:"ALR-7820" },
+  { sev:"high",     agent:"jump-vps-01", reason:"Recurring outbound connection pattern (60s interval)",  ip:"→ 45.155.205.232:8080",  proc:"/usr/bin/curl",     time:521, alert:"ALR-7829" },
+  { sev:"high",     agent:"web-prod-01", reason:"Repeated SSH attempts from same source IP",            ip:"← 203.0.113.42:41205",   proc:"/usr/sbin/sshd",    time:290, alert:"ALR-7836" },
+  { sev:"high",     agent:"web-prod-02", reason:"New listening port detected",                          ip:"  0.0.0.0:8081",         proc:"python3 worker.py", time:359, alert:"ALR-7811" },
+  { sev:"medium",   agent:"db-prod-01",  reason:"High outbound traffic spike (×4 baseline)",            ip:"→ multiple",             proc:"node /app/api.js",  time:488, alert:null },
+  { sev:"medium",   agent:"web-prod-02", reason:"Connection to unusual country (BR)",                   ip:"← 8.8.42.221:38122",     proc:"nginx: worker",     time:612, alert:"ALR-7802" },
+  { sev:"low",      agent:"api-edge-03", reason:"TLS cert pinning anomaly",                             ip:"→ 52.96.179.34:443",     proc:"node /app/api.js",  time:322, alert:null },
+];
+
+const DEMO_PORTS = [
+  { agent:"web-prod-01", local:"0.0.0.0",   port:22,    proto:"TCP", proc:"/usr/sbin/sshd",     service:"ssh",      exposure:"public",   risk:"high" },
+  { agent:"web-prod-01", local:"0.0.0.0",   port:80,    proto:"TCP", proc:"nginx: worker",      service:"http",     exposure:"public",   risk:"medium" },
+  { agent:"web-prod-01", local:"0.0.0.0",   port:443,   proto:"TCP", proc:"nginx: worker",      service:"https",    exposure:"public",   risk:"low" },
+  { agent:"web-prod-01", local:"127.0.0.1", port:9090,  proto:"TCP", proc:"node /app/api.js",   service:"metrics",  exposure:"loopback", risk:"low" },
+  { agent:"db-prod-01",  local:"10.4.20.7", port:5432,  proto:"TCP", proc:"postgres: 14/main",  service:"postgres", exposure:"internal", risk:"medium" },
+  { agent:"db-prod-01",  local:"0.0.0.0",   port:6379,  proto:"TCP", proc:"redis-server",       service:"redis",    exposure:"public",   risk:"critical" },
+  { agent:"jump-vps-01", local:"0.0.0.0",   port:22,    proto:"TCP", proc:"/usr/sbin/sshd",     service:"ssh",      exposure:"public",   risk:"high" },
+  { agent:"jump-vps-01", local:"0.0.0.0",   port:2222,  proto:"TCP", proc:"/usr/sbin/sshd",     service:"ssh-alt",  exposure:"public",   risk:"high" },
+  { agent:"api-edge-03", local:"0.0.0.0",   port:443,   proto:"TCP", proc:"nginx: worker",      service:"https",    exposure:"public",   risk:"low" },
+  { agent:"k8s-node-04", local:"0.0.0.0",   port:6443,  proto:"TCP", proc:"dockerd",            service:"k8s-api",  exposure:"internal", risk:"medium" },
+  { agent:"k8s-node-04", local:"0.0.0.0",   port:10250, proto:"TCP", proc:"containerd-shim",    service:"kubelet",  exposure:"internal", risk:"medium" },
+  { agent:"auth-svc-01", local:"10.4.16.4", port:8443,  proto:"TCP", proc:"node /app/api.js",   service:"auth-api", exposure:"internal", risk:"low" },
+  { agent:"web-prod-02", local:"0.0.0.0",   port:8081,  proto:"TCP", proc:"python3 worker.py",  service:"—",        exposure:"public",   risk:"high",  isNew:true },
+];
+
+// ── State ──
+let selectedConnIdx = null;
+let selectedAgent = null;
+let tailLiveActive = false;
+let tailLiveTimer = null;
+let currentPortFilter = 'all';
+
+// ── Helpers ──
+function fmtClock(secsAgo) {
+  const d = new Date(Date.now() - secsAgo * 1000);
+  const p = n => String(n).padStart(2,'0');
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+function fmtTime(s) {
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  return `${Math.floor(s/3600)}h ago`;
+}
+function riskPill(level) {
+  return `<span class="risk-pill risk-${level}"><span class="dot"></span>${level}</span>`;
+}
+function statusDot(status) {
+  const map = {
+    established: {c:'#4ade80',t:'established'},
+    rejected:    {c:'#ce2e46',t:'rejected'},
+    online:      {c:'#4ade80',t:'online'},
+    offline:     {c:'#6b6670',t:'offline'},
+    degraded:    {c:'#f59b00',t:'degraded'},
+  };
+  const m = map[status] || {c:'#8b8590',t:status};
+  return `<span style="display:inline-flex;align-items:center;gap:6px;color:#bdb6c2;font-size:12px;"><span style="width:6px;height:6px;border-radius:999px;background:${m.c};box-shadow:0 0 6px ${m.c};flex-shrink:0;"></span>${m.t}</span>`;
+}
+
+// ── Toast ──
+function showToast(title, body, color) {
+  const t = document.getElementById('ni-toast');
+  document.getElementById('ni-toast-title').textContent = title;
+  document.getElementById('ni-toast-body').textContent = body;
+  t.style.borderLeftColor = color || '#F05484';
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ── SOAR bar update ──
+function updateSOARBar(conn) {
+  const el = document.getElementById('soar-target');
+  if (!conn) {
+    el.innerHTML = `<span style="font-size:12px;color:#6b6670;">Select a connection or suspicious event to scope an action.</span>`;
+    return;
+  }
+  el.innerHTML = `
+    <span style="color:#8b8590;">Target:</span>
+    <span class="ni-mono" style="margin:0 4px;">${conn.agent}</span>
+    <span style="color:#56505c;">→</span>
+    <span class="ni-mono danger" style="margin:0 4px;">${conn.dip}:${conn.dport}</span>
+    ${riskPill(conn.risk)}
+  `;
+}
+
+// ── SOAR actions (UI hooks — wired to approval workflow via TODO endpoints) ──
+function niAction(kind) {
+  const conn = selectedConnIdx !== null ? DEMO_CONNECTIONS[selectedConnIdx] : null;
+  const target = conn ? `${conn.dip}:${conn.dport}` : 'No connection scoped';
+  // TODO: POST to /api/alerts/{alert_id}/soar/run when a network alert_id is available for this connection
+  const map = {
+    block:   { title:'IP block requested',      color:'#ce2e46', body:`${target} · pending analyst approval` },
+    contain: { title:'Containment requested',   color:'#f59b00', body:`Agent isolation request · pending approval` },
+    note:    { title:'Case note created',       color:'#5fa8ff', body:`Attached to current investigation context` },
+    invest:  { title:'Marked as investigating', color:'#F05484', body:`Status updated · assigned to analyst` },
+  };
+  const m = map[kind] || { title:'Action logged', color:'#8b8590', body:target };
+  showToast(m.title, m.body, m.color);
+}
+
+// ── Connections table ──
+function buildConnsAgentFilter() {
+  const agents = ['all', ...new Set(DEMO_CONNECTIONS.map(c => c.agent))];
+  const sel = document.getElementById('conn-agent');
+  sel.innerHTML = agents.map(a => `<option value="${a}">${a}</option>`).join('');
+}
+
+function filterConns() {
+  const q     = document.getElementById('conn-q').value.toLowerCase();
+  const agent = document.getElementById('conn-agent').value;
+  const dir   = document.getElementById('conn-dir').value;
+  const proto = document.getElementById('conn-proto').value;
+  const risk  = document.getElementById('conn-risk').value;
+
+  const rows = DEMO_CONNECTIONS.filter(c => {
+    if (agent !== 'all' && c.agent !== agent) return false;
+    if (dir   !== 'all' && c.dir   !== dir)   return false;
+    if (proto !== 'all' && c.proto !== proto)  return false;
+    if (risk  !== 'all' && c.risk  !== risk)   return false;
+    if (q && !`${c.agent} ${c.sip} ${c.dip} ${c.proc}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  renderConnRows(rows);
+}
+
+function renderConnRows(rows) {
+  const tbody = document.getElementById('conn-tbody');
+  document.getElementById('conn-count').textContent = `${rows.length} rows · demo`;
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:32px;color:#6b6670;">No connections match the current filters.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map((r, i) => {
+    const isCrit = r.risk === 'critical';
+    const isSelected = selectedConnIdx === DEMO_CONNECTIONS.indexOf(r);
+    const rowClass = [
+      isSelected ? 'selected' : '',
+      isCrit && !isSelected ? 'row-critical' : '',
+    ].filter(Boolean).join(' ');
+
+    // Alert chip — demo IDs not linked (no real alert mapping for demo IDs)
+    const alertCell = r.alert
+      ? `<span class="alert-chip" title="Demo alert ID — not linked to real alert">
+           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+           ${r.alert}
+         </span>`
+      : `<span style="color:#56505c;font-size:12px;">—</span>`;
+
+    const dirHtml = r.dir === 'in'
+      ? `<span class="dir-in">↘ IN</span>`
+      : `<span class="dir-out">↗ OUT</span>`;
+
+    const dipColor = isCrit ? 'danger' : '';
+
+    return `<tr class="${rowClass}" onclick="selectConn(${DEMO_CONNECTIONS.indexOf(r)})">
+      <td><span class="ni-mono dim">${fmtClock(r.time)}</span></td>
+      <td><span class="ni-mono">${r.agent}</span></td>
+      <td>${dirHtml}</td>
+      <td><span class="ni-mono">${r.sip}</span></td>
+      <td><span class="ni-mono dim">${r.sport}</span></td>
+      <td><span class="ni-mono ${dipColor}">${r.dip}</span></td>
+      <td><span class="ni-mono dim">${r.dport}</span></td>
+      <td><span class="ni-mono dim">${r.proto}</span></td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;"><span class="ni-mono">${r.proc}</span></td>
+      <td><span style="font-size:12px;">${r.cc}</span></td>
+      <td>${statusDot(r.status)}</td>
+      <td>${riskPill(r.risk)}</td>
+      <td>${alertCell}</td>
+    </tr>`;
+  }).join('');
+}
+
+function selectConn(idx) {
+  selectedConnIdx = selectedConnIdx === idx ? null : idx;
+  filterConns();
+  updateSOARBar(selectedConnIdx !== null ? DEMO_CONNECTIONS[selectedConnIdx] : null);
+}
+
+function resetConnFilters() {
+  document.getElementById('conn-q').value = '';
+  document.getElementById('conn-agent').value = 'all';
+  document.getElementById('conn-dir').value = 'all';
+  document.getElementById('conn-proto').value = 'all';
+  document.getElementById('conn-risk').value = 'all';
+  selectedConnIdx = null;
+  filterConns();
+  updateSOARBar(null);
+}
+
+// ── Agent selection → filter connections ──
+function selectAgent(name) {
+  selectedAgent = selectedAgent === name ? null : name;
+  document.querySelectorAll('.agent-row').forEach(tr => {
+    tr.classList.toggle('selected', tr.dataset.agent === selectedAgent);
+  });
+  const sel = document.getElementById('conn-agent');
+  sel.value = selectedAgent || 'all';
+  filterConns();
+  if (selectedAgent) {
+    document.getElementById('conns-section').scrollIntoView({ behavior:'smooth', block:'start' });
+    showToast('Agent scoped', `Connections filtered to ${selectedAgent}`, '#5fa8ff');
+  }
+}
+
+// ── Suspicious feed ──
+function renderSuspicious() {
+  const RISK_FG = { critical:'#ff6680', high:'#ffb86b', medium:'#ffd166', low:'#9bd3a3' };
+  const RISK_BD = { critical:'rgba(206,46,70,0.45)', high:'rgba(245,155,0,0.45)', medium:'rgba(245,209,102,0.35)', low:'rgba(74,222,128,0.30)' };
+  const feed = document.getElementById('suspicious-feed');
+  feed.innerHTML = DEMO_SUSPICIOUS.map((s, i) => `
+    <div style="padding:12px 16px;border-bottom:1px solid #221f25;border-left:2px solid ${RISK_FG[s.sev]};display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+          ${riskPill(s.sev)}
+          <span class="ni-mono">${s.agent}</span>
+          <span style="color:#56505c;">·</span>
+          <span style="font-size:11px;color:#6b6670;font-family:var(--mono);">${fmtTime(s.time)}</span>
+        </div>
+        ${s.alert ? `<span class="alert-chip" title="Demo alert ID">${s.alert}</span>` : ''}
+      </div>
+      <div style="font-size:13px;color:#ededed;line-height:1.4;">${s.reason}</div>
+      <div style="display:flex;align-items:center;gap:10px;font-size:11px;color:#8b8590;">
+        <span class="ni-mono dim">${s.ip}</span>
+        <span style="color:#3a3640;">│</span>
+        <span class="ni-mono dim">${s.proc}</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:2px;">
+        <button onclick="investigateSuspicious(${i})" class="ni-btn ni-btn-solid ni-btn-sm">Investigate →</button>
+        <a href="/logs?agent=${encodeURIComponent(s.agent)}&source_ip=${encodeURIComponent(s.ip)}" class="ni-btn ni-btn-ghost ni-btn-sm" style="text-decoration:none;">
+          <!-- TODO: /logs page query-param filtering for source_ip/process not yet supported — links to logs with agent param only -->
+          Pivot to Logs
+        </a>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('sus-count').textContent = `${DEMO_SUSPICIOUS.length} events · demo`;
+  document.getElementById('mc-sus-val').textContent = DEMO_SUSPICIOUS.length;
+  document.getElementById('mc-sus-sub').textContent = `${DEMO_SUSPICIOUS.filter(s=>s.sev==='critical').length} critical · ${DEMO_SUSPICIOUS.filter(s=>s.sev==='high').length} high`;
+}
+
+function investigateSuspicious(i) {
+  const s = DEMO_SUSPICIOUS[i];
+  document.getElementById('conn-agent').value = s.agent;
+  filterConns();
+  document.getElementById('conns-section').scrollIntoView({ behavior:'smooth', block:'start' });
+  showToast('Investigating', `Filtered to ${s.agent}${s.alert ? ' · ' + s.alert : ''}`, '#F05484');
+}
+
+// ── Ports table ──
+function renderPorts(exposure) {
+  currentPortFilter = exposure;
+  document.getElementById('ports-all-btn').className = 'ni-btn ni-btn-sm ' + (exposure==='all' ? 'ni-btn-solid' : 'ni-btn-ghost');
+  document.getElementById('ports-pub-btn').className = 'ni-btn ni-btn-sm ' + (exposure==='public' ? 'ni-btn-solid' : 'ni-btn-ghost');
+
+  const rows = exposure === 'all' ? DEMO_PORTS : DEMO_PORTS.filter(p => p.exposure === 'public');
+  document.getElementById('ports-count').textContent = `demo · ${rows.length} listeners`;
+
+  const EXP_CLASS = { public:'exp-public', internal:'exp-internal', loopback:'exp-loopback' };
+  document.getElementById('ports-tbody').innerHTML = rows.map(p => {
+    const portColor = p.risk === 'critical' || p.risk === 'high' ? 'danger' : '';
+    return `<tr>
+      <td><span class="ni-mono">${p.agent}</span></td>
+      <td><span class="ni-mono dim">${p.local}</span></td>
+      <td>
+        <span class="ni-mono ${portColor}">${p.port}</span>
+        ${p.isNew ? '<span class="new-badge">NEW</span>' : ''}
+      </td>
+      <td><span class="ni-mono dim">${p.proto}</span></td>
+      <td><span class="ni-mono">${p.proc}</span></td>
+      <td><span class="ni-mono dim">${p.service}</span></td>
+      <td><span class="${EXP_CLASS[p.exposure] || 'exp-internal'}">${p.exposure}</span></td>
+      <td>${riskPill(p.risk)}</td>
+    </tr>`;
+  }).join('');
+}
+function filterPorts(e) { renderPorts(e); }
+
+// ── Traffic chart (demo data) ──
+function renderTrafficChart() {
+  const data = Array.from({length:60},(_,i)=>{
+    const t=i/59;
+    const base=1200+Math.sin(t*Math.PI*2.4)*220+Math.sin(t*9)*80;
+    const out=480+Math.sin(t*Math.PI*1.8+1)*140+Math.sin(t*11)*60;
+    const spike=i>=45&&i<=50?(1-Math.abs(i-47)/4)*1400:0;
+    return {
+      inbound: Math.max(200,base+(Math.random()-0.5)*60),
+      outbound: Math.max(120,out+spike+(Math.random()-0.5)*40),
+      actions: Math.round(Math.random()*3+(i>40?Math.random()*4:0)),
+    };
+  }).reverse();
+
+  const svg = document.getElementById('traffic-chart');
+  const W=720,H=220,PL=40,PR=12,PT=16,PB=22;
+  const max = Math.max(...data.map(d=>d.inbound),...data.map(d=>d.outbound))*1.1;
+  const blkMax = Math.max(...data.map(d=>d.actions))*1.2 || 1;
+
+  const xFor=i=>PL+(i/(data.length-1))*(W-PL-PR);
+  const yFor=v=>PT+(1-v/max)*(H-PT-PB);
+
+  const linePath=key=>data.map((d,i)=>`${i===0?'M':'L'}${xFor(i).toFixed(1)},${yFor(d[key]).toFixed(1)}`).join(' ');
+  const areaPath=key=>`${linePath(key)} L${xFor(data.length-1).toFixed(1)},${(H-PB).toFixed(1)} L${xFor(0).toFixed(1)},${(H-PB).toFixed(1)} Z`;
+
+  // Grid lines
+  const grid = [0,0.25,0.5,0.75,1].map(p=>`
+    <line x1="${PL}" x2="${W-PR}" y1="${(PT+p*(H-PT-PB)).toFixed(1)}" y2="${(PT+p*(H-PT-PB)).toFixed(1)}" stroke="#262329" stroke-dasharray="2 4" stroke-width="1"/>
+    <text x="${PL-6}" y="${(PT+p*(H-PT-PB)+3).toFixed(1)}" font-size="9" fill="#56505c" text-anchor="end" font-family="monospace">${Math.round(max*(1-p))}</text>
+  `).join('');
+
+  // X labels
+  const xlabels=[0,15,30,45,59].map(i=>`
+    <text x="${xFor(i).toFixed(1)}" y="${H-6}" font-size="9" fill="#56505c" text-anchor="middle" font-family="monospace">-${60-i}m</text>
+  `).join('');
+
+  // Spike highlight
+  const spikeX1=xFor(45).toFixed(1),spikeX2=xFor(50).toFixed(1),spikeXm=xFor(47).toFixed(1);
+
+  // Blocked bars
+  const bars=data.map((d,i)=>{
+    const bh=(d.actions/blkMax)*28;
+    return `<rect x="${(xFor(i)-1).toFixed(1)}" y="${(H-PB-bh).toFixed(1)}" width="2" height="${bh.toFixed(1)}" fill="#ce2e46" opacity="0.55"/>`;
+  }).join('');
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="gIn" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#5fa8ff" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="#5fa8ff" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="gOut" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#f59b00" stop-opacity="0.18"/>
+        <stop offset="100%" stop-color="#f59b00" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    ${grid}
+    ${xlabels}
+    <rect x="${spikeX1}" y="${PT}" width="${(xFor(50)-xFor(45)).toFixed(1)}" height="${(H-PT-PB).toFixed(1)}" fill="rgba(206,46,70,0.06)"/>
+    <line x1="${spikeXm}" x2="${spikeXm}" y1="${PT}" y2="${H-PB}" stroke="rgba(206,46,70,0.4)" stroke-dasharray="3 3" stroke-width="1"/>
+    <text x="${spikeXm}" y="${PT+10}" font-size="9" fill="#ce2e46" text-anchor="middle" font-family="monospace">EGRESS SPIKE</text>
+    <path d="${areaPath('inbound')}" fill="url(#gIn)"/>
+    <path d="${areaPath('outbound')}" fill="url(#gOut)"/>
+    <path d="${linePath('inbound')}" fill="none" stroke="#5fa8ff" stroke-width="1.5"/>
+    <path d="${linePath('outbound')}" fill="none" stroke="#f59b00" stroke-width="1.5"/>
+    ${bars}
+  `;
+}
+
+// ── Active topology (demo static layout) ──
+function renderTopology() {
+  const RISK_FG = {critical:'#ff6680',high:'#ffb86b',medium:'#ffd166',low:'#9bd3a3'};
+  const zones=[
+    {id:'dmz',label:'DMZ', x:130, members:[{n:'web-prod-01',r:'critical'},{n:'web-prod-02',r:'medium'},{n:'api-edge-03',r:'low'},{n:'jump-vps-01',r:'high'}]},
+    {id:'app',label:'APP', x:240, members:[{n:'auth-svc-01',r:'medium'},{n:'k8s-node-04',r:'low'},{n:'ci-runner-2',r:'low'}]},
+    {id:'db', label:'DATA',x:350, members:[{n:'db-prod-01', r:'critical'}]},
+  ];
+  const agentPos={};
+  zones.forEach(z=>{z.members.forEach((m,i)=>{agentPos[m.n]={x:z.x,y:70+i*38,risk:m.r};});});
+
+  const links=[
+    {from:'ext',to:'web-prod-01',risk:'critical'},{from:'ext',to:'jump-vps-01',risk:'high'},
+    {from:'ext',to:'api-edge-03',risk:'low'},
+    {from:'web-prod-01',to:'auth-svc-01',risk:'low'},{from:'auth-svc-01',to:'db-prod-01',risk:'medium'},
+    {from:'k8s-node-04',to:'db-prod-01',risk:'low'},{from:'api-edge-03',to:'k8s-node-04',risk:'low'},
+    {from:'db-prod-01',to:'ext',risk:'critical'},
+  ];
+  const ext={x:30,y:130};
+  const getPos=id=>id==='ext'?ext:agentPos[id];
+
+  const linkSvg=links.map((l,i)=>{
+    const a=getPos(l.from),b=getPos(l.to);
+    if(!a||!b)return'';
+    const c=RISK_FG[l.risk];
+    const mx=(a.x+b.x)/2;
+    const w=l.risk==='critical'?1.6:1.1;
+    return `<path d="M${a.x} ${a.y} C ${mx} ${a.y}, ${mx} ${b.y}, ${b.x} ${b.y}" stroke="${c}" stroke-width="${w}" fill="none" opacity="0.75"/>`;
+  }).join('');
+
+  const zoneSvg=zones.map(z=>{
+    const h=Math.max(60,z.members.length*38+10);
+    return `<rect x="${z.x-36}" y="45" width="72" height="${h}" rx="6" fill="#1c1a1f" stroke="#2a262f" stroke-dasharray="3 3"/>
+    <text x="${z.x}" y="37" font-size="9" fill="#8b8590" text-anchor="middle" font-family="monospace" letter-spacing="2">${z.label}</text>`;
+  }).join('');
+
+  const agentSvg=Object.entries(agentPos).map(([name,pos])=>{
+    const c=RISK_FG[pos.risk];
+    const isSel=selectedAgent===name;
+    const pulse=pos.risk==='critical'?`<circle cx="${pos.x}" cy="${pos.y}" r="14" fill="none" stroke="${c}" stroke-width="1" opacity="0.4"><animate attributeName="r" values="14;22;14" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.5;0;0.5" dur="2s" repeatCount="indefinite"/></circle>`:'';
+    return `<g style="cursor:pointer" onclick="selectAgent('${name}')">
+      ${pulse}
+      <circle cx="${pos.x}" cy="${pos.y}" r="14" fill="#1c1a1f" stroke="${isSel?'#F05484':'#3a3640'}" stroke-width="${isSel?2:1}"/>
+      <circle cx="${pos.x}" cy="${pos.y}" r="4" fill="${c}"/>
+      <text x="${pos.x+22}" y="${pos.y+3}" font-size="10" fill="#ededed" font-family="monospace">${name}</text>
+    </g>`;
+  }).join('');
+
+  document.getElementById('topology-svg').innerHTML = `
+    <rect x="${ext.x-32}" y="${ext.y-18}" width="64" height="36" rx="6" fill="#1c1a1f" stroke="#3a3640"/>
+    <text x="${ext.x}" y="${ext.y-2}" font-size="9" fill="#8b8590" text-anchor="middle" font-family="monospace" letter-spacing="2">EXTERNAL</text>
+    <text x="${ext.x}" y="${ext.y+11}" font-size="11" fill="#ededed" text-anchor="middle">🌐</text>
+    ${zoneSvg}
+    ${linkSvg}
+    ${agentSvg}
+  `;
+}
+
+// ── Time range buttons ──
+function setTimeRange(r) {
+  document.querySelectorAll('.time-range-btn').forEach(b=>{
+    const active=b.dataset.range===r;
+    b.style.background=active?'#2f2a36':'transparent';
+    b.style.border=`1px solid ${active?'#3a3640':'transparent'}`;
+    b.style.color=active?'#ededed':'#8b8590';
+  });
+  // TODO: re-fetch real data for selected time range when backend telemetry is available
+  showToast('Time range',`Showing ${r} — demo data only`,`#8b8590`);
+}
+
+// ── Tail live toggle ──
+function toggleTailLive() {
+  tailLiveActive=!tailLiveActive;
+  const btn=document.getElementById('tail-btn');
+  if(tailLiveActive){
+    btn.style.background='rgba(240,84,132,0.12)';
+    btn.style.borderColor='rgba(240,84,132,0.5)';
+    btn.style.color='#F05484';
+    showToast('Tail Live','Demo mode — no real stream available','#F05484');
+    // TODO: connect to WebSocket or SSE endpoint when live streaming backend is implemented
+  } else {
+    btn.style.background='';btn.style.borderColor='';btn.style.color='';
+  }
+}
+
+// ── Export CSV ──
+function exportCSV() {
+  const q=document.getElementById('conn-q').value.toLowerCase();
+  const agent=document.getElementById('conn-agent').value;
+  const dir=document.getElementById('conn-dir').value;
+  const proto=document.getElementById('conn-proto').value;
+  const risk=document.getElementById('conn-risk').value;
+  const rows=DEMO_CONNECTIONS.filter(c=>{
+    if(agent!=='all'&&c.agent!==agent)return false;
+    if(dir!=='all'&&c.dir!==dir)return false;
+    if(proto!=='all'&&c.proto!==proto)return false;
+    if(risk!=='all'&&c.risk!==risk)return false;
+    if(q&&!`${c.agent} ${c.sip} ${c.dip} ${c.proc}`.toLowerCase().includes(q))return false;
+    return true;
+  });
+  const header='Time,Agent,Dir,Source IP,Sport,Dest IP,Dport,Proto,Process,Country,Status,Risk,Alert\n';
+  const csv=rows.map(r=>`${fmtClock(r.time)},${r.agent},${r.dir},${r.sip},${r.sport},${r.dip},${r.dport},${r.proto},"${r.proc}",${r.cc},${r.status},${r.risk},${r.alert||''}`).join('\n');
+  const blob=new Blob([header+csv],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='network_connections.csv';
+  a.click();
+}
+
+function refreshPage() {
+  renderTrafficChart();
+  showToast('Refreshed','Chart data regenerated · demo mode','#5fa8ff');
+}
+
+// ── Init ──
+(function init(){
+  buildConnsAgentFilter();
+  filterConns();
+  renderSuspicious();
+  renderPorts('all');
+  renderTrafficChart();
+  renderTopology();
+  setTimeRange('1h');
+})();
+</script>
+{% endblock %}
