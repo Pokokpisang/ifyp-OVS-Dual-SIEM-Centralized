@@ -16,3 +16,6 @@ api/.env.*
 # Python virtual environments
 .venv/
 api/.venv/
+
+# Local FYP academic documentation (not part of the codebase)
+docs/
