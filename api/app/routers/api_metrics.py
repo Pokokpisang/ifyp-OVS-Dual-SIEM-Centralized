@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from .. import models, db
+from ..auth.csrf import verify_json_csrf
 from ..auth.dependencies import require_api_auth
 from typing import List, Literal, Optional
 from datetime import datetime, timedelta
@@ -28,15 +29,15 @@ def extract_ip_from_text(text: str) -> Optional[str]:
 
 @router.post("/metrics")
 def ingest_metric(
-    metric: models.MetricCreate, 
+    metric: models.MetricCreate,
     db: Session = Depends(db.get_db),
-    x_agent_key: Optional[str] = Header(None, alias="X-Agent-Key")
+    x_agent_key: str = Header(..., alias="X-Agent-Key"),
 ):
-    # 0. Update Last Seen if key provided
-    agent_meta = None
-    if x_agent_key:
-        update_last_seen(agent_key=x_agent_key, db=db)
-        agent_meta = get_agent_metadata_by_key(agent_key=x_agent_key, db=db)
+    # ST-023: X-Agent-Key is required. Validate it against registered agents.
+    agent_meta = get_agent_metadata_by_key(agent_key=x_agent_key, db=db)
+    if not agent_meta:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Agent-Key.")
+    update_last_seen(agent_key=x_agent_key, db=db)
 
     db_metric = models.Metric(
         timestamp=metric.timestamp,
@@ -230,7 +231,7 @@ def get_threat_alerts(limit: int = 30, db: Session = Depends(db.get_db)):
         for a in mitre_alerts
     ]
 
-@router.put("/alerts/{alert_id}/read", dependencies=[Depends(require_api_auth)])
+@router.put("/alerts/{alert_id}/read", dependencies=[Depends(require_api_auth), Depends(verify_json_csrf)])
 def mark_alert_read(alert_id: int, db: Session = Depends(db.get_db)):
     alert = db.query(models.Alert).filter(models.Alert.id == alert_id).first()
     if alert:
@@ -238,7 +239,7 @@ def mark_alert_read(alert_id: int, db: Session = Depends(db.get_db)):
         db.commit()
     return {"status": "ok"}
 
-@router.post("/alerts/mark-all-read", dependencies=[Depends(require_api_auth)])
+@router.post("/alerts/mark-all-read", dependencies=[Depends(require_api_auth), Depends(verify_json_csrf)])
 def mark_all_read(db: Session = Depends(db.get_db)):
     db.query(models.Alert).filter(models.Alert.is_read == False).update({models.Alert.is_read: True})
     db.commit()
@@ -483,7 +484,7 @@ class AssessmentIn(_BaseModel):
     status: str
     analyst_notes: str = ""
 
-@router.put("/alerts/{alert_id}/assessment", dependencies=[Depends(require_api_auth)])
+@router.put("/alerts/{alert_id}/assessment", dependencies=[Depends(require_api_auth), Depends(verify_json_csrf)])
 def save_assessment(alert_id: int, payload: AssessmentIn, db: Session = Depends(db.get_db)):
     # Validate alert exists
     alert = db.query(models.Alert).filter(models.Alert.id == alert_id).first()

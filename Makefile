@@ -1,4 +1,4 @@
-.PHONY: up down restart logs build-agent test-t1059
+.PHONY: up down restart logs build-agent test-t1059 fix-perms
 
 up: build-agent
 	@echo "🧪 Cleaning up potential container conflicts..."
@@ -43,6 +43,13 @@ restart: down up
 
 logs:
 	./docker-compose-v2 logs -f
+
+fix-perms:
+	@echo "Fixing volume directory permissions for Docker non-root user (UID 1001)..."
+	@[ -d ./api/downloads ] && sudo chown -R 1001:1001 ./api/downloads || true
+	@[ -d ./api/logs ]      && sudo chown -R 1001:1001 ./api/logs      || true
+	@[ -d ./api/uploads ]   && sudo chown -R 1001:1001 ./api/uploads   || true
+	@echo "Done. Run 'make restart' to apply."
 
 # Send a test T1059 suspicious command event through the pipeline
 test-t1059:

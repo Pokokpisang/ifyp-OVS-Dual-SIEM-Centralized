@@ -7,6 +7,8 @@ from .. import models, db
 import math
 import os
 from datetime import datetime, timedelta
+from ..auth.csrf import verify_form_csrf
+from ..auth.dependencies import require_admin_auth
 from ..services.agent_service import (
     create_agent, list_agents, compute_agent_status,
     get_agent_by_id, delete_agent_by_id, purge_agent_by_id,
@@ -549,7 +551,10 @@ def get_agent_detail(
     })
 
 
-@router.post("/agents/{agent_id}/delete")
+@router.post(
+    "/agents/{agent_id}/delete",
+    dependencies=[Depends(require_admin_auth), Depends(verify_form_csrf)],
+)
 def delete_agent(
     agent_id: str,
     reason: str = Form(""),
@@ -561,7 +566,10 @@ def delete_agent(
     return RedirectResponse(url="/agents", status_code=303)
 
 
-@router.post("/agents/{agent_id}/purge")
+@router.post(
+    "/agents/{agent_id}/purge",
+    dependencies=[Depends(require_admin_auth), Depends(verify_form_csrf)],
+)
 def purge_agent(
     agent_id: str,
     database: Session = Depends(db.get_db),

@@ -10,8 +10,10 @@ from typing import List
 from . import models, db
 from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings, ai_triage
 from .routers import auth as auth_router_module
-from .auth.dependencies import require_html_auth, require_api_auth
+from .auth.dependencies import require_html_auth, require_api_auth, require_admin_auth, require_admin_html
 from .auth.exceptions import LoginRequiredException
+from .auth.session_middleware import ServerSessionMiddleware
+from .middleware.security_headers import SecurityHeadersMiddleware
 import pathlib
 from .auth.startup import validate_session_secret as _validate_session_secret
 from .routers.auth import limiter as _login_limiter
@@ -20,7 +22,7 @@ from slowapi.errors import RateLimitExceeded
 
 
 def run_startup_migrations():
-    """Add lifecycle columns to agent_records if they don't exist yet. PostgreSQL only."""
+    """Add columns/tables incrementally. PostgreSQL only."""
     db_url = str(db.engine.url)
     if not (db_url.startswith("postgresql") or db_url.startswith("postgres")):
         return
@@ -29,7 +31,6 @@ def run_startup_migrations():
         "ALTER TABLE agent_records ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP",
         "ALTER TABLE agent_records ADD COLUMN IF NOT EXISTS deleted_reason VARCHAR",
         "ALTER TABLE agent_records ADD COLUMN IF NOT EXISTS lifecycle_status VARCHAR DEFAULT 'pending_registration'",
-        # Backfill: existing active agents should be active_inventory, not pending_registration
         "UPDATE agent_records SET lifecycle_status = 'active_inventory' WHERE status = 'active' AND lifecycle_status = 'pending_registration'",
         "ALTER TABLE alerts ADD COLUMN IF NOT EXISTS dedup_key VARCHAR",
         "CREATE INDEX IF NOT EXISTS ix_alerts_dedup_key ON alerts (dedup_key)",
@@ -62,6 +63,19 @@ def run_startup_migrations():
         ),
         "CREATE INDEX IF NOT EXISTS ix_ai_alert_triages_alert_id ON ai_alert_triages (alert_id)",
         "CREATE INDEX IF NOT EXISTS ix_ai_alert_triages_created_at ON ai_alert_triages (created_at)",
+        # v2.8.0 Server-side session store (ST-010, ST-012, ST-041)
+        (
+            "CREATE TABLE IF NOT EXISTS server_sessions ("
+            "  id SERIAL PRIMARY KEY,"
+            "  token_hash VARCHAR UNIQUE NOT NULL,"
+            "  username VARCHAR NOT NULL,"
+            "  role VARCHAR NOT NULL DEFAULT 'admin',"
+            "  created_at TIMESTAMP DEFAULT NOW(),"
+            "  expires_at TIMESTAMP NOT NULL"
+            ")"
+        ),
+        "CREATE INDEX IF NOT EXISTS ix_server_sessions_token_hash ON server_sessions (token_hash)",
+        "CREATE INDEX IF NOT EXISTS ix_server_sessions_expires_at ON server_sessions (expires_at)",
     ]
     with db.engine.connect() as conn:
         for sql in migrations:
@@ -71,27 +85,42 @@ def run_startup_migrations():
 
 run_startup_migrations()
 
-# Create tables
+# Create tables (handles new models added after initial deployment)
 models.Base.metadata.create_all(bind=db.engine)
 
 import asyncio
-# from .services.opensearch_poller import poll_opensearch_loop
 
 # RF-1: Validate session secret at startup — fail fast if absent or insecure.
 _SESSION_SECRET = os.getenv("SESSION_SECRET_KEY", "")
 _validate_session_secret(_SESSION_SECRET)
 _https_only = os.getenv("SESSION_COOKIE_SECURE", "true").lower() == "true"
+_SESSION_MAX_AGE = int(os.getenv("SESSION_MAX_AGE_SECONDS", "28800"))  # ST-041: 8h default
 
-app = FastAPI(title="SIEM Ingestion API")
+# ST-022: Disable API docs in non-development environments.
+_API_DOCS_ENABLED = os.getenv("API_DOCS_ENABLED", "false").lower() == "true"
+
+app = FastAPI(
+    title="SIEM Ingestion API",
+    docs_url="/docs" if _API_DOCS_ENABLED else None,
+    redoc_url="/redoc" if _API_DOCS_ENABLED else None,
+    openapi_url="/openapi.json" if _API_DOCS_ENABLED else None,
+)
 app.state.limiter = _login_limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# Middleware registration order (Starlette: last-added = outermost = runs first on request):
+#   1. SessionMiddleware (outermost) — populates request.session from signed cookie
+#   2. ServerSessionMiddleware — validates session_token against DB, sets request.state.user
+#   3. SecurityHeadersMiddleware (innermost) — adds security headers to every response
+app.add_middleware(SecurityHeadersMiddleware)    # innermost — runs last on request
+app.add_middleware(ServerSessionMiddleware)      # middle — validates server-side session
 app.add_middleware(
     SessionMiddleware,
     secret_key=_SESSION_SECRET,
     session_cookie="session",
     same_site="lax",
     https_only=_https_only,
+    max_age=_SESSION_MAX_AGE,                   # ST-041: configurable lifetime (default 8h)
 )
 
 
@@ -114,23 +143,26 @@ app.include_router(agents.router)        # agent registration, heartbeat, instal
 
 # Protected HTML dashboard routes — unauthenticated browser → 302 /login
 app.include_router(dashboard.router, dependencies=[Depends(require_html_auth)])
-app.include_router(rules.router, dependencies=[Depends(require_html_auth)])
+# ST-012: Rules page restricted to admin role only
+app.include_router(rules.router, dependencies=[Depends(require_admin_html)])
 
 # Protected JSON API routes — unauthenticated request → 401
-# api_metrics includes POST /api/metrics (agent ingestion, must stay open) so auth is per-route there
+# api_metrics: POST /api/metrics is agent-key protected (per-route), other endpoints need session
 app.include_router(api_metrics.router)
 app.include_router(soar.router, dependencies=[Depends(require_api_auth)])
 app.include_router(ai_triage.router, dependencies=[Depends(require_api_auth)])
-app.include_router(settings.router, dependencies=[Depends(require_api_auth)])
-app.include_router(system_health_rules.router, dependencies=[Depends(require_api_auth)])
+# ST-012: Settings and system health rules restricted to admin role
+app.include_router(settings.router, dependencies=[Depends(require_admin_auth)])
+app.include_router(system_health_rules.router, dependencies=[Depends(require_admin_auth)])
+
 
 def seed_health_rules():
     database = db.SessionLocal()
     try:
         existing = database.query(models.SystemHealthRule).count()
         if existing == 0:
-            print("🌱 Seeding default System Health Rules...")
-            rules = [
+            print("Seeding default System Health Rules...")
+            default_rules = [
                 models.SystemHealthRule(
                     rule_id="metric_high_cpu",
                     rule_name="High CPU Usage",
@@ -151,7 +183,7 @@ def seed_health_rules():
                     rule_id="metric_high_network_in",
                     rule_name="High Network Ingress",
                     metric_name="net_in",
-                    threshold_value=100000000.0, # 100MB/s
+                    threshold_value=100000000.0,
                     operator=">",
                     severity="LOW"
                 ),
@@ -159,27 +191,37 @@ def seed_health_rules():
                     rule_id="metric_high_network_out",
                     rule_name="High Network Egress",
                     metric_name="net_out",
-                    threshold_value=100000000.0, # 100MB/s
+                    threshold_value=100000000.0,
                     operator=">",
                     severity="LOW"
                 ),
             ]
-            database.add_all(rules)
+            database.add_all(default_rules)
             database.commit()
     finally:
         database.close()
 
+
 @app.on_event("startup")
 async def startup_event():
+    # Purge expired server sessions on startup to keep the table tidy.
+    from .auth.session_store import purge_expired_sessions
+    _purge_db = db.SessionLocal()
+    try:
+        purge_expired_sessions(_purge_db)
+    finally:
+        _purge_db.close()
     print("API Started - Real-time Ingestion Enabled")
     seed_health_rules()
+
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
+
 from .detection.engine.detection_engine import RuleEngine
 
-# Old ingest logic moved to collector.py router
 
 @app.get("/logs/recent", response_model=List[models.LogOut], dependencies=[Depends(require_api_auth)])
 def get_recent_logs(limit: int = 50, db: Session = Depends(db.get_db)):
