@@ -18,14 +18,16 @@ const (
 )
 
 // rulesContent is the canonical SIEM detection ruleset written to the host.
-// Only T1543.002 systemd-watch rules are included in this release;
-// high-volume execve rules (T1059) are a separate tuning task.
 const rulesContent = `## OVS SIEM agent — auto-generated, do not edit manually
 
 # T1543.002 — Systemd service persistence
 -w /etc/systemd/system/      -p wa -k t1543_persistence
 -w /usr/lib/systemd/system/  -p wa -k t1543_persistence
 -w /lib/systemd/system/      -p wa -k t1543_persistence
+
+# T1059 — Command and Scripting Interpreter (process execution monitoring)
+-a always,exit -F arch=b64 -S execve -k T1059
+-a always,exit -F arch=b32 -S execve -k T1059
 `
 
 // EnsureAuditd ensures auditd is installed, running, and configured with

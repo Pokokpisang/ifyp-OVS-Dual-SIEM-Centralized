@@ -1,0 +1,1 @@
+- [Dashboard Authentication Feature Context](project_auth_context.md) — auth branch review findings: session fixation, missing audit log, https_only=False, rate limiting absent

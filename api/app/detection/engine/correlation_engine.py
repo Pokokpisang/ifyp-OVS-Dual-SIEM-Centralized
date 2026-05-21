@@ -254,8 +254,12 @@ def _extract_url(cmd: str) -> str:
 
 def _is_event_a(process_name: str, command_line: str) -> Tuple[bool, str]:
     """
-    Returns (True, url) if the event matches download-tool + remote URL
-    + shell-related indicator criteria.
+    Returns (True, url) if the event matches download-tool + remote URL criteria.
+
+    Shell-related indicators in the command are not required: the two-event
+    pattern (download tool + URL, then shell execution within the correlation
+    window) is sufficient evidence on its own.  False positives are handled
+    by the existing suppression engine.
     """
     name_lower = process_name.lower()
     if name_lower not in _DOWNLOAD_TOOLS:
@@ -265,10 +269,6 @@ def _is_event_a(process_name: str, command_line: str) -> Tuple[bool, str]:
 
     # Must contain a remote URL
     if "http://" not in cmd_lower and "https://" not in cmd_lower:
-        return False, ""
-
-    # Must contain a shell-related indicator
-    if not any(ind in cmd_lower for ind in _SHELL_INDICATORS):
         return False, ""
 
     url = _extract_url(command_line)
