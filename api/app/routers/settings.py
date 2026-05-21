@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from .. import db
+from ..auth.csrf import verify_json_csrf
 from ..services.settings_service import (
     _SOAR_MODE_LABELS,
     _VALID_SOAR_MODES,
@@ -33,7 +34,7 @@ def get_soar_settings(database: Session = Depends(db.get_db)):
     }
 
 
-@router.post("/settings/soar")
+@router.post("/settings/soar", dependencies=[Depends(verify_json_csrf)])
 def update_soar_settings(body: SOARSettingsUpdate, database: Session = Depends(db.get_db)):
     if body.soar_execution_mode not in _VALID_SOAR_MODES:
         raise HTTPException(

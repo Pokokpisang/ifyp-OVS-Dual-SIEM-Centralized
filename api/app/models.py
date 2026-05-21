@@ -225,6 +225,19 @@ class SystemHealthRule(Base):
     last_triggered = Column(DateTime, nullable=True)
 
 
+class ServerSession(Base):
+    """Server-side session record. One row per active authenticated session.
+    token_hash stores sha256(raw_token) — the raw token lives only in the signed cookie."""
+    __tablename__ = "server_sessions"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    token_hash = Column(String, unique=True, index=True, nullable=False)
+    username   = Column(String, nullable=False)
+    role       = Column(String, nullable=False, default="admin")  # "admin" | "client"
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False, index=True)
+
+
 # Pydantic Models
 
 class LogCreate(BaseModel):

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from .. import models, db
+from ..auth.csrf import verify_json_csrf
 from typing import List
 
 router = APIRouter(prefix="/api")
@@ -9,7 +10,7 @@ router = APIRouter(prefix="/api")
 def get_system_health_rules(db: Session = Depends(db.get_db)):
     return db.query(models.SystemHealthRule).all()
 
-@router.put("/system-health-rules/{rule_id}/toggle")
+@router.put("/system-health-rules/{rule_id}/toggle", dependencies=[Depends(verify_json_csrf)])
 def toggle_system_health_rule(rule_id: str, db: Session = Depends(db.get_db)):
     rule = db.query(models.SystemHealthRule).filter(models.SystemHealthRule.rule_id == rule_id).first()
     if not rule:
@@ -19,7 +20,7 @@ def toggle_system_health_rule(rule_id: str, db: Session = Depends(db.get_db)):
     db.commit()
     return {"status": "ok", "enabled": rule.enabled}
 
-@router.put("/system-health-rules/{rule_id}")
+@router.put("/system-health-rules/{rule_id}", dependencies=[Depends(verify_json_csrf)])
 def update_system_health_rule(rule_id: str, payload: models.SystemHealthRuleUpdate, db: Session = Depends(db.get_db)):
     rule = db.query(models.SystemHealthRule).filter(models.SystemHealthRule.rule_id == rule_id).first()
     if not rule:

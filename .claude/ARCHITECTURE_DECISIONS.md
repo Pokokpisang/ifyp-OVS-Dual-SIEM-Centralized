@@ -4,9 +4,24 @@ This file is the shared architectural context for all OVS SecOps sub-agents. Rea
 
 ---
 
+## Product Identity (as of 2026-05-21)
+
+**OVS is no longer a prototype — it is an active industry product in development.**
+
+Target customers: VPS/hosting operators, small MSPs, freelance Linux sysadmins managing 5–500 servers.
+Positioning: Lightweight server security monitoring — easy deploy, AI-assisted triage, SOAR simulation, Detection-as-Code.
+
+Current development phase: **Foundation hardening** — closing operational gaps (migrations, notifications, TLS, retention) before expanding features.
+Active sprint: See `docs/strategy/OVS_Sprint_Board_2Week.md`.
+Strategic analysis: See `docs/strategy/OVS_Strategic_Product_Analysis_May2026.md`.
+
+Sub-agents must weigh architectural decisions against this product direction. Features that increase deployment complexity for minimal operational gain are a poor fit for OVS's target market.
+
+---
+
 ## Platform Overview
 
-OVS is a prototype SIEM/SOAR platform for VPS/server security monitoring. Components:
+OVS is a SIEM/SOAR platform for VPS/server security monitoring. Components:
 
 - **FastAPI backend** (`api/`) — log ingestion, rule evaluation, alerting, web dashboard
 - **Go agent** (`agent/`) — lightweight endpoint collector; tails logs, sends telemetry
@@ -43,15 +58,36 @@ OVS is a prototype SIEM/SOAR platform for VPS/server security monitoring. Compon
 - **Known limitation**: buffer is lost on API restart and not shared across multiple API workers.
 - Any detection rule relying on correlation state across multiple workers will silently fail in multi-worker deployments.
 - Do not design correlation rules that assume cross-worker state until this is addressed (Redis-backed or DB-backed buffer).
+- New T1110/T1053/T1078 sprint rules must use DB-backed count queries, not the in-process CorrelationEngine.
 
-### Dashboard Authentication — Session-Based
-- Dashboard uses session-based login (recent addition, `feature/security-authentication` branch).
-- No multi-user RBAC yet — all authenticated users have the same access level.
+### Dashboard Authentication — Session-Based, Single Admin
+- Dashboard uses session-based login (merged in v2.8.0).
+- **No multi-user RBAC yet** — all authenticated users have the same access level.
+- Multi-tenancy is a planned 3-month milestone, not a current feature. Do not design features that assume per-tenant data isolation until the tenant model is built.
+
+### Agent TLS — Not Yet Enforced
+- `ARCHITECTURE_DECISIONS.md` states TLS must be validated, but the Go agent sender does not currently enforce `InsecureSkipVerify=false`.
+- **Sprint task W1-P1**: TLS enforcement is being added. Until merged, do not assume the agent-to-server channel is encrypted in dev/test deployments.
+
+### Log and Metrics Retention — Unbounded
+- PostgreSQL tables `logs` and `metrics` grow without bound.
+- **Sprint task W1-P2**: a configurable TTL cleanup job is being added.
+- Until merged, warn operators deploying to production that disk growth is uncontrolled.
 
 ### Agent Registration — Token Single-Use
 - Registration tokens are SHA-256 hashed in DB; the token is nulled after first use.
 - Permanent `agent_key` is issued after successful registration.
 - `X-Agent-Key` header is used for all subsequent requests.
+- No key rotation UI exists yet — rotation is a future sprint item.
+
+### Notification System — Not Yet Built
+- No email, webhook, or Slack notification system exists.
+- **Sprint task W1-P0**: being built now. Until merged, alerts are only visible in the dashboard.
+
+### OpenSearch — Wired but Underused
+- Data Prepper and OpenSearch are in `docker-compose.yml` but the dashboard does not use OpenSearch for any operational feature.
+- Do not expand OpenSearch integration until a real customer's log volume justifies the operational complexity.
+- PostgreSQL full-text search is sufficient at current scale.
 
 ---
 
@@ -61,21 +97,28 @@ OVS is a prototype SIEM/SOAR platform for VPS/server security monitoring. Compon
 |---|---|
 | New detection condition logic | `api/app/detection/engine/rule_evaluator.py` |
 | New YAML detection rule | `api/app/detection/rules/<platform>/<tactic>/<technique>/` |
+| New detection rule test | `api/app/detection/tests/` — always add true-positive + false-positive fixture |
 | New suppression | `api/app/detection/tuning/*.yaml` |
-| New alert field | `api/app/models.py` (requires DB migration) |
-| New SOAR playbook | SOAR service layer (not detection engine, not AI triage) |
-| AI triage changes | Advisory layer only — no writes to alert truth fields |
+| New alert field | `api/app/models.py` + Alembic migration (required, no exceptions) |
+| New notification channel type | `api/app/services/notification/` (being created in sprint) |
+| New SOAR playbook | `api/app/soar/playbooks/` — YAML only, not detection engine, not AI triage |
+| AI triage changes | `api/app/ai_triage/` — advisory layer only, no writes to alert truth fields |
 | Agent behavior changes | `agent/internal/` — prefer low resource usage and safe defaults |
 | New API route | Appropriate router in `api/app/routers/` |
+| New model | `api/app/models.py` + Alembic migration, never `create_all()` workaround |
+| Background / scheduled tasks | Registered at startup in `api/app/main.py` lifespan; keep tasks non-blocking |
+| New environment variable | Add to `api/.env.example` and document in `CLAUDE.md` environment section |
 
 ---
 
 ## Database Migration Convention
 
-- No Alembic in use — migrations are handled at startup via SQLAlchemy `create_all()` or manual SQL.
+- **Alembic is being added as sprint P0 (2026-05-21).** Once merged, all schema changes must go through an Alembic migration file. Do not bypass this with `create_all()` or raw SQL on a production database.
+- Until Alembic is merged: migrations are handled at startup via SQLAlchemy `create_all()` or manual SQL — treat any schema change as high-risk.
 - All schema changes must be backward-compatible or include an explicit migration plan.
 - Index all foreign keys and any column used in alert queries (`alert_id`, `agent_id`, `created_at`).
 - New `NOT NULL` columns require a safe default or a two-step migration (add nullable → backfill → add constraint).
+- New model additions (e.g., `NotificationChannel`, sprint target) must include an Alembic migration file before merging.
 
 ---
 
@@ -85,7 +128,10 @@ OVS is a prototype SIEM/SOAR platform for VPS/server security monitoring. Compon
 - Dashboard session secrets must come from environment variables, never hardcoded.
 - SOAR recommendations must never embed raw alert content that could leak PII or credentials.
 - Jinja2 templates must use `{{ var }}` (auto-escaped) not `{{ var | safe }}` unless explicitly reviewed.
-- Go agent: TLS must be validated; insecure skip-verify is not acceptable in production.
+- Go agent: TLS must be validated; insecure skip-verify is not acceptable in production. (**Sprint W1-P1 is enforcing this — do not merge agent code that enables InsecureSkipVerify.**)
+- Notification webhooks must be signed with HMAC-SHA256 — never send alert data to an unsigned endpoint.
+- When multi-tenancy is added: every DB query touching `logs`, `metrics`, `alerts`, or `agent_records` must be scoped to `tenant_id`. No cross-tenant query is ever acceptable.
+- AI triage prompts must not include raw log lines that may contain credentials, tokens, or PII without sanitization.
 
 ---
 

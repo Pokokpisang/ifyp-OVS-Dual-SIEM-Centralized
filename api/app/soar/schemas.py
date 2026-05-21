@@ -68,12 +68,14 @@ class SOARExecutionResult(BaseModel):
 class SOARRunRequest(BaseModel):
     playbook_id: str
     action_id: str
-    executed_by: Optional[str] = "analyst"
+    # ST-027: executed_by removed — actor is read from authenticated session server-side.
 
 
 class SOARApproveRequest(BaseModel):
-    approved_by: Optional[str] = "analyst"
+    # ST-027: approved_by removed — actor is read from authenticated session server-side.
+    pass
 
 
 class SOARRejectRequest(BaseModel):
-    rejected_by: Optional[str] = "analyst"
+    # ST-027: rejected_by removed — actor is read from authenticated session server-side.
+    pass

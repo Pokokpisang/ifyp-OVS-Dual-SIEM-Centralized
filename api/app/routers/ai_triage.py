@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from .. import db, models
 from ..ai_triage.triage_service import run_triage_for_alert
+from ..auth.csrf import verify_json_csrf
 
 router = APIRouter(prefix="/api", tags=["ai-triage"])
 
@@ -34,7 +35,7 @@ def _row_to_dict(row: models.AIAlertTriage) -> dict:
     }
 
 
-@router.post("/alerts/{alert_id}/ai-triage")
+@router.post("/alerts/{alert_id}/ai-triage", dependencies=[Depends(verify_json_csrf)])
 async def trigger_ai_triage(alert_id: int, database: Session = Depends(db.get_db)):
     """Run AI triage for an alert. Advisory only — no system actions are taken."""
     row = await run_triage_for_alert(alert_id, database)

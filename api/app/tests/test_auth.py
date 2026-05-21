@@ -31,12 +31,31 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from starlette.middleware.sessions import SessionMiddleware
 
+from app import db as _db_module
+import app.auth.session_middleware as _session_mw_module
 from app.auth.dependencies import require_api_auth, require_html_auth
 from app.auth.exceptions import LoginRequiredException
+from app.auth.session_middleware import ServerSessionMiddleware
+from app.models import Base
 from app.routers.auth import limiter as _auth_limiter
 from app.routers.auth import router as auth_router
+
+# ---------------------------------------------------------------------------
+# In-memory SQLite session store — replaces PostgreSQL for auth tests
+# ---------------------------------------------------------------------------
+# StaticPool ensures all sessions share one connection so the in-memory DB persists.
+_test_engine = create_engine(
+    "sqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+Base.metadata.create_all(_test_engine)
+_TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_test_engine)
 
 # ---------------------------------------------------------------------------
 # Isolated test app
@@ -47,6 +66,8 @@ from app.routers.auth import router as auth_router
 _auth_limiter.enabled = False
 
 _app = FastAPI()
+# ServerSessionMiddleware added first = innermost = runs AFTER SessionMiddleware populates request.session
+_app.add_middleware(ServerSessionMiddleware)
 _app.add_middleware(SessionMiddleware, secret_key="test-only-secret-key-not-for-production")
 _app.state.limiter = _auth_limiter
 _app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -120,6 +141,16 @@ def setup_module(_module):
     # Store as base64 (the format DASHBOARD_PASSWORD_HASH uses in .env)
     raw = bcrypt.hashpw(_TEST_PASS.encode("utf-8"), bcrypt.gensalt())
     _TEST_HASH = base64.b64encode(raw).decode("utf-8")
+
+    # Redirect all DB access (auth router + session middleware) to in-memory SQLite.
+    # _db_module.get_db() calls SessionLocal() at runtime, so patching the attribute suffices.
+    # session_middleware imports SessionLocal by reference, so its module binding is patched too.
+    _db_module.SessionLocal = _TestSessionLocal
+    _session_mw_module.SessionLocal = _TestSessionLocal
+
+    # CSRF strictness is exercised in test_csrf.py; relax here so existing logout TCs pass.
+    os.environ["CSRF_STRICT_FORMS"] = "false"
+    os.environ["CSRF_STRICT_JSON"] = "false"
 
 
 # ---------------------------------------------------------------------------
@@ -308,10 +339,10 @@ def test_login_clears_stale_session_data():
     assert login_resp.status_code == 303
     new_cookie = login_resp.cookies.get("session", session_cookie)
 
-    # Step 3: stale_key must not survive into the new session
+    # Step 3: stale_key must not survive into the new session; session_token must be present
     contents = _get("/session-contents", cookies={"session": new_cookie}).json()
     assert "stale_key" not in contents
-    assert contents.get("authenticated") is True
+    assert "session_token" in contents
 
 
 # ---------------------------------------------------------------------------
