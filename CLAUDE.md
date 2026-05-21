@@ -4,11 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A prototype SIEM (Security Information and Event Management) system consisting of three main components:
+**OVS — Server Security Platform for Hosting Operators and MSPs.**
 
-1. **FastAPI backend** (`api/`) — log ingestion, rule evaluation, alerting, web dashboard
-2. **Go agent** (`agent/`) — endpoint collector that tails logs and sends telemetry to the backend
-3. **OpenSearch pipeline** — Data Prepper receives forwarded logs for search/analytics
+This project has transitioned from an FYP SIEM prototype into a real industry product direction targeting VPS/server operators, small MSPs, and hosting providers. All development decisions should be made with this audience and goal in mind.
+
+The system consists of three main components:
+
+1. **FastAPI backend** (`api/`) — log ingestion, rule evaluation, alerting, web dashboard, SOAR simulation, AI triage
+2. **Go agent** (`agent/`) — lightweight single-binary endpoint collector; tails logs, sends telemetry, offline-buffered
+3. **OpenSearch pipeline** — Data Prepper receives forwarded logs for search/analytics (low priority until log volume justifies it)
+
+**Current product stage:** Foundation hardening phase. Priority is operational correctness (migrations, notifications, TLS, retention) before feature expansion. See `docs/strategy/OVS_Strategic_Product_Analysis_May2026.md` and `docs/strategy/OVS_Sprint_Board_2Week.md` for the active roadmap.
 
 ## Commands
 
@@ -63,7 +69,7 @@ make test-t1059   # sends a test auditd payload, waits 15s, queries DB for T1059
 
 ## Architecture
 
-### Detection Pipeline (v2.0.0)
+### Detection Pipeline (v2.8.0)
 
 The active detection path: `POST /ingest/log` → `collector.py` → background task → `RuleEngine.evaluate_raw()` → `ActiveDetectionRunner` → `YAMLDetectionEngine` + `CorrelationEngine` → `models.Alert`.
 
@@ -85,13 +91,18 @@ The active detection path: `POST /ingest/log` → `collector.py` → background 
 
 ### Detection-as-Code Rules
 
-YAML rules live under `api/app/detection/rules/` (organised by `platform/tactic/technique/`). The active production rule is:
+YAML rules live under `api/app/detection/rules/` (organised by `platform/tactic/technique/`). Active rules:
 
-- `linux/execution/t1059/linux_t1059_shell_network_tool.yaml` — strict single-event T1059.004 rule requiring `process.name` ∈ {sh,bash,dash,zsh} AND `process.command_line` containing a network tool AND a pipe-to-shell indicator
+- `linux/execution/t1059/linux_t1059_shell_network_tool.yaml` — T1059.004: shell + network tool + pipe-to-shell pattern
+- `linux/credential-access/t1110/` — T1110: SSH brute force (sprint target — in progress)
+- `linux/persistence/t1053/` — T1053: cron/systemd persistence by unexpected process (sprint target — in progress)
+- `linux/defense-evasion/t1078/` — T1078: sudo by unexpected user (sprint target — in progress)
 
-Rule schema is defined by `api/app/detection/schemas/rule_schema.py` (`DetectionRule` Pydantic model). Key fields: `condition` (field-based matching), `risk_adjustment` (score modifiers), `mitre`, `required_fields`.
+Rule schema: `api/app/detection/schemas/rule_schema.py` (`DetectionRule` Pydantic model). Key fields: `condition`, `risk_adjustment`, `mitre`, `required_fields`.
 
 Suppression tuning files: `api/app/detection/tuning/` — `global_suppressions.yaml`, `linux_suppressions.yaml`, `rule_exceptions.yaml`.
+
+When adding new rules: always add a fixture test (true-positive + false-positive) under `api/app/detection/tests/`.
 
 ### Correlation Engine
 
@@ -132,6 +143,10 @@ SQLAlchemy models in `api/app/models.py`. Key tables: `logs`, `metrics`, `alerts
 | `rules.py` | `/rules` | CRUD for legacy DB-backed `DetectionRule` rows |
 | `agents.py` | `/api/agents`, `/install.sh` | Agent registration, heartbeat, installer generation |
 | `system_health_rules.py` | `/api/system-health-rules` | CRUD for metric threshold rules |
+| `auth.py` | `/login`, `/logout` | Session-based dashboard authentication |
+| `soar.py` | `/api/soar` | SOAR playbook matching, simulation, history, approval |
+| `ai_triage.py` | `/api/triage` | AI triage trigger and result retrieval (advisory only) |
+| `settings.py` | `/api/settings` | Platform settings (notification channels — sprint target) |
 
 ### Infrastructure Services
 
@@ -148,8 +163,22 @@ Started by `docker-compose-v2`:
 
 ```
 DATABASE_URL=postgresql://...
-DETECTION_ENGINE_MODE=YAML         # YAML | LEGACY | SHADOW
+DETECTION_ENGINE_MODE=YAML              # YAML | LEGACY | SHADOW
 ENABLE_CORRELATION_ENGINE=true
 CORRELATION_WINDOW_SECONDS=10
-SIEM_SERVER_ADDRESS=<host-IP>      # Used to generate agent installer scripts
+SIEM_SERVER_ADDRESS=<host-IP>           # Used to generate agent installer scripts
+
+# Notification system (sprint target)
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=alerts@example.com
+SMTP_PASSWORD=...
+SMTP_FROM=alerts@example.com
+
+# Retention / cleanup (sprint target)
+LOG_RETENTION_DAYS=90
+METRICS_RETENTION_DAYS=30
+
+# Agent monitoring (sprint target)
+AGENT_SILENCE_THRESHOLD_MINUTES=10
 ```
