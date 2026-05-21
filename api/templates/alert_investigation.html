@@ -508,7 +508,7 @@ async function loadInvestigation() {
         } else {
             engineEl.innerHTML = `
                 <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-slate-600/10 text-slate-400 border border-slate-600/20">
-                    <span class="material-symbols-outlined text-[12px]">help_outline</span>${d.alert.detection_engine}
+                    <span class="material-symbols-outlined text-[12px]">help_outline</span>${_esc(d.alert.detection_engine)}
                 </span>`;
         }
 
@@ -541,7 +541,7 @@ async function loadInvestigation() {
                 reasonsList.innerHTML += `
                     <li class="flex items-start gap-2 text-[11px] text-slate-300">
                         <span class="material-symbols-outlined text-emerald-400 text-[14px] mt-0.5">check_circle</span>
-                        ${r}
+                        ${_esc(r)}
                     </li>`;
             });
 
@@ -555,7 +555,7 @@ async function loadInvestigation() {
                     adjList.innerHTML += `
                         <li class="flex items-start gap-2 text-[11px] text-slate-300">
                             <span class="material-symbols-outlined text-amber-400 text-[14px] mt-0.5">trending_up</span>
-                            ${r}
+                            ${_esc(r)}
                         </li>`;
                 });
             } else {
@@ -601,7 +601,7 @@ async function loadInvestigation() {
                     evidenceList.innerHTML += `
                         <li class="flex items-start gap-2 text-[11px] text-slate-300">
                             <span class="material-symbols-outlined text-sky-400 text-[14px] mt-0.5 shrink-0">arrow_right</span>
-                            <span><span class="text-slate-500 font-medium">${label}:</span> <span class="font-mono">${value}</span></span>
+                            <span><span class="text-slate-500 font-medium">${_esc(label)}:</span> <span class="font-mono">${_esc(String(value))}</span></span>
                         </li>`;
                 });
 
@@ -612,7 +612,7 @@ async function loadInvestigation() {
                     evidenceList.innerHTML += `
                         <li class="flex items-start gap-2 text-[11px] text-slate-300">
                             <span class="material-symbols-outlined text-sky-400 text-[14px] mt-0.5 shrink-0">arrow_right</span>
-                            <span><span class="text-slate-500 font-medium">MITRE mapping:</span> <span class="font-mono">${techLabel}</span></span>
+                            <span><span class="text-slate-500 font-medium">MITRE mapping:</span> <span class="font-mono">${_esc(techLabel)}</span></span>
                         </li>`;
                 }
                 evidenceSection.classList.remove('hidden');
@@ -647,17 +647,17 @@ async function loadInvestigation() {
             const reasonsList = document.getElementById('match-reasons-list');
             reasonsList.innerHTML = '';
             const corrReasons = [
-                meta.first_event_process  ? `Download event \u2014 [${meta.first_event_process}] ${(meta.first_event_command || '').substring(0, 120)}` : null,
-                meta.second_event_process ? `Shell event \u2014 [${meta.second_event_process}] ${(meta.second_event_command || '').substring(0, 120)}` : null,
-                meta.time_delta_seconds !== undefined ? `Time delta: ${meta.time_delta_seconds}s (window: ${meta.correlation_window_seconds || 10}s)` : null,
-                meta.source_url ? `Source URL: ${meta.source_url}` : null,
-                meta.reason ? `Reason: ${meta.reason}` : null,
+                meta.first_event_process  ? `Download event \u2014 [${_esc(meta.first_event_process)}] ${_esc((meta.first_event_command || '').substring(0, 120))}` : null,
+                meta.second_event_process ? `Shell event \u2014 [${_esc(meta.second_event_process)}] ${_esc((meta.second_event_command || '').substring(0, 120))}` : null,
+                meta.time_delta_seconds !== undefined ? `Time delta: ${_esc(String(meta.time_delta_seconds))}s (window: ${_esc(String(meta.correlation_window_seconds || 10))}s)` : null,
+                meta.source_url ? `Source URL: ${_esc(meta.source_url)}` : null,
+                meta.reason ? `Reason: ${_esc(meta.reason)}` : null,
             ].filter(Boolean);
-            
+
             // Add supporting evidence if present
             if (meta.supporting_evidence && meta.supporting_evidence.length > 0) {
                 meta.supporting_evidence.forEach(ev => {
-                    corrReasons.push(`Supporting evidence \u2014 [${ev.process}] ${ev.command} (at ${ev.delta})`);
+                    corrReasons.push(`Supporting evidence \u2014 [${_esc(ev.process || '')}] ${_esc(ev.command || '')} (at ${_esc(String(ev.delta || ''))})`);
                 });
             }
 
@@ -681,7 +681,7 @@ async function loadInvestigation() {
                     adjList.innerHTML += `
                         <li class="flex items-start gap-2 text-[11px] text-slate-300">
                             <span class="material-symbols-outlined text-sky-400 text-[14px] mt-0.5">link</span>
-                            Correlated key &mdash; ${k}: <span class="font-mono ml-1">${v}</span>
+                            Correlated key &mdash; ${_esc(k)}: <span class="font-mono ml-1">${_esc(String(v))}</span>
                         </li>`;
                 });
             } else {
@@ -714,11 +714,11 @@ async function loadInvestigation() {
             reasonsList.innerHTML = '';
 
             const bfDetails = [
-                `<strong>Source IP:</strong> ${meta.source_ip || '—'}`,
-                `<strong>Failure count:</strong> ${meta.failure_count ?? '—'} / ${meta.threshold ?? '—'}`,
-                `<strong>Time window:</strong> ${meta.time_window_seconds ?? '—'}s`,
-                `<strong>Dedup cooldown:</strong> ${meta.dedup_seconds ?? '—'}s`,
-                meta.user_name ? `<strong>Targeted user(s):</strong> ${meta.user_name}` : null,
+                `<strong>Source IP:</strong> ${_esc(meta.source_ip || '—')}`,
+                `<strong>Failure count:</strong> ${_esc(String(meta.failure_count ?? '—'))} / ${_esc(String(meta.threshold ?? '—'))}`,
+                `<strong>Time window:</strong> ${_esc(String(meta.time_window_seconds ?? '—'))}s`,
+                `<strong>Dedup cooldown:</strong> ${_esc(String(meta.dedup_seconds ?? '—'))}s`,
+                meta.user_name ? `<strong>Targeted user(s):</strong> ${_esc(meta.user_name)}` : null,
             ].filter(Boolean);
 
             bfDetails.forEach(item => {
@@ -733,7 +733,7 @@ async function loadInvestigation() {
                 reasonsList.innerHTML += `
                     <li class="flex items-start gap-2 text-[11px] text-slate-300">
                         <span class="material-symbols-outlined text-rose-400 text-[14px] mt-0.5">check_circle</span>
-                        ${r}
+                        ${_esc(r)}
                     </li>`;
             });
 
@@ -748,7 +748,7 @@ async function loadInvestigation() {
                     adjList.innerHTML += `
                         <li class="flex items-start gap-2 text-[11px] text-slate-300">
                             <span class="material-symbols-outlined text-sky-400 text-[14px] mt-0.5">task_alt</span>
-                            ${action}
+                            ${_esc(action)}
                         </li>`;
                 });
             } else {
@@ -810,12 +810,27 @@ function renderCorrEvents(events) {
     events.forEach(ev => {
         const tr = document.createElement('tr');
         tr.className = ev.is_alert ? 'bg-primary/20 border-l-2 border-primary' : 'hover:bg-primary/5 transition-colors';
-        tr.innerHTML = `
-            <td class="px-6 py-3 whitespace-nowrap ${ev.is_alert ? 'text-primary font-bold' : 'text-slate-300 font-mono'}">${ev.ts}</td>
-            <td class="px-6 py-3 ${ev.is_alert ? 'text-primary' : 'text-slate-300'}">${ev.host || '—'}</td>
-            <td class="px-6 py-3 ${ev.is_alert ? 'text-primary' : 'text-slate-400'} max-w-xs truncate" title="${(ev.message||'').replace(/"/g,'&quot;')}">${ev.message || '—'}</td>
-            <td class="px-6 py-3"><span class="px-2 py-0.5 rounded ${ev.is_alert ? 'bg-primary text-white' : 'bg-primary/10 text-primary'} text-[10px] font-mono">${ev.log_type || '—'}</span></td>
-        `;
+        // Use DOM textContent for user-supplied fields to prevent innerHTML injection.
+        const tsTd  = document.createElement('td');
+        tsTd.className = `px-6 py-3 whitespace-nowrap ${ev.is_alert ? 'text-primary font-bold' : 'text-slate-300 font-mono'}`;
+        tsTd.textContent = ev.ts || '—';
+        const hostTd = document.createElement('td');
+        hostTd.className = `px-6 py-3 ${ev.is_alert ? 'text-primary' : 'text-slate-300'}`;
+        hostTd.textContent = ev.host || '—';
+        const msgTd = document.createElement('td');
+        msgTd.className = `px-6 py-3 ${ev.is_alert ? 'text-primary' : 'text-slate-400'} max-w-xs truncate`;
+        msgTd.title = ev.message || '';
+        msgTd.textContent = ev.message || '—';
+        const typeTd = document.createElement('td');
+        typeTd.className = 'px-6 py-3';
+        const typeSpan = document.createElement('span');
+        typeSpan.className = `px-2 py-0.5 rounded ${ev.is_alert ? 'bg-primary text-white' : 'bg-primary/10 text-primary'} text-[10px] font-mono`;
+        typeSpan.textContent = ev.log_type || '—';
+        typeTd.appendChild(typeSpan);
+        tr.appendChild(tsTd);
+        tr.appendChild(hostTd);
+        tr.appendChild(msgTd);
+        tr.appendChild(typeTd);
         tbody.appendChild(tr);
     });
 }
@@ -904,18 +919,18 @@ function renderHealth(health) {
         dataEl.innerHTML += `
         <div>
             <div class="flex justify-between text-[10px] font-bold mb-1 uppercase">
-                <span>${m.label}</span>
-                <span class="${m.value > 80 ? 'text-severity-critical' : 'text-primary'}">${m.value}%</span>
+                <span>${_esc(m.label)}</span>
+                <span class="${m.value > 80 ? 'text-severity-critical' : 'text-primary'}">${_esc(String(m.value))}%</span>
             </div>
             <div class="w-full h-1.5 bg-primary/10 rounded-full overflow-hidden">
-                <div class="h-full ${m.color} rounded-full health-bar-fill" style="width:${m.value}%"></div>
+                <div class="h-full ${m.color} rounded-full health-bar-fill" style="width:${_esc(String(m.value))}%"></div>
             </div>
         </div>`;
     });
 
     if (health.last_seen) {
         dataEl.innerHTML += `
-        <p class="text-[10px] text-slate-500 mt-2">Last seen: ${health.last_seen}</p>`;
+        <p class="text-[10px] text-slate-500 mt-2">Last seen: ${_esc(health.last_seen)}</p>`;
     }
 }
 
@@ -1053,7 +1068,7 @@ async function loadSOAR(alertId) {
                         <span class="material-symbols-outlined text-[14px] text-amber-400">lock</span>
                         <span class="text-xs text-amber-400 font-semibold">Manual approval required — not eligible for auto-run.</span>
                     </div>
-                    <button onclick="runSOARAction('${r.playbook_id}','${a.id}')"
+                    <button onclick="runSOARAction('${_esc(r.playbook_id)}','${_esc(a.id)}')"
                         id="soar-run-btn"
                         class="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20">
                         <span class="material-symbols-outlined text-[16px]">play_arrow</span>Run Simulated Action
@@ -1063,7 +1078,7 @@ async function loadSOAR(alertId) {
         } else {
             // manual mode — show button (run immediately or queue for approval)
             actionWidget = `
-                <button onclick="runSOARAction('${r.playbook_id}','${a.id}')"
+                <button onclick="runSOARAction('${_esc(r.playbook_id)}','${_esc(a.id)}')"
                     id="soar-run-btn"
                     class="mt-2 w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20">
                     <span class="material-symbols-outlined text-[16px]">play_arrow</span>Run Simulated Action
@@ -1075,22 +1090,22 @@ async function loadSOAR(alertId) {
             <div class="space-y-3">
                 <div class="flex items-start justify-between gap-3">
                     <div>
-                        <p class="text-xs font-bold text-slate-200">${r.playbook_name}</p>
-                        <p class="text-[11px] text-slate-400 mt-0.5">${r.playbook_description || ''}</p>
+                        <p class="text-xs font-bold text-slate-200">${_esc(r.playbook_name)}</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">${_esc(r.playbook_description || '')}</p>
                     </div>
                     <span class="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 uppercase">
-                        ${a.mode}
+                        ${_esc(a.mode)}
                     </span>
                 </div>
                 <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-[11px]">
-                    <div><span class="text-slate-500 uppercase text-[9px] font-bold">Action</span><p class="text-slate-200 mt-0.5">${a.name}</p></div>
-                    <div><span class="text-slate-500 uppercase text-[9px] font-bold">Type</span><p class="text-slate-300 mt-0.5 font-mono">${a.type}</p></div>
-                    <div><span class="text-slate-500 uppercase text-[9px] font-bold">Target Field</span><p class="text-slate-300 mt-0.5 font-mono">${a.target_field || '—'}</p></div>
-                    <div><span class="text-slate-500 uppercase text-[9px] font-bold">Resolved Target</span><p class="text-emerald-400 mt-0.5 font-mono font-bold">${r.resolved_target || '—'}</p></div>
+                    <div><span class="text-slate-500 uppercase text-[9px] font-bold">Action</span><p class="text-slate-200 mt-0.5">${_esc(a.name)}</p></div>
+                    <div><span class="text-slate-500 uppercase text-[9px] font-bold">Type</span><p class="text-slate-300 mt-0.5 font-mono">${_esc(a.type)}</p></div>
+                    <div><span class="text-slate-500 uppercase text-[9px] font-bold">Target Field</span><p class="text-slate-300 mt-0.5 font-mono">${_esc(a.target_field || '—')}</p></div>
+                    <div><span class="text-slate-500 uppercase text-[9px] font-bold">Resolved Target</span><p class="text-emerald-400 mt-0.5 font-mono font-bold">${_esc(r.resolved_target || '—')}</p></div>
                     <div><span class="text-slate-500 uppercase text-[9px] font-bold">Requires Approval</span><p class="mt-0.5">${a.requires_approval ? '<span class="text-amber-400 font-bold">Yes</span>' : '<span class="text-slate-400">No</span>'}</p></div>
                     <div><span class="text-slate-500 uppercase text-[9px] font-bold">Impact</span><p class="text-slate-400 mt-0.5">No real system change</p></div>
                 </div>
-                <p class="text-[11px] text-slate-400 italic">${a.description || ''}</p>
+                <p class="text-[11px] text-slate-400 italic">${_esc(a.description || '')}</p>
                 ${actionWidget}
             </div>`;
     }
@@ -1138,14 +1153,14 @@ function renderSOARHistory(history) {
             : `<td class="px-4 py-2 text-slate-600 text-[10px]">—</td>`;
         tbody.innerHTML += `
             <tr class="hover:bg-primary/5 transition-colors">
-                <td class="px-4 py-2 whitespace-nowrap text-slate-400 font-mono">${h.executed_at || '—'}</td>
-                <td class="px-4 py-2 text-slate-300">${h.playbook_name || '—'}</td>
-                <td class="px-4 py-2 text-slate-300">${h.action_name || '—'}</td>
-                <td class="px-4 py-2 text-emerald-400 font-mono font-bold">${h.target || '—'}</td>
-                <td class="px-4 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 uppercase">${h.mode || '—'}</span></td>
-                <td class="px-4 py-2"><span class="px-2 py-0.5 rounded border text-[10px] font-bold ${sCls} uppercase">${h.status || '—'}</span></td>
-                <td class="px-4 py-2 ${executedByCls}">${h.executed_by || 'analyst'}</td>
-                <td class="px-4 py-2 text-slate-400 max-w-xs truncate" title="${(h.result_message||'').replace(/"/g,'&quot;')}">${h.result_message || '—'}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-slate-400 font-mono">${_esc(h.executed_at || '—')}</td>
+                <td class="px-4 py-2 text-slate-300">${_esc(h.playbook_name || '—')}</td>
+                <td class="px-4 py-2 text-slate-300">${_esc(h.action_name || '—')}</td>
+                <td class="px-4 py-2 text-emerald-400 font-mono font-bold">${_esc(h.target || '—')}</td>
+                <td class="px-4 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 uppercase">${_esc(h.mode || '—')}</span></td>
+                <td class="px-4 py-2"><span class="px-2 py-0.5 rounded border text-[10px] font-bold ${sCls} uppercase">${_esc(h.status || '—')}</span></td>
+                <td class="px-4 py-2 ${executedByCls}">${_esc(h.executed_by || 'analyst')}</td>
+                <td class="px-4 py-2 text-slate-400 max-w-xs truncate" title="${_esc(h.result_message || '')}">${_esc(h.result_message || '—')}</td>
                 ${actionsCellHtml}
             </tr>`;
     });
@@ -1164,7 +1179,7 @@ async function runSOARAction(playbookId, actionId) {
         const res = await fetch(`/api/alerts/${ALERT_ID}/soar/run`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ playbook_id: playbookId, action_id: actionId, executed_by: 'analyst' }),
+            body: JSON.stringify({ playbook_id: playbookId, action_id: actionId }),
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
@@ -1201,7 +1216,7 @@ async function approveSOARAction(executionId) {
         const res = await fetch(`/api/alerts/${ALERT_ID}/soar/executions/${executionId}/approve`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ approved_by: 'analyst' }),
+            body: JSON.stringify({}),
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
@@ -1218,7 +1233,7 @@ async function rejectSOARAction(executionId) {
         const res = await fetch(`/api/alerts/${ALERT_ID}/soar/executions/${executionId}/reject`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rejected_by: 'analyst' }),
+            body: JSON.stringify({}),
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
