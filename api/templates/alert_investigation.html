@@ -433,6 +433,7 @@
 {% block scripts %}
 <script>
 const ALERT_ID = {{ alert.id }};
+const USER_ROLE = "{{ user_role }}";
 const ALLOWED_STATUSES = ["New", "Investigating", "Resolved", "False Positive"];
 let currentStatus = "New";
 let corrData = [];
@@ -1076,12 +1077,15 @@ async function loadSOAR(alertId) {
                     <p id="soar-run-msg" class="text-xs text-center hidden"></p>
                 </div>`;
         } else {
-            // manual mode — show button (run immediately or queue for approval)
+            // manual mode — analyst submits for approval; admin runs directly if requires_approval=false
+            const btnLabel = (a.requires_approval && USER_ROLE !== 'admin')
+                ? 'Submit for Admin Approval'
+                : 'Run Simulated Action';
             actionWidget = `
                 <button onclick="runSOARAction('${_esc(r.playbook_id)}','${_esc(a.id)}')"
                     id="soar-run-btn"
                     class="mt-2 w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20">
-                    <span class="material-symbols-outlined text-[16px]">play_arrow</span>Run Simulated Action
+                    <span class="material-symbols-outlined text-[16px]">play_arrow</span>${btnLabel}
                 </button>
                 <p id="soar-run-msg" class="text-xs text-center hidden"></p>`;
         }
@@ -1139,8 +1143,10 @@ function renderSOARHistory(history) {
         const executedByCls = (h.executed_by || '').startsWith('system:')
             ? 'text-primary font-mono'
             : 'text-slate-400 font-mono';
-        const actionsCellHtml = (h.status === 'pending_approval' && h.execution_id)
-            ? `<td class="px-4 py-2 whitespace-nowrap">
+        let actionsCellHtml;
+        if (h.status === 'pending_approval' && h.execution_id) {
+            if (USER_ROLE === 'admin') {
+                actionsCellHtml = `<td class="px-4 py-2 whitespace-nowrap">
                    <button onclick="approveSOARAction(${h.execution_id})"
                        class="px-2 py-1 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/40 transition-colors mr-1">
                        Approve
@@ -1149,8 +1155,13 @@ function renderSOARHistory(history) {
                        class="px-2 py-1 rounded text-[10px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/30 hover:bg-slate-500/40 transition-colors">
                        Reject
                    </button>
-               </td>`
-            : `<td class="px-4 py-2 text-slate-600 text-[10px]">—</td>`;
+               </td>`;
+            } else {
+                actionsCellHtml = `<td class="px-4 py-2 text-amber-400 text-[10px] italic font-semibold">Awaiting admin approval</td>`;
+            }
+        } else {
+            actionsCellHtml = `<td class="px-4 py-2 text-slate-600 text-[10px]">—</td>`;
+        }
         tbody.innerHTML += `
             <tr class="hover:bg-primary/5 transition-colors">
                 <td class="px-4 py-2 whitespace-nowrap text-slate-400 font-mono">${_esc(h.executed_at || '—')}</td>

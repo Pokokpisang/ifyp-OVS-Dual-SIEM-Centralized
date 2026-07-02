@@ -212,11 +212,12 @@ def get_recent_alerts(limit: int = 20, host: str = Query(None), db: Session = De
     return query.order_by(desc(models.Alert.timestamp)).limit(limit).all()
 
 @router.get("/alerts/threats", dependencies=[Depends(require_api_auth)])
-def get_threat_alerts(limit: int = 30, db: Session = Depends(db.get_db)):
+def get_threat_alerts(limit: int = 30, host: str = Query(None), db: Session = Depends(db.get_db)):
     """Returns MITRE-tagged threat alerts (T1059 etc.) for the dedicated threat panel."""
-    mitre_alerts = db.query(models.Alert).filter(
-        models.Alert.source.like("T%")
-    ).order_by(desc(models.Alert.timestamp)).limit(limit).all()
+    query = db.query(models.Alert).filter(models.Alert.source.like("T%"))
+    if host:
+        query = query.filter(models.Alert.host == host)
+    mitre_alerts = query.order_by(desc(models.Alert.timestamp)).limit(limit).all()
     return [
         {
             "id": a.id,
@@ -246,24 +247,29 @@ def mark_all_read(db: Session = Depends(db.get_db)):
     return {"status": "ok"}
 
 @router.get("/alerts/stats", dependencies=[Depends(require_api_auth)])
-def get_alert_stats(db: Session = Depends(db.get_db)):
+def get_alert_stats(host: str = Query(None), db: Session = Depends(db.get_db)):
     """Returns aggregated alert counts for dashboard KPI cards."""
     from sqlalchemy import func
-    total = db.query(func.count(models.Alert.id)).scalar() or 0
-    high = db.query(func.count(models.Alert.id)).filter(
+
+    def _base():
+        q = db.query(func.count(models.Alert.id))
+        if host:
+            q = q.filter(models.Alert.host == host)
+        return q
+
+    total = _base().scalar() or 0
+    high = _base().filter(
         models.Alert.severity.in_(["HIGH", "CRITICAL", "high", "critical"])
     ).scalar() or 0
-    mitre = db.query(func.count(models.Alert.id)).filter(
-        models.Alert.source.like("T%")
-    ).scalar() or 0
-    last_24h = db.query(func.count(models.Alert.id)).filter(
+    mitre = _base().filter(models.Alert.source.like("T%")).scalar() or 0
+    last_24h = _base().filter(
         models.Alert.timestamp > datetime.utcnow() - timedelta(hours=24)
     ).scalar() or 0
-    unread_mitre = db.query(func.count(models.Alert.id)).filter(
+    unread_mitre = _base().filter(
         models.Alert.source.like("T%"),
         models.Alert.is_read == False
     ).scalar() or 0
-    unread_high = db.query(func.count(models.Alert.id)).filter(
+    unread_high = _base().filter(
         models.Alert.severity.in_(["HIGH", "CRITICAL", "high", "critical"]),
         models.Alert.is_read == False
     ).scalar() or 0

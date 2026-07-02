@@ -326,10 +326,12 @@ def view_investigation(alert_id: int, request: Request, db: Session = Depends(db
         models.AlertAssessment.alert_id == alert_id
     ).first()
 
+    user_role = (getattr(request.state, "user", None) or {}).get("role", "client")
     return templates.TemplateResponse("alert_investigation.html", {
         "request": request,
         "alert": alert,
         "assessment": assessment,
+        "user_role": user_role,
     })
 
 
