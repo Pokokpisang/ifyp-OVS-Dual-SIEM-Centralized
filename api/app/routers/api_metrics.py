@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, Header
-from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from .. import models, db
 from ..auth.csrf import verify_json_csrf
 from ..auth.dependencies import require_api_auth
-from typing import List, Literal, Optional
+from typing import Optional
 from datetime import datetime, timedelta
 import re
 import json
@@ -249,8 +248,6 @@ def mark_all_read(db: Session = Depends(db.get_db)):
 @router.get("/alerts/stats", dependencies=[Depends(require_api_auth)])
 def get_alert_stats(host: str = Query(None), db: Session = Depends(db.get_db)):
     """Returns aggregated alert counts for dashboard KPI cards."""
-    from sqlalchemy import func
-
     def _base():
         q = db.query(func.count(models.Alert.id))
         if host:
