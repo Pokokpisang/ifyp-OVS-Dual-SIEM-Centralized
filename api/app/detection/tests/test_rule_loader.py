@@ -1,5 +1,6 @@
 import pytest
 from pathlib import Path
+from unittest.mock import patch
 import yaml
 from app.detection.engine.rule_loader import RuleLoader
 from app.detection.schemas.rule_schema import DetectionRule
@@ -61,6 +62,58 @@ def test_rule_loader_handles_schema_validation_error(tmp_path):
     assert rule is None
     assert len(loader.errors) > 0
     assert "severity" in loader.errors[0]["error"]
+
+def _valid_rule_dict(rule_id="cache_rule"):
+    return {
+        "id": rule_id,
+        "name": "Cache Rule",
+        "description": "d",
+        "severity": "medium",
+        "risk_score": 50,
+        "mitre": {"tactic": {"id": "TA0002"}, "technique": {"id": "T1059"}},
+        "condition": {"field": "process.name", "operator": "equals", "value": "bash"},
+        "log_source": {"product": "linux"},
+        "required_fields": ["process.name"],
+        "investigation_guide": "g",
+    }
+
+
+def test_cache_avoids_reparsing_unchanged_files(tmp_path):
+    (tmp_path / "r.yaml").write_text(yaml.dump(_valid_rule_dict()))
+    loader = RuleLoader()
+
+    loader.load_rules_from_directory(tmp_path, include_disabled=True)
+    # Second call: unchanged mtime → yaml.safe_load must not be invoked again.
+    with patch("app.detection.engine.rule_loader.yaml.safe_load") as mock_load:
+        rules = loader.load_rules_from_directory(tmp_path, include_disabled=True)
+    mock_load.assert_not_called()
+    assert len(rules) == 1
+
+
+def test_cache_reloads_when_file_changes(tmp_path):
+    f = tmp_path / "r.yaml"
+    f.write_text(yaml.dump(_valid_rule_dict(rule_id="v1")))
+    loader = RuleLoader()
+    r1 = loader.load_rules_from_directory(tmp_path, include_disabled=True)
+    assert r1[0].id == "v1"
+
+    # Rewrite with a newer mtime and different content.
+    import os, time
+    f.write_text(yaml.dump(_valid_rule_dict(rule_id="v2")))
+    os.utime(f, (time.time() + 10, time.time() + 10))
+    r2 = loader.load_rules_from_directory(tmp_path, include_disabled=True)
+    assert r2[0].id == "v2"
+
+
+def test_invalid_file_reported_every_call(tmp_path):
+    (tmp_path / "bad.yaml").write_text("invalid: yaml: :")
+    loader = RuleLoader()
+    loader.load_rules_from_directory(tmp_path, include_disabled=True)
+    assert any("bad.yaml" in e["file"] for e in loader.errors)
+    # Errors are rebuilt (not accumulated) and the invalid file is re-reported.
+    loader.load_rules_from_directory(tmp_path, include_disabled=True)
+    assert len([e for e in loader.errors if "bad.yaml" in e["file"]]) == 1
+
 
 def test_detection_rule_rejects_high_risk_score():
     bad_data = {
