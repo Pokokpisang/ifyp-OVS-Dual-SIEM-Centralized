@@ -9,6 +9,7 @@ in-memory DB, proving:
   2. Approval-required playbooks are never auto-executed (stay analyst-controlled).
   3. Manual mode (the default) is a no-op.
 """
+import json
 from datetime import datetime
 
 from sqlalchemy import create_engine
@@ -17,8 +18,17 @@ from sqlalchemy.pool import StaticPool
 
 from app import models
 from app.models import Base
+from app.services import audit_service
 from app.services.settings_service import set_setting
-from app.soar.response_service import auto_run_for_alert
+from app.soar.response_service import (
+    approve_action,
+    auto_run_for_alert,
+    reject_action,
+    run_action,
+)
+
+_T1059_PLAYBOOK = "t1059_unix_shell_investigation"
+_T1059_ACTION = "create_t1059_unix_shell_investigation_note"
 
 _engine = create_engine(
     "sqlite:///:memory:",
@@ -30,9 +40,17 @@ _Session = sessionmaker(bind=_engine)
 
 
 def _clear(s):
-    for model in (models.SOARActionExecution, models.SystemSetting, models.Alert):
+    for model in (models.ActivityAudit, models.SOARActionExecution, models.SystemSetting, models.Alert):
         s.query(model).delete()
     s.commit()
+
+
+def _audit(s, action, alert_id):
+    return (
+        s.query(models.ActivityAudit)
+        .filter_by(action=action, object_id=str(alert_id))
+        .all()
+    )
 
 
 def _seed_alert(s, *, technique: str, rule_name: str = "Detected rule") -> int:
@@ -101,4 +119,54 @@ def test_manual_mode_is_a_no_op():
 
     assert result["executed_count"] == 0
     assert _executions(s, alert_id) == []
+    s.close()
+
+
+# ---------------------------------------------------------------------------
+# Audit trail (item #4) — SOAR run / approve / reject write ActivityAudit rows
+# ---------------------------------------------------------------------------
+
+def test_auto_run_writes_soar_run_audit():
+    s = _Session()
+    _clear(s)
+    set_setting(s, "soar_execution_mode", "automatic")
+    alert_id = _seed_alert(s, technique="T1543.002")
+
+    auto_run_for_alert(alert_id, s)
+
+    rows = _audit(s, audit_service.SOAR_RUN, alert_id)
+    assert rows, "expected a SOAR_RUN audit row"
+    details = json.loads(rows[-1].details)
+    assert details["status"] == "executed"
+    assert "key" not in (rows[-1].details or "").lower()  # no secret material
+    s.close()
+
+
+def test_run_then_approve_writes_audit():
+    s = _Session()
+    _clear(s)
+    alert_id = _seed_alert(s, technique="T1059.004")
+
+    res = run_action(alert_id, _T1059_PLAYBOOK, _T1059_ACTION, s, executed_by="analyst")
+    assert res.status == "pending_approval"
+    assert _audit(s, audit_service.SOAR_RUN, alert_id), "expected SOAR_RUN audit on submit"
+
+    approve_action(alert_id, res.execution_id, s, approved_by="admin")
+    approve_rows = _audit(s, audit_service.SOAR_APPROVE, alert_id)
+    assert approve_rows, "expected a SOAR_APPROVE audit row"
+    assert approve_rows[-1].actor == "admin"
+    s.close()
+
+
+def test_run_then_reject_writes_audit():
+    s = _Session()
+    _clear(s)
+    alert_id = _seed_alert(s, technique="T1059.004")
+
+    res = run_action(alert_id, _T1059_PLAYBOOK, _T1059_ACTION, s, executed_by="analyst")
+    reject_action(alert_id, res.execution_id, s, rejected_by="admin")
+
+    reject_rows = _audit(s, audit_service.SOAR_REJECT, alert_id)
+    assert reject_rows, "expected a SOAR_REJECT audit row"
+    assert reject_rows[-1].actor == "admin"
     s.close()

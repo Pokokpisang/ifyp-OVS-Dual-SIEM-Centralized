@@ -1,11 +1,13 @@
 import json
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from .. import db, models
 from ..ai_triage.triage_service import run_triage_for_alert
 from ..auth.csrf import verify_json_csrf
+from ..services import audit_service
+from ..services.alert_service import get_actor_username
 
 router = APIRouter(prefix="/api", tags=["ai-triage"])
 
@@ -36,9 +38,19 @@ def _row_to_dict(row: models.AIAlertTriage) -> dict:
 
 
 @router.post("/alerts/{alert_id}/ai-triage", dependencies=[Depends(verify_json_csrf)])
-async def trigger_ai_triage(alert_id: int, database: Session = Depends(db.get_db)):
+async def trigger_ai_triage(alert_id: int, request: Request, database: Session = Depends(db.get_db)):
     """Run AI triage for an alert. Advisory only — no system actions are taken."""
     row = await run_triage_for_alert(alert_id, database)
+    # Audit the request only — never the prompt, raw logs, or AI response text.
+    audit_service.record_audit_event(
+        database,
+        actor=get_actor_username(request),
+        action=audit_service.AI_TRIAGE_REQUESTED,
+        object_type="alert",
+        object_id=alert_id,
+        details={"provider": row.provider, "triage_status": row.triage_status},
+        commit=True,
+    )
     return _row_to_dict(row)
 
 

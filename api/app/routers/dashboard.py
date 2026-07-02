@@ -16,6 +16,8 @@ from ..services.agent_service import (
     get_all_agents_for_history,
 )
 from ..services.server_address import get_server_address, normalize_server_url, validate_server_address
+from ..services import audit_service
+from ..services.alert_service import get_actor_username
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -521,6 +523,16 @@ def get_agent_detail(
     reinstall_cmd = None
     if reinstall:
         new_token = regenerate_agent_token(agent_id, database)
+        # Audit the key rotation — never store the new token/key itself.
+        audit_service.record_audit_event(
+            database,
+            actor=get_actor_username(request),
+            action=audit_service.AGENT_KEY_ROTATED,
+            object_type="agent",
+            object_id=agent_id,
+            details={"agent_id": agent_id},
+            commit=True,
+        )
         raw_server = get_server_address(request)
         port = int(os.getenv("SIEM_API_PORT", "8000"))
         normalized = normalize_server_url(raw_server, port)
