@@ -1,9 +1,12 @@
 """
 test_metrics_auth.py — POST /api/metrics X-Agent-Key enforcement (ST-023).
 
-TC-MA-1  Missing X-Agent-Key → 422 (required header absent)
+TC-MA-1  Missing X-Agent-Key → 401 (uniform auth failure via require_agent_key)
 TC-MA-2  Invalid X-Agent-Key → 401
 TC-MA-3  Valid X-Agent-Key → 200
+
+Auth is enforced by the shared ``require_agent_key`` dependency, so the mocks
+target ``app.auth.dependencies`` rather than the router module.
 """
 import asyncio
 from unittest.mock import patch
@@ -62,15 +65,15 @@ def _post_metrics(headers: dict) -> httpx.Response:
     return asyncio.get_event_loop().run_until_complete(_run())
 
 
-# TC-MA-1 — Missing header → 422
-def test_missing_agent_key_returns_422():
+# TC-MA-1 — Missing header → 401 (require_agent_key rejects missing keys)
+def test_missing_agent_key_returns_401():
     resp = _post_metrics({})
-    assert resp.status_code == 422
+    assert resp.status_code == 401
 
 
 # TC-MA-2 — Invalid key → 401
 def test_invalid_agent_key_returns_401():
-    with patch("app.routers.api_metrics.get_agent_metadata_by_key", return_value=None):
+    with patch("app.auth.dependencies.get_agent_metadata_by_key", return_value=None):
         resp = _post_metrics({"x-agent-key": "bad-key"})
     assert resp.status_code == 401
 
@@ -78,8 +81,8 @@ def test_invalid_agent_key_returns_401():
 # TC-MA-3 — Valid key → 200
 def test_valid_agent_key_returns_200():
     with (
-        patch("app.routers.api_metrics.get_agent_metadata_by_key", return_value={"agent_id": "a1"}),
-        patch("app.routers.api_metrics.update_last_seen"),
+        patch("app.auth.dependencies.get_agent_metadata_by_key", return_value={"agent_id": "a1"}),
+        patch("app.auth.dependencies.update_last_seen"),
     ):
         resp = _post_metrics({"x-agent-key": "valid-key-abc"})
     assert resp.status_code == 200

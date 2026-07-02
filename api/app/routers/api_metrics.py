@@ -1,14 +1,13 @@
-from fastapi import APIRouter, Depends, Query, HTTPException, Header
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from .. import models, db
 from ..auth.csrf import verify_json_csrf
-from ..auth.dependencies import require_api_auth
+from ..auth.dependencies import require_api_auth, require_agent_key
 from typing import Optional
 from datetime import datetime, timedelta
 import re
 import json
-from ..services.agent_service import update_last_seen, get_agent_metadata_by_key
 
 router = APIRouter(prefix="/api")
 
@@ -30,14 +29,8 @@ def extract_ip_from_text(text: str) -> Optional[str]:
 def ingest_metric(
     metric: models.MetricCreate,
     db: Session = Depends(db.get_db),
-    x_agent_key: str = Header(..., alias="X-Agent-Key"),
+    agent_meta: dict = Depends(require_agent_key),
 ):
-    # ST-023: X-Agent-Key is required. Validate it against registered agents.
-    agent_meta = get_agent_metadata_by_key(agent_key=x_agent_key, db=db)
-    if not agent_meta:
-        raise HTTPException(status_code=401, detail="Invalid or missing X-Agent-Key.")
-    update_last_seen(agent_key=x_agent_key, db=db)
-
     db_metric = models.Metric(
         timestamp=metric.timestamp,
         host=metric.host,
