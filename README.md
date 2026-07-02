@@ -524,12 +524,6 @@ docker ps
 pytest api/app/detection/tests/
 ```
 
-### Run T1059 test if available
-
-```bash
-make test-t1059
-```
-
 ---
 
 ## 14. Database Checks

@@ -61,12 +61,6 @@ python -m pytest app/detection/tests/test_yaml_detection_engine.py -v
 python -m pytest app/detection/tests/test_yaml_detection_engine.py::test_t1059_match_returns_candidate -v
 ```
 
-### Test T1059 Detection End-to-End
-
-```bash
-make test-t1059   # sends a test auditd payload, waits 15s, queries DB for T1059 alerts
-```
-
 ## Architecture
 
 ### Detection Pipeline (v2.8.0)
