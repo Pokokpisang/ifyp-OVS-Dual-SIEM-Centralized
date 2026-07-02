@@ -19,8 +19,8 @@ actions:
     type: create_case_note
     target_field: rule_name
     mode: simulation
-    requires_approval: false
+    requires_approval: true
     rollback_supported: false
-    description: Records that the correlated alert should be investigated as a higher-confidence event.
+    description: Records that the correlated alert should be investigated as a higher-confidence event. Requires admin approval before the note is officially created.
     automation:
-      auto_run_allowed: true
+      auto_run_allowed: false

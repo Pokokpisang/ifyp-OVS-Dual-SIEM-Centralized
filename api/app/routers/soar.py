@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from .. import db
 from ..auth.csrf import verify_json_csrf
-from ..auth.dependencies import require_admin_auth
+from ..auth.dependencies import require_admin_auth, require_analyst_auth
 from ..soar.response_service import (
     approve_action,
     get_history,
@@ -26,7 +26,7 @@ def soar_recommendations(alert_id: int, database: Session = Depends(db.get_db)):
 
 @router.post(
     "/alerts/{alert_id}/soar/run",
-    dependencies=[Depends(require_admin_auth), Depends(verify_json_csrf)],
+    dependencies=[Depends(require_analyst_auth), Depends(verify_json_csrf)],
 )
 def soar_run(
     request: Request,

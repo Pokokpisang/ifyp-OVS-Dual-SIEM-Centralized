@@ -31,3 +31,12 @@ def require_admin_html(request: Request) -> None:
         raise LoginRequiredException()
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required.")
+
+
+def require_analyst_auth(request: Request) -> None:
+    """Allows admin or analyst roles. Used for SOAR run so analysts can submit actions for approval."""
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+    if user.get("role") not in ("admin", "analyst"):
+        raise HTTPException(status_code=403, detail="Analyst or admin access required.")
