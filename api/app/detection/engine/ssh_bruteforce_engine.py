@@ -15,11 +15,13 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import threading
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("detection.ssh_bruteforce_engine")
 
@@ -40,6 +42,23 @@ ENABLE_SSH_BRUTEFORCE_ENGINE: bool = _env_bool("ENABLE_SSH_BRUTEFORCE_ENGINE", T
 SSH_BF_THRESHOLD: int = _env_int("SSH_BF_THRESHOLD", 5)
 SSH_BF_WINDOW_SECONDS: int = _env_int("SSH_BF_WINDOW_SECONDS", 60)
 SSH_BF_DEDUP_SECONDS: int = _env_int("SSH_BF_DEDUP_SECONDS", 60)
+# Distinct usernames from one source within the window that indicate password
+# spraying (rather than targeting a single account).
+SSH_BF_SPRAY_USER_THRESHOLD: int = _env_int("SSH_BF_SPRAY_USER_THRESHOLD", 3)
+
+# Severity/risk escalation bands, expressed relative to the threshold.
+SSH_BF_SEVERE_MULTIPLIER = 3      # count >= threshold*3 -> severe
+SSH_BF_ELEVATED_MULTIPLIER = 2    # count >= threshold*2 -> elevated
+SSH_BF_RISK_SEVERE = 75
+SSH_BF_RISK_ELEVATED = 60
+SSH_BF_RISK_BASE = 45
+SSH_BF_SPRAY_RISK_BONUS = 10
+
+# Max DB rows to scan when counting recent failures (bounds query cost).
+SSH_BF_DB_ROW_LIMIT = 500
+
+# Matches the parser's username extraction ("for [invalid user ]<name>").
+_SSH_USER_RE = re.compile(r"for (?:invalid user )?(\w+)")
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -190,12 +209,59 @@ class SSHBruteForceEngine:
         threshold: int = SSH_BF_THRESHOLD,
         window_seconds: int = SSH_BF_WINDOW_SECONDS,
         dedup_seconds: int = SSH_BF_DEDUP_SECONDS,
+        db: Any = None,
     ) -> None:
         self._buffer = buffer or get_ssh_failure_buffer()
         self._dedup = dedup or get_ssh_bf_dedup()
         self._threshold = threshold
         self._window = window_seconds
         self._dedup_seconds = dedup_seconds
+        # Optional DB session. When present, persisted logs are the source of
+        # truth for the failure count/window so it survives restarts and is not
+        # limited to this worker's in-memory buffer. Falls back to the buffer on
+        # any DB error.
+        self._db = db
+
+    def _recent_failures_db(
+        self, agent_id: str, source_ip: str
+    ) -> Optional[Tuple[int, List[str]]]:
+        """Count failed SSH auth logs for (agent, source_ip) within the window.
+
+        Returns (count, distinct_usernames) or None on any error (caller then
+        falls back to the in-memory buffer).
+        """
+        if self._db is None:
+            return None
+        try:
+            from sqlalchemy import or_
+            from ... import models
+
+            cutoff = datetime.utcnow() - timedelta(seconds=self._window)
+            like_ip = f"%{source_ip}%"
+            rows = (
+                self._db.query(models.Log)
+                .filter(
+                    models.Log.agent_id == agent_id,
+                    models.Log.timestamp >= cutoff,
+                    models.Log.message.ilike(like_ip),
+                    or_(
+                        models.Log.message.ilike("%failed password%"),
+                        models.Log.message.ilike("%authentication failure%"),
+                    ),
+                )
+                .order_by(models.Log.timestamp.desc())
+                .limit(SSH_BF_DB_ROW_LIMIT)
+                .all()
+            )
+            users: List[str] = []
+            for row in rows:
+                m = _SSH_USER_RE.search(row.message or "")
+                if m:
+                    users.append(m.group(1))
+            return len(rows), users
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning(f"[SSH_BF] DB count failed, using in-memory buffer: {exc}")
+            return None
 
     def evaluate(self, event: Dict[str, Any]) -> Optional[SSHBruteForceMatch]:
         """
@@ -228,8 +294,15 @@ class SSHBruteForceEngine:
         )
         self._buffer.push(failure)
 
-        recent = self._buffer.get_recent(agent_id, source_ip, self._window)
-        count = len(recent)
+        # DB is authoritative when available (survives restarts, not per-worker);
+        # otherwise use the in-memory buffer.
+        db_result = self._recent_failures_db(agent_id, source_ip)
+        if db_result is not None:
+            count, users = db_result
+        else:
+            recent = self._buffer.get_recent(agent_id, source_ip, self._window)
+            count = len(recent)
+            users = [e.user_name for e in recent if e.user_name]
 
         if count < self._threshold:
             logger.debug(
@@ -247,25 +320,34 @@ class SSHBruteForceEngine:
         self._dedup.mark(agent_id, source_ip)
 
         # Determine severity / risk based on how far over threshold we are
-        if count >= self._threshold * 3:
-            risk_score, severity = 75, "high"
-        elif count >= self._threshold * 2:
-            risk_score, severity = 60, "medium"
+        if count >= self._threshold * SSH_BF_SEVERE_MULTIPLIER:
+            risk_score, severity = SSH_BF_RISK_SEVERE, "high"
+        elif count >= self._threshold * SSH_BF_ELEVATED_MULTIPLIER:
+            risk_score, severity = SSH_BF_RISK_ELEVATED, "medium"
         else:
-            risk_score, severity = 45, "medium"
+            risk_score, severity = SSH_BF_RISK_BASE, "medium"
 
-        # Collect unique targeted usernames within the window
-        users = list({e.user_name for e in recent if e.user_name})
-        user_display: Optional[str] = None
-        if len(users) == 1:
-            user_display = users[0]
-        elif users:
-            user_display = ", ".join(sorted(users))
+        distinct_users = sorted({u for u in users if u})
 
         match_reasons = [
             f"{count} failed SSH authentication(s) from {source_ip} within {self._window}s",
             f"Threshold: {self._threshold} failures / {self._window}s",
         ]
+
+        # Password spraying: many distinct usernames from one source.
+        if len(distinct_users) >= SSH_BF_SPRAY_USER_THRESHOLD:
+            risk_score = min(100, risk_score + SSH_BF_SPRAY_RISK_BONUS)
+            if risk_score >= SSH_BF_RISK_ELEVATED + 1:
+                severity = "high"
+            match_reasons.append(
+                f"Password spraying pattern: {len(distinct_users)} distinct usernames targeted"
+            )
+
+        user_display: Optional[str] = None
+        if len(distinct_users) == 1:
+            user_display = distinct_users[0]
+        elif distinct_users:
+            user_display = ", ".join(distinct_users)
         if user_display:
             match_reasons.append(f"Targeted user(s): {user_display}")
 
