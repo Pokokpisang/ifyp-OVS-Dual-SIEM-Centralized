@@ -24,6 +24,8 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
+from .engine_metadata import load_engine_metadata, mitre_id
+
 logger = logging.getLogger("detection.correlation_engine")
 
 # ---------------------------------------------------------------------------
@@ -43,6 +45,10 @@ ENABLE_CORRELATION_ENGINE: bool = _env_bool("ENABLE_CORRELATION_ENGINE", True)
 CORRELATION_WINDOW_SECONDS: int = _env_int("CORRELATION_WINDOW_SECONDS", 10)
 CORRELATION_BUFFER_TTL_SECONDS: int = _env_int("CORRELATION_BUFFER_TTL_SECONDS", 60)
 CORRELATION_DEDUP_SECONDS: int = _env_int("CORRELATION_DEDUP_SECONDS", 60)
+
+# Descriptive alert metadata is defined in engine_meta/ (detection-as-code); the
+# hardcoded literals below are only fallbacks if the YAML is missing/corrupt.
+_META = load_engine_metadata("correlation_download_execution")
 
 # ---------------------------------------------------------------------------
 # Event A / B criteria
@@ -97,13 +103,18 @@ class BufferedProcessEvent:
 
 @dataclass
 class CorrelationMatch:
-    """Returned when a correlation pattern is detected."""
-    rule_id: str = "linux_t1059_download_then_shell_execution"
-    rule_name: str = "Network Script Download Followed by Shell Execution"
-    severity: str = "high"
-    risk_score: int = 70
-    mitre_tactic: str = "TA0002"
-    mitre_technique: str = "T1059.004"
+    """Returned when a correlation pattern is detected.
+
+    Descriptive metadata (rule_id/name/severity/risk/mitre) is sourced from
+    engine_meta/correlation_download_execution.yaml; the literals here are
+    fallbacks only.
+    """
+    rule_id: str = field(default_factory=lambda: _META.get("rule_id", "linux_t1059_download_then_shell_execution"))
+    rule_name: str = field(default_factory=lambda: _META.get("rule_name", "Network Script Download Followed by Shell Execution"))
+    severity: str = field(default_factory=lambda: _META.get("severity", "high"))
+    risk_score: int = field(default_factory=lambda: int(_META.get("risk_score", 70)))
+    mitre_tactic: str = field(default_factory=lambda: mitre_id(_META, "tactic", "TA0002"))
+    mitre_technique: str = field(default_factory=lambda: mitre_id(_META, "technique", "T1059.004"))
     agent_id: str = ""
     first_event_process: str = ""
     first_event_command: str = ""

