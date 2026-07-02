@@ -57,7 +57,7 @@ class TestYamlAlertCreation:
         candidate = _make_candidate()
         event = _make_event()
 
-        with patch("app.detection.engine.active_runner.trigger_soar_auto_run_for_alert"):
+        with patch("app.services.alert_service.trigger_soar_auto_run_for_alert"):
             runner._create_alert(event, candidate)
 
         mock_db.add.assert_called_once()
@@ -76,7 +76,7 @@ class TestYamlAlertCreation:
         mock_db.query.return_value.filter.return_value.first.return_value = None
 
         runner = ActiveDetectionRunner(db=mock_db)
-        with patch("app.detection.engine.active_runner.trigger_soar_auto_run_for_alert"):
+        with patch("app.services.alert_service.trigger_soar_auto_run_for_alert"):
             runner._create_alert(_make_event(), _make_candidate())
 
         added = mock_db.add.call_args[0][0]
@@ -117,7 +117,7 @@ class TestSoarTriggeredAfterAlert:
         mock_db.add.side_effect = capture_add
         mock_db.commit.return_value = None
 
-        with patch("app.detection.engine.active_runner.trigger_soar_auto_run_for_alert") as mock_soar:
+        with patch("app.services.alert_service.trigger_soar_auto_run_for_alert") as mock_soar:
             runner = ActiveDetectionRunner(db=mock_db)
             runner._create_alert(_make_event(), _make_candidate())
 

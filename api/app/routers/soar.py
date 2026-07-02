@@ -14,6 +14,7 @@ from ..soar.response_service import (
     run_action,
 )
 from ..soar.schemas import SOARApproveRequest, SOARRejectRequest, SOARRunRequest
+from ..services.alert_service import get_actor_username
 
 router = APIRouter(prefix="/api", tags=["soar"])
 
@@ -35,7 +36,7 @@ def soar_run(
     database: Session = Depends(db.get_db),
 ):
     # ST-027: Read actor identity from authenticated session, not request body.
-    actor = request.state.user.get("username", "analyst") if request.state.user else "analyst"
+    actor = get_actor_username(request, default="analyst")
     result = run_action(
         alert_id=alert_id,
         playbook_id=body.playbook_id,
@@ -58,7 +59,7 @@ def soar_approve(
     database: Session = Depends(db.get_db),
 ):
     # ST-027: Read actor identity from authenticated session.
-    actor = request.state.user.get("username", "analyst") if request.state.user else "analyst"
+    actor = get_actor_username(request, default="analyst")
     result = approve_action(
         alert_id=alert_id,
         execution_id=execution_id,
@@ -80,7 +81,7 @@ def soar_reject(
     database: Session = Depends(db.get_db),
 ):
     # ST-027: Read actor identity from authenticated session.
-    actor = request.state.user.get("username", "analyst") if request.state.user else "analyst"
+    actor = get_actor_username(request, default="analyst")
     return reject_action(
         alert_id=alert_id,
         execution_id=execution_id,

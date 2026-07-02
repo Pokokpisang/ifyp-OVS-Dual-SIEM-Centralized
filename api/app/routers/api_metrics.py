@@ -4,6 +4,7 @@ from sqlalchemy import desc, func
 from .. import models, db
 from ..auth.csrf import verify_json_csrf
 from ..auth.dependencies import require_api_auth, require_agent_key
+from ..services.alert_service import AlertSpec, create_alert
 from typing import Optional
 from datetime import datetime, timedelta
 import re
@@ -82,7 +83,8 @@ def ingest_metric(
             ).first()
             
             if not recent_alert:
-                # 4. Create Alert
+                # 4. Create Alert (system-health alerts never trigger SOAR;
+                #    commit is deferred so rule.last_triggered lands in the same tx)
                 metadata = {
                     "engine": rule.detection_engine,
                     "metric": rule.metric_name,
@@ -90,25 +92,22 @@ def ingest_metric(
                     "observed_value": round(observed_value, 2),
                     "unit": unit
                 }
-                
-                alert = models.Alert(
-                    timestamp=datetime.utcnow(),
+
+                spec = AlertSpec(
                     host=metric.host,
                     severity=rule.severity,
                     title=rule.rule_name,
                     description=f"{rule.rule_name}: {rule.metric_name} {rule.operator} {rule.threshold_value}{unit} (Observed: {round(observed_value, 2)}{unit})",
-                    source=None, # Not MITRE
+                    source=None,  # Not MITRE
                     agent_id=agent_meta["agent_id"] if agent_meta else None,
                     rule_id=rule.rule_id,
                     rule_name=rule.rule_name,
                     risk_score=20,
-                    mitre_tactic=None,
-                    mitre_technique=None,
                     detection_engine=rule.detection_engine,
-                    detection_metadata=json.dumps(metadata)
+                    detection_metadata=metadata,
                 )
-                db.add(alert)
-                
+                create_alert(db, spec, trigger_soar=False, commit=False)
+
                 # Update last_triggered
                 rule.last_triggered = datetime.utcnow()
                 db.commit()
