@@ -85,3 +85,13 @@ def test_audit_parser_non_path_record_does_not_set_file_path():
     )
     result = _normalize(execve)
     assert result.get("file") is None
+
+
+def test_audit_parser_adds_normalized_command_for_execve():
+    execve = (
+        'type=EXECVE msg=audit(1710000000.200:500): argc=3 '
+        'a0="bash" a1="-c" a2="echo hello"'
+    )
+    result = _normalize(execve)
+    assert result["process"]["command_line"] == "bash -c echo hello"
+    assert result["process"]["normalized_command"] == "bash -c echo hello"
