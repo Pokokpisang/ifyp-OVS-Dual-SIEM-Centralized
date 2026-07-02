@@ -1,0 +1,5 @@
+{
+  "process": {"name": "ls", "command_line": "ls -la /etc", "parent": {"name": "bash"}},
+  "user": {"name": "admin"},
+  "host": {"name": "prod-1"}
+}

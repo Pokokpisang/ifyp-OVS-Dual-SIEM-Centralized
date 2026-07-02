@@ -1,0 +1,5 @@
+{
+  "process": {"name": "sh", "command_line": "npm install --production", "parent": {"name": "npm"}},
+  "user": {"name": "deploy"},
+  "host": {"name": "build-1"}
+}

