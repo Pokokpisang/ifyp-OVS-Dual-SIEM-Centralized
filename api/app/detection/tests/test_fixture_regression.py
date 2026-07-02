@@ -19,6 +19,8 @@ CASES = [
     ("t1543_attacker_service", "linux_t1543_002_systemd_service_persistence", True, False, 55, 100),
     ("t1543_dpkg_maintainer_suppressed", "linux_t1543_002_systemd_service_persistence", True, True, None, None),
     ("t1110_failed_auth", "linux_t1110_ssh_bruteforce", True, False, 40, 40),
+    ("t1053_cron_attacker", "linux_t1053_003_cron_persistence", True, False, 55, 100),
+    ("t1053_cron_dpkg_suppressed", "linux_t1053_003_cron_persistence", True, True, None, None),
 ]
 
 
