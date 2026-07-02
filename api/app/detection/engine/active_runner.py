@@ -1,6 +1,5 @@
 import os
 import hashlib
-import json
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List
@@ -22,7 +21,7 @@ from .ssh_bruteforce_engine import (
     get_ssh_bf_dedup,
 )
 
-from ...soar.auto_runner import trigger_soar_auto_run_for_alert
+from ...services.alert_service import AlertSpec, create_alert
 
 logger = logging.getLogger("detection.active_runner")
 
@@ -264,15 +263,12 @@ class ActiveDetectionRunner:
             f"\nTime Delta: {match.time_delta_seconds}s"
         )
 
-        alert = models.Alert(
-            timestamp=datetime.utcnow(),
+        spec = AlertSpec(
             host=str(host),
             severity=match.severity.upper(),
             title=f"[{match.rule_id}] {match.rule_name}",
             description=description,
             source=match.mitre_technique,
-
-            # v2.0.0 Fields
             agent_id=match.agent_id,
             rule_id=match.rule_id,
             rule_name=match.rule_name,
@@ -280,16 +276,13 @@ class ActiveDetectionRunner:
             mitre_tactic=match.mitre_tactic,
             mitre_technique=match.mitre_technique,
             detection_engine="CorrelationEngine",
-            detection_metadata=json.dumps(detection_metadata),
+            detection_metadata=detection_metadata,
         )
-
-        self.db.add(alert)
-        self.db.commit()
+        create_alert(self.db, spec, trigger_soar=True)
         logger.info(
             f"[CORR] ALERT CREATED: {match.rule_id} on {host} "
             f"(Risk: {match.risk_score}, delta={match.time_delta_seconds}s)"
         )
-        trigger_soar_auto_run_for_alert(alert.id, self.db)
 
     # -----------------------------------------------------------------------
     # SSH Brute Force pass
@@ -352,15 +345,12 @@ class ActiveDetectionRunner:
             description += f" Target user(s): {match.user_name}."
         description += f"\n\nReasons: {', '.join(match.match_reasons)}"
 
-        alert = models.Alert(
-            timestamp=datetime.utcnow(),
+        spec = AlertSpec(
             host=str(host),
             severity=match.severity.upper(),
             title=f"[{match.rule_id}] {match.rule_name}",
             description=description,
             source=match.mitre_technique,
-
-            # v2.0.0 fields
             agent_id=match.agent_id,
             rule_id=match.rule_id,
             rule_name=match.rule_name,
@@ -368,16 +358,13 @@ class ActiveDetectionRunner:
             mitre_tactic=match.mitre_tactic,
             mitre_technique=match.mitre_technique,
             detection_engine="SSHBruteForceEngine",
-            detection_metadata=json.dumps(detection_metadata),
+            detection_metadata=detection_metadata,
         )
-
-        self.db.add(alert)
-        self.db.commit()
+        create_alert(self.db, spec, trigger_soar=True)
         logger.info(
             f"[SSH_BF] ALERT CREATED: {match.rule_id} on {host} "
             f"(source_ip={match.source_ip}, count={match.failure_count}, risk={match.risk_score})"
         )
-        trigger_soar_auto_run_for_alert(alert.id, self.db)
 
     # -----------------------------------------------------------------------
     # Standard YAML alert creator (unchanged)
@@ -390,16 +377,11 @@ class ActiveDetectionRunner:
         host = event.get("hostname", event.get("host", "unknown"))
         mitre_info = candidate.mitre or {}
 
-        # YAML dedup guard — must come before any DB write or SOAR trigger
+        # YAML dedup key — the actual duplicate check + short-circuit happens in
+        # alert_service.create_alert (dedup_key is passed through on the spec).
         _agent_id = str(event.get("agent_id") or "")
         _rule_id  = str(candidate.rule_id or "")
         dedup_key = build_yaml_alert_dedup_key(_agent_id, _rule_id, event)
-        if is_duplicate_yaml_alert(dedup_key, self.db):
-            logger.info(
-                f"[ACTIVE_RUNNER] DUPLICATE SKIPPED: rule={candidate.rule_id} "
-                f"agent={_agent_id} dedup_key={dedup_key}"
-            )
-            return
         # Bucket display timestamps — UTC + GMT+8; dedup logic uses UTC epoch only
         _bucket_epoch = int(_extract_event_epoch(event) / YAML_DEDUP_WINDOW_SECONDS) * YAML_DEDUP_WINDOW_SECONDS
         _bucket_time_utc  = datetime.fromtimestamp(_bucket_epoch, tz=timezone.utc).isoformat().replace("+00:00", "Z")
@@ -437,15 +419,12 @@ class ActiveDetectionRunner:
         if isinstance(technique, dict):
             technique = technique.get("id", technique.get("name", "Unknown"))
 
-        alert = models.Alert(
-            timestamp=datetime.utcnow(),
+        spec = AlertSpec(
             host=host,
             severity=candidate.severity.upper(),
             title=f"[{candidate.rule_id}] {candidate.rule_name}",
             description=description,
             source=str(technique),
-            
-            # v2.0.0 Fields
             agent_id=event.get("agent_id"),
             rule_id=candidate.rule_id,
             rule_name=candidate.rule_name,
@@ -453,11 +432,14 @@ class ActiveDetectionRunner:
             mitre_tactic=str(tactic),
             mitre_technique=str(technique),
             detection_engine="YAML",
-            detection_metadata=json.dumps(metadata),
+            detection_metadata=metadata,
             dedup_key=dedup_key,
         )
-
-        self.db.add(alert)
-        self.db.commit()
+        alert = create_alert(self.db, spec, trigger_soar=True)
+        if alert is None:
+            logger.info(
+                f"[ACTIVE_RUNNER] DUPLICATE SKIPPED: rule={candidate.rule_id} "
+                f"agent={_agent_id} dedup_key={dedup_key}"
+            )
+            return
         logger.info(f"[ACTIVE_RUNNER] ALERT CREATED: {candidate.rule_id} on {host} (Risk: {candidate.risk_score})")
-        trigger_soar_auto_run_for_alert(alert.id, self.db)
