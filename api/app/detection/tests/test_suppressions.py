@@ -3,6 +3,7 @@ from app.detection.engine.rule_loader import RuleLoader
 from app.detection.engine.rule_evaluator import RuleEvaluator
 from app.detection.engine.risk_scoring import RiskScorer
 from app.detection.engine.suppressions import SuppressionEngine
+from app.detection.engine.normalization import enrich_process_fields
 from app.detection.schemas.rule_schema import DetectionRule
 
 @pytest.fixture
@@ -24,7 +25,7 @@ def components():
 
 def test_benign_build_workflow_is_suppressed(components):
     # npm parent, sh process, no curl/wget/etc.
-    event = {
+    event = enrich_process_fields({
         "process": {
             "name": "sh",
             "command_line": "ls -la",
@@ -32,7 +33,7 @@ def test_benign_build_workflow_is_suppressed(components):
         },
         "user": {"name": "root"},
         "host": {"name": "test"}
-    }
+    })
     rule = components["rule"]
     evaluator = components["evaluator"]
     scorer = components["scorer"]
@@ -68,8 +69,38 @@ def test_benign_build_workflow_is_suppressed(components):
     assert supp.suppressed is True
     assert supp.suppression_id == "benign_build_workflow_low_risk"
 
+def test_build_command_suppressed_when_parent_name_absent(components):
+    # No parent.name (best-effort resolution missed), but the command is clearly
+    # a build command — the normalized-command fallback keeps it suppressed.
+    event = enrich_process_fields({
+        "process": {
+            "name": "sh",
+            "command_line": "npm install --production",
+        },
+    })
+    rule_data = {
+        "id": "test_rule",
+        "name": "Test Rule",
+        "description": "test",
+        "severity": "medium",
+        "risk_score": 50,
+        "mitre": {"tactic": "test"},
+        "log_source": {"product": "test"},
+        "required_fields": ["process.name"],
+        "condition": {"field": "process.name", "operator": "equals", "value": "sh"},
+        "investigation_guide": "test"
+    }
+    rule = DetectionRule(**rule_data)
+    match = components["evaluator"].evaluate(event, rule)
+    risk = components["scorer"].calculate(event, rule, match)
+    supp = components["engine"].should_suppress(event, rule, match, risk)
+
+    assert supp.suppressed is True
+    assert supp.suppression_id == "benign_build_workflow_low_risk"
+
+
 def test_build_workflow_with_curl_is_not_suppressed(components):
-    event = {
+    event = enrich_process_fields({
         "process": {
             "name": "sh",
             "command_line": "curl http://evil.com",
@@ -77,7 +108,7 @@ def test_build_workflow_with_curl_is_not_suppressed(components):
         },
         "user": {"name": "root"},
         "host": {"name": "test"}
-    }
+    })
     # This matches 'benign_build_workflow_low_risk' parent BUT fails the 'not_contains_any' check for 'curl'.
     
     rule_data = {
@@ -174,18 +205,18 @@ def test_rule_exception_applies_only_to_matching_rule_id(components):
         "investigation_guide": "test"
     }
     rule = DetectionRule(**rule_data)
-    event = {
+    event = enrich_process_fields({
         "process": {
             "name": "sh",
             "command_line": "ls",
             "parent": {"name": "npm"}
         }
-    }
-    
+    })
+
     match = components["evaluator"].evaluate(event, rule)
     risk = components["scorer"].calculate(event, rule, match)
     supp = engine.should_suppress(event, rule, match, risk)
-    
+
     # It should still be suppressed by the GLOBAL suppression 'benign_build_workflow_low_risk'
     # which has the same conditions.
     assert supp.suppressed is True

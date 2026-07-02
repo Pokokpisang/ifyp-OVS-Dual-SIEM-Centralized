@@ -6,13 +6,21 @@ rule_exceptions:
     rule_id: linux_t1059_shell_network_tool_sample
     conditions:
       all:
-        - field: process.parent.name
-          operator: in
-          value:
-            - npm
-            - pnpm
-            - make
-        - field: process.command_line
+        - any:
+            - field: process.parent.name
+              operator: in
+              value:
+                - npm
+                - pnpm
+                - make
+            - field: process.normalized_command
+              operator: contains_any
+              value:
+                - "npm install"
+                - "npm run"
+                - "pnpm install"
+                - "make -"
+        - field: process.normalized_command
           operator: not_contains_any
           value:
             - curl
