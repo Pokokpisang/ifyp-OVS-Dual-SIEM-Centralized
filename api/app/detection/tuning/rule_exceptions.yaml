@@ -33,3 +33,22 @@ rule_exceptions:
             - base64
             - chmod
     reason: Rule-specific exception for low-risk build workflow.
+
+  # Known-good source allowlist for the T1078 service-account login rule.
+  # allow_high_risk is true because that rule is HIGH severity — an explicitly
+  # trusted source must be able to override it.
+  # NOTE: 203.0.113.200 is a reserved documentation IP (TEST-NET-3) and matches
+  # nothing in real traffic. Operators MUST replace it with the real IPs of trusted
+  # monitoring/admin hosts that legitimately log in as a service account.
+  - id: t1078_service_login_trusted_source_allowlist
+    description: Suppress T1078 service-account logins from explicitly trusted source IPs.
+    enabled: true
+    allow_high_risk: true
+    rule_id: linux_t1078_003_service_account_login
+    conditions:
+      all:
+        - field: source.ip
+          operator: in
+          value:
+            - "203.0.113.200"
+    reason: Login from an explicitly trusted administrative/monitoring source IP.

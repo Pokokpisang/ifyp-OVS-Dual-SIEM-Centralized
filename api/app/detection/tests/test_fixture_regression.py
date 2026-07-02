@@ -21,6 +21,8 @@ CASES = [
     ("t1110_failed_auth", "linux_t1110_ssh_bruteforce", True, False, 40, 40),
     ("t1053_cron_attacker", "linux_t1053_003_cron_persistence", True, False, 55, 100),
     ("t1053_cron_dpkg_suppressed", "linux_t1053_003_cron_persistence", True, True, None, None),
+    ("t1078_service_login_external", "linux_t1078_003_service_account_login", True, False, 80, 80),
+    ("t1078_service_login_allowlisted", "linux_t1078_003_service_account_login", True, True, None, None),
 ]
 
 
