@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from .. import db
 from ..services.agent_service import process_heartbeat, register_agent
+from ..services import audit_service
 from ..services.installer_service import generate_install_script, generate_uninstall_script
 from ..services.server_address import get_server_address, normalize_server_url
 
@@ -101,6 +102,21 @@ def api_register_agent(
         os=body.os,
         arch=body.arch,
         db=database,
+    )
+    # Audit the enrollment — sanitized metadata only, never the agent key/token.
+    audit_service.record_audit_event(
+        database,
+        actor=f"agent:{body.hostname}",
+        action=audit_service.AGENT_REGISTERED,
+        object_type="agent",
+        object_id=body.hostname,
+        details={
+            "hostname": body.hostname,
+            "ip": body.ip_address,
+            "os": body.os,
+            "arch": body.arch,
+        },
+        commit=True,
     )
     return {"status": "registered", "agent_key": raw_key}
 

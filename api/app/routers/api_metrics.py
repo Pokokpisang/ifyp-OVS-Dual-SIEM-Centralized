@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from .. import models, db
 from ..auth.csrf import verify_json_csrf
 from ..auth.dependencies import require_api_auth, require_agent_key
 from ..services.metric_service import compute_metrics_summary, evaluate_health_rules
-from ..services import investigation_service
+from ..services import investigation_service, audit_service
+from ..services.alert_service import get_actor_username
 from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/api")
@@ -184,7 +185,7 @@ class AssessmentIn(_BaseModel):
     analyst_notes: str = ""
 
 @router.put("/alerts/{alert_id}/assessment", dependencies=[Depends(require_api_auth), Depends(verify_json_csrf)])
-def save_assessment(alert_id: int, payload: AssessmentIn, db: Session = Depends(db.get_db)):
+def save_assessment(alert_id: int, payload: AssessmentIn, request: Request, db: Session = Depends(db.get_db)):
     # Validate alert exists
     alert = db.query(models.Alert).filter(models.Alert.id == alert_id).first()
     if not alert:
@@ -201,6 +202,8 @@ def save_assessment(alert_id: int, payload: AssessmentIn, db: Session = Depends(
         models.AlertAssessment.alert_id == alert_id
     ).first()
 
+    previous_status = assessment.status if assessment else "New"
+
     if assessment:
         assessment.status = payload.status
         assessment.analyst_notes = payload.analyst_notes
@@ -213,5 +216,15 @@ def save_assessment(alert_id: int, payload: AssessmentIn, db: Session = Depends(
         )
         db.add(assessment)
 
+    # Audit the status change (status strings only — no analyst notes/secrets).
+    audit_service.record_audit_event(
+        db,
+        actor=get_actor_username(request),
+        action=audit_service.ALERT_STATUS_CHANGED,
+        object_type="alert",
+        object_id=alert_id,
+        details={"from": previous_status, "to": payload.status},
+        commit=False,
+    )
     db.commit()
     return {"status": "ok", "assessment_status": assessment.status}

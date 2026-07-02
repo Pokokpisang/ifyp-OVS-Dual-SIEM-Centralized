@@ -406,6 +406,48 @@ def test_logout_emits_auth_logout_log(caplog):
 
 
 # ---------------------------------------------------------------------------
+# Audit trail (item #4) — login/logout write ActivityAudit rows
+# ---------------------------------------------------------------------------
+
+def _audit_rows(action):
+    from app.models import ActivityAudit
+    s = _TestSessionLocal()
+    try:
+        return s.query(ActivityAudit).filter(ActivityAudit.action == action).all()
+    finally:
+        s.close()
+
+
+def test_login_failure_writes_audit_row_without_password():
+    from app.services.audit_service import LOGIN_FAILURE
+    with patch.dict(os.environ, {
+        "DASHBOARD_USERNAME": _TEST_USER,
+        "DASHBOARD_PASSWORD_HASH": _TEST_HASH,
+    }):
+        _post_form("/login", data={"username": _TEST_USER, "password": "wrongpassword"})
+    rows = _audit_rows(LOGIN_FAILURE)
+    assert rows, "expected a LOGIN_FAILURE audit row"
+    row = rows[-1]
+    assert row.actor == _TEST_USER
+    # No password anywhere in the stored details.
+    assert "wrongpassword" not in (row.details or "")
+    assert "invalid_credentials" in (row.details or "")
+
+
+def test_login_success_and_logout_write_audit_rows():
+    from app.services.audit_service import LOGIN_SUCCESS, LOGOUT
+    with patch.dict(os.environ, {
+        "DASHBOARD_USERNAME": _TEST_USER,
+        "DASHBOARD_PASSWORD_HASH": _TEST_HASH,
+    }):
+        login_resp = _post_form("/login", data={"username": _TEST_USER, "password": _TEST_PASS})
+        session_cookie = login_resp.cookies.get("session", "")
+        _post_form("/logout", data={}, cookies={"session": session_cookie} if session_cookie else {})
+    assert _audit_rows(LOGIN_SUCCESS), "expected a LOGIN_SUCCESS audit row"
+    assert _audit_rows(LOGOUT), "expected a LOGOUT audit row"
+
+
+# ---------------------------------------------------------------------------
 # TC-14 — SESSION_COOKIE_SECURE=true produces Secure cookie attribute
 # ---------------------------------------------------------------------------
 

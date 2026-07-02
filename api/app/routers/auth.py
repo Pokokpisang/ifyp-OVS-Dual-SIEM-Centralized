@@ -12,6 +12,12 @@ from ..auth.csrf import verify_form_csrf
 from ..auth.custom_rate_limit import client_host_key
 from ..auth.session_store import create_session, delete_session
 from ..auth.user_registry import authenticate
+from ..services.audit_service import (
+    LOGIN_FAILURE,
+    LOGIN_SUCCESS,
+    LOGOUT,
+    record_audit_event,
+)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -47,9 +53,23 @@ async def login(
         request.session["session_token"] = raw_token
 
         logger.info("AUTH_SUCCESS username=%s role=%s ip=%s", username, role, get_remote_address(request))
+        record_audit_event(
+            database,
+            actor=username,
+            action=LOGIN_SUCCESS,
+            details={"role": role, "ip": get_remote_address(request)},
+            commit=True,
+        )
         return RedirectResponse(url="/dashboard", status_code=303)
 
     logger.warning("AUTH_FAILURE username=%s ip=%s", username, get_remote_address(request))
+    record_audit_event(
+        database,
+        actor=username,
+        action=LOGIN_FAILURE,
+        details={"ip": get_remote_address(request), "reason": "invalid_credentials"},
+        commit=True,
+    )
     return templates.TemplateResponse(
         "login.html",
         {"request": request, "error": "Invalid credentials."},
@@ -66,4 +86,11 @@ async def logout(request: Request, database: Session = Depends(_db.get_db)):
         delete_session(raw_token, database)
     request.session.clear()
     logger.info("AUTH_LOGOUT username=%s ip=%s", username, get_remote_address(request))
+    record_audit_event(
+        database,
+        actor=username,
+        action=LOGOUT,
+        details={"ip": get_remote_address(request)},
+        commit=True,
+    )
     return RedirectResponse(url="/login", status_code=303)

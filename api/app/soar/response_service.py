@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from .. import models
+from ..services import audit_service
 from .action_executor import execute_action
 from .playbook_loader import PlaybookLoader
 from .playbook_matcher import _build_alert_context, match
@@ -124,6 +125,20 @@ def run_action(
             ),
         )
         db.add(exec_record)
+        audit_service.record_audit_event(
+            db,
+            actor=executed_by,
+            action=audit_service.SOAR_RUN,
+            object_type="alert",
+            object_id=alert_id,
+            details={
+                "playbook_id": playbook.id,
+                "action_id": action.id,
+                "status": "pending_approval",
+                "target": pending_target,
+            },
+            commit=False,
+        )
         db.commit()
         logger.info(
             f"[SOAR_RUN] Created pending_approval record #{exec_record.id} "
@@ -164,6 +179,20 @@ def run_action(
         exec_metadata=json.dumps({"match_reasons": [r.match_reasons for r in recommendations]}),
     )
     db.add(exec_record)
+    audit_service.record_audit_event(
+        db,
+        actor=executed_by,
+        action=audit_service.SOAR_RUN,
+        object_type="alert",
+        object_id=alert_id,
+        details={
+            "playbook_id": playbook.id,
+            "action_id": action.id,
+            "status": "executed" if result.success else "failed",
+            "target": result.target,
+        },
+        commit=False,
+    )
     db.commit()
 
     return SOARExecutionResult(
@@ -235,6 +264,20 @@ def approve_action(
     exec_record.error_message = result.error
     if result.target:
         exec_record.target = result.target
+    audit_service.record_audit_event(
+        db,
+        actor=approved_by,
+        action=audit_service.SOAR_APPROVE,
+        object_type="alert",
+        object_id=alert_id,
+        details={
+            "execution_id": execution_id,
+            "playbook_id": playbook.id,
+            "action_id": action.id,
+            "status": exec_record.status,
+        },
+        commit=False,
+    )
     db.commit()
 
     logger.info(
@@ -284,6 +327,20 @@ def reject_action(
     exec_record.status = "rejected"
     exec_record.rejected_by = rejected_by
     exec_record.rejected_at = datetime.utcnow()
+    audit_service.record_audit_event(
+        db,
+        actor=rejected_by,
+        action=audit_service.SOAR_REJECT,
+        object_type="alert",
+        object_id=alert_id,
+        details={
+            "execution_id": execution_id,
+            "playbook_id": exec_record.playbook_id,
+            "action_id": exec_record.action_id,
+            "status": "rejected",
+        },
+        commit=False,
+    )
     db.commit()
 
     logger.info(
