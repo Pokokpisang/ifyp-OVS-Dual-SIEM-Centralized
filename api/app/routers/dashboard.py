@@ -6,17 +6,15 @@ from sqlalchemy import desc
 from .. import models, db
 import math
 import os
-from datetime import datetime, timedelta
 from ..auth.csrf import verify_form_csrf
 from ..auth.dependencies import require_admin_auth
 from ..services.agent_service import (
-    create_agent, list_agents, compute_agent_status,
+    create_agent, compute_agent_status,
     get_agent_by_id, delete_agent_by_id, purge_agent_by_id,
     get_latest_agent_metrics, get_recent_agent_alerts, get_recent_agent_logs,
-    get_all_agents_for_history,
 )
 from ..services.server_address import get_server_address, normalize_server_url, validate_server_address
-from ..services import audit_service
+from ..services import audit_service, dashboard_service
 from ..services.alert_service import get_actor_username
 
 router = APIRouter()
@@ -139,94 +137,10 @@ def view_agents(
     status_filter: str = "All",
     database: Session = Depends(db.get_db)
 ):
-    # --- AgentRecord-registered agents (active inventory only — excludes deleted/retired/test) ---
-    registered = list_agents(database, include_deleted=False)
-
-    # --- Legacy metric-only agents (appear via /ingest metrics without registration) ---
-    hosts_with_metrics = {h[0] for h in database.query(models.Metric.host).distinct().all()}
-    registered_hostnames = {a["hostname"] for a in registered if a["hostname"] != "—"}
-
-    now = datetime.utcnow()
-    agents: list[dict] = list(registered)  # start with registered agents
-
-    for host in hosts_with_metrics - registered_hostnames:
-        latest = (
-            database.query(models.Metric)
-            .filter(models.Metric.host == host)
-            .order_by(desc(models.Metric.timestamp))
-            .first()
-        )
-        if not latest:
-            continue
-        is_offline = (now - latest.timestamp) > timedelta(minutes=5)
-        is_high_load = float(latest.cpu_percent) > 85.0
-        status = "offline" if is_offline else ("HIGH LOAD" if is_high_load else "active")
-        agents.append({
-            "id": None,
-            "agent_id": host,
-            "agent_name": host,
-            "group": "—",
-            "tags": "",
-            "os_type": "Linux",
-            "distribution": "—",
-            "architecture": "—",
-            "status": status,
-            "hostname": host,
-            "ip_address": "—",
-            "last_seen": latest.timestamp.strftime("%Y-%m-%d %H:%M UTC"),
-            "created_at": "—",
-            "cpu": round(float(latest.cpu_percent), 1),
-            "ram": round(float(latest.ram_percent), 1),
-        })
-
-    # Inject cpu/ram for registered agents that also have metrics
-    for a in agents:
-        if "cpu" not in a:
-            host = a.get("hostname", "")
-            latest = (
-                database.query(models.Metric)
-                .filter(models.Metric.host == host)
-                .order_by(desc(models.Metric.timestamp))
-                .first()
-            )
-            a["cpu"] = round(float(latest.cpu_percent), 1) if latest else 0
-            a["ram"] = round(float(latest.ram_percent), 1) if latest else 0
-
-    # Filtering
-    if q:
-        agents = [a for a in agents if q.lower() in a["agent_name"].lower() or q.lower() in a["hostname"].lower()]
-    if status_filter != "All":
-        agents = [a for a in agents if a["status"].lower() == status_filter.lower()]
-
-    # Summary counts
-    total_online = sum(1 for a in agents if a["status"] in ("active", "HIGH LOAD"))
-    total_offline = sum(1 for a in agents if a["status"] == "offline")
-    total_pending = sum(1 for a in agents if a["status"] == "pending")
-    total_high_load = sum(1 for a in agents if a["status"] == "HIGH LOAD")
-
-    # Pagination
-    limit = 20
-    total_count = len(agents)
-    total_pages = max(math.ceil(total_count / limit), 1)
-    offset = (page - 1) * limit
-    paginated = agents[offset:offset + limit]
-
-    return templates.TemplateResponse("agents.html", {
-        "request": request,
-        "agents": paginated,
-        "page": page,
-        "total_count": total_count,
-        "total_pages": total_pages,
-        "q": q,
-        "status_filter": status_filter,
-        "summary": {
-            "total": total_count,
-            "online": total_online,
-            "offline": total_offline,
-            "high_load": total_high_load,
-            "pending": total_pending,
-        },
-    })
+    ctx = dashboard_service.build_agents_view(
+        database, q=q, status_filter=status_filter, page=page
+    )
+    return templates.TemplateResponse("agents.html", {"request": request, **ctx})
 
 
 # ---------------------------------------------------------------------------
@@ -345,90 +259,17 @@ def view_agents_history(
     lifecycle_filter: str = "all",
     database: Session = Depends(db.get_db),
 ):
-    agents = get_all_agents_for_history(database, q=q, lifecycle_filter=lifecycle_filter)
-
-    # Inject cpu/ram metrics for display
-    for a in agents:
-        host = a.get("hostname", "")
-        if host and host != "—":
-            latest = (
-                database.query(models.Metric)
-                .filter(models.Metric.host == host)
-                .order_by(desc(models.Metric.timestamp))
-                .first()
-            )
-            a["cpu"] = round(float(latest.cpu_percent), 1) if latest else 0
-            a["ram"] = round(float(latest.ram_percent), 1) if latest else 0
-        else:
-            a["cpu"] = 0
-            a["ram"] = 0
-
-    limit = 20
-    total_count = len(agents)
-    total_pages = max(math.ceil(total_count / limit), 1)
-    offset = (page - 1) * limit
-    paginated = agents[offset:offset + limit]
-
-    return templates.TemplateResponse("agents_history.html", {
-        "request": request,
-        "agents": paginated,
-        "page": page,
-        "total_count": total_count,
-        "total_pages": total_pages,
-        "q": q,
-        "lifecycle_filter": lifecycle_filter,
-    })
+    ctx = dashboard_service.build_agents_history_view(
+        database, q=q, lifecycle_filter=lifecycle_filter, page=page
+    )
+    return templates.TemplateResponse("agents_history.html", {"request": request, **ctx})
 
 
 @router.get("/network", response_class=HTMLResponse)
 def view_network(request: Request, database: Session = Depends(db.get_db)):
     """Network Investigation page — agent network status, suspicious activity, SOAR actions."""
-    registered = list_agents(database, include_deleted=False)
-
-    # Build agent list with real status and metrics
-    now = datetime.utcnow()
-    agent_rows = []
-    for a in registered:
-        host = a.get("hostname") or a.get("agent_name", "")
-        latest = (
-            database.query(models.Metric)
-            .filter(models.Metric.host == host)
-            .order_by(desc(models.Metric.timestamp))
-            .first()
-        ) if host else None
-        is_offline = (now - latest.timestamp) > timedelta(minutes=5) if latest else True
-        net_in = int(float(latest.net_in_bytes)) if latest else 0
-        net_out = int(float(latest.net_out_bytes)) if latest else 0
-        agent_rows.append({
-            "name": a.get("agent_name", "—"),
-            "host": a.get("ip_address", "—"),
-            "status": a.get("status", "offline"),
-            "last_seen": a.get("last_seen", "—"),
-            "net_in": net_in,
-            "net_out": net_out,
-            "risk": "low",  # TODO: derive from alert severity when network alert model exists
-        })
-
-    # Recent alerts for alert-chip linking
-    recent_alerts = (
-        database.query(models.Alert)
-        .order_by(desc(models.Alert.timestamp))
-        .limit(20)
-        .all()
-    )
-    alert_map = {a.id: {"id": a.id, "title": a.title, "severity": a.severity} for a in recent_alerts}
-
-    # Counts for metric cards
-    total_agents = len(agent_rows)
-    online_agents = sum(1 for a in agent_rows if a["status"] in ("active", "HIGH LOAD"))
-
-    return templates.TemplateResponse("network_investigation.html", {
-        "request": request,
-        "agent_rows": agent_rows,
-        "alert_map": alert_map,
-        "total_agents": total_agents,
-        "online_agents": online_agents,
-    })
+    ctx = dashboard_service.build_network_view(database)
+    return templates.TemplateResponse("network_investigation.html", {"request": request, **ctx})
 
 
 @router.get("/soar/settings", response_class=HTMLResponse)
@@ -445,57 +286,10 @@ def view_soar_history(
     alert_id: int | None = None,
     database: Session = Depends(db.get_db),
 ):
-    q = database.query(models.SOARActionExecution)
-
-    if status:
-        q = q.filter(models.SOARActionExecution.status == status)
-    if mode:
-        q = q.filter(models.SOARActionExecution.mode == mode)
-    if action_type:
-        q = q.filter(models.SOARActionExecution.action_type == action_type)
-    if alert_id:
-        q = q.filter(models.SOARActionExecution.alert_id == alert_id)
-
-    records = q.order_by(models.SOARActionExecution.id.desc()).limit(100).all()
-
-    # Summary counts (unfiltered)
-    all_rows = database.query(models.SOARActionExecution)
-    total = all_rows.count()
-    pending = all_rows.filter(models.SOARActionExecution.status == "pending_approval").count()
-    executed = all_rows.filter(models.SOARActionExecution.status.in_(["executed", "success"])).count()
-    failed = all_rows.filter(models.SOARActionExecution.status == "failed").count()
-    rejected = all_rows.filter(models.SOARActionExecution.status == "rejected").count()
-
-    # Distinct filter options
-    statuses = [r[0] for r in database.query(models.SOARActionExecution.status).distinct().all() if r[0]]
-    modes = [r[0] for r in database.query(models.SOARActionExecution.mode).distinct().all() if r[0]]
-    action_types = [r[0] for r in database.query(models.SOARActionExecution.action_type).distinct().all() if r[0]]
-
-    return templates.TemplateResponse(
-        "soar_history.html",
-        {
-            "request": request,
-            "records": records,
-            "filters": {
-                "status": status or "",
-                "mode": mode or "",
-                "action_type": action_type or "",
-                "alert_id": alert_id or "",
-            },
-            "summary": {
-                "total": total,
-                "pending": pending,
-                "executed": executed,
-                "failed": failed,
-                "rejected": rejected,
-            },
-            "filter_options": {
-                "statuses": statuses,
-                "modes": modes,
-                "action_types": action_types,
-            },
-        },
+    ctx = dashboard_service.build_soar_history_view(
+        database, status=status, mode=mode, action_type=action_type, alert_id=alert_id
     )
+    return templates.TemplateResponse("soar_history.html", {"request": request, **ctx})
 
 
 @router.get("/agents/{agent_id}", response_class=HTMLResponse)
