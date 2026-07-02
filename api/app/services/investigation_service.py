@@ -1,15 +1,13 @@
 """
 investigation_service — assembles the Alert Investigation page payload.
 
-Extracted verbatim from routers/api_metrics.get_investigation_data so the route
-stays a thin handler. The data-assembly helpers are strictly read-only and never
-commit; the DB session is owned by the caller (the route dependency).
+Extracted from routers/api_metrics.get_investigation_data so the route stays a
+thin handler. This module is strictly read-only: every function only queries and
+never commits; the DB session is owned by the caller (the route dependency).
 
-NOTE: get_investigation_data preserves a pre-existing write side effect — it
-triggers the SOAR auto-run (auto_run_for_alert), which commits inside SOAR. This
-is unusual for a GET endpoint and is kept only to preserve current behaviour.
-TODO: review moving this trigger off the GET path (e.g. to an explicit action or
-the alert-creation flow) and confirm SOAR auto-run idempotency for repeated GETs.
+SOAR auto-run is intentionally NOT triggered here — it already fires once at
+alert-creation time (services/alert_service.create_alert). Opening the
+investigation page is a pure read and has no side effects.
 """
 import json
 import re
@@ -183,18 +181,12 @@ def get_source_intel(db: Session, source_ip: Optional[str], host: str) -> dict:
 def get_investigation_data(db: Session, alert_id: int) -> dict:
     """Return all data needed by the Alert Investigation page as JSON.
 
-    Read-mostly: the only write is the preserved SOAR auto-run side effect (see
-    module docstring). Raises HTTPException(404) if the alert does not exist.
+    Strictly read-only. Raises HTTPException(404) if the alert does not exist.
     """
     # 1. Load alert (validate)
     alert = db.query(models.Alert).filter(models.Alert.id == alert_id).first()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
-
-    # Pre-existing side effect (preserved) — trigger SOAR auto-run for this alert.
-    # TODO: a GET should not have write side effects; review off-GET trigger + idempotency.
-    from ..soar.response_service import auto_run_for_alert
-    auto_run_for_alert(alert_id, db, executed_by="system:auto")
 
     # 2. Load analyst assessment (may not exist yet)
     assessment = db.query(models.AlertAssessment).filter(

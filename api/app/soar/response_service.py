@@ -350,8 +350,11 @@ def auto_run_for_alert(
                 playbook_id=rec.playbook_id,
                 action_id=action.id,
                 target=rec.resolved_target,
-                status="success",
             )
+            # run_action writes successful executions with status="executed";
+            # "success" is only a legacy value. Match both so repeated auto-runs
+            # (e.g. re-triggered creation) are idempotent and never duplicate.
+            .filter(models.SOARActionExecution.status.in_(("executed", "success")))
             .first()
         )
         if already_run:

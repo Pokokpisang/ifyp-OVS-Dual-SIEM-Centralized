@@ -193,11 +193,8 @@ def test_full_investigation_response_shape():
     assert body["endpoint_health"]["available"] is True
     assert body["endpoint_health"]["cpu"] == 42.5
 
-    # side effect preserved: auto_run called once with (alert_id, db, executed_by=...)
-    assert mock_soar.call_count == 1
-    args, kwargs = mock_soar.call_args
-    assert args[0] == alert_id
-    assert kwargs.get("executed_by") == "system:auto"
+    # read-only: the investigation GET must NOT trigger SOAR auto-run
+    mock_soar.assert_not_called()
 
 
 def test_timeline_ordering_and_markers():
@@ -244,15 +241,15 @@ def test_alert_with_no_related_events_still_returns_full_shape():
     assert body["timeline"][-1].get("is_pending") is True
 
 
-def test_repeated_fetch_is_idempotent_in_shape_and_soar_calls():
+def test_repeated_fetch_has_no_side_effects():
     _clear()
     alert_id = _seed_full()
     with patch("app.soar.response_service.auto_run_for_alert") as mock_soar:
         first = _get(f"/api/alerts/{alert_id}/investigation").json()
         second = _get(f"/api/alerts/{alert_id}/investigation").json()
 
-    # auto_run invoked once per GET, consistently (idempotency is owned by SOAR)
-    assert mock_soar.call_count == 2
+    # read-only: no SOAR auto-run on any fetch, so no duplicate executions possible
+    mock_soar.assert_not_called()
     # no duplicate SOAR timeline entries across repeated fetches (we seeded one)
     soar_first = [e for e in first["timeline"] if e.get("is_soar")]
     soar_second = [e for e in second["timeline"] if e.get("is_soar")]
