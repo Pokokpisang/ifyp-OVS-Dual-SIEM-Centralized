@@ -1,0 +1,7 @@
+{
+  "event": {"category": "file", "type": "change", "action": "created"},
+  "file": {"path": "/etc/cron.d/logrotate", "name": "logrotate"},
+  "process": {"name": "sh", "command_line": "sh -c 'cp /usr/share/pkg/logrotate.cron /etc/cron.d/logrotate'", "parent": {"name": "dpkg"}},
+  "user": {"name": "root"},
+  "host": {"name": "prod-1"}
+}

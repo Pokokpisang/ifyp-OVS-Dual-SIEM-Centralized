@@ -1,0 +1,124 @@
+id: linux_t1053_003_cron_persistence
+name: Suspicious Cron Job Creation or Modification
+description: >
+  Detects creation or modification of a cron file under standard cron directories
+  where the writing process carries suspicious payload indicators (network tools,
+  temporary paths, in-memory execution, redirection/tee into cron paths) or is a
+  shell/interpreter. Commonly observed during Linux persistence via scheduled
+  jobs (MITRE T1053.003). Access-control files (/etc/cron.allow, /etc/cron.deny)
+  are intentionally out of scope for this rule.
+enabled: true
+platform:
+  - linux
+log_source:
+  product: linux
+  service: auditd
+severity: medium
+risk_score: 55
+mitre:
+  tactic:
+    id: TA0003
+    name: Persistence
+  technique:
+    id: T1053
+    name: Scheduled Task/Job
+  subtechnique:
+    id: T1053.003
+    name: Cron
+tags:
+  - Linux
+  - T1053
+  - T1053.003
+  - Persistence
+  - Rule-Based Detection
+required_fields:
+  - file.path
+  - event.action
+  - process.command_line
+condition:
+  all:
+    - field: file.path
+      operator: contains_any
+      value:
+        - /etc/cron.d/
+        - /etc/crontab
+        - /etc/cron.daily/
+        - /etc/cron.hourly/
+        - /etc/cron.weekly/
+        - /etc/cron.monthly/
+        - /var/spool/cron/
+    - field: event.action
+      operator: in
+      value:
+        - created
+        - modified
+        - write
+        - change
+    - any:
+        - field: process.normalized_command
+          operator: contains_any
+          value:
+            - "/tmp/"
+            - "/var/tmp/"
+            - "/dev/shm/"
+            - "curl "
+            - "wget "
+            - "ncat"
+            - "socat"
+            - "bash -c"
+            - "sh -c"
+            - "chmod +x"
+            - "base64"
+            - "python -c"
+            - "perl -e"
+            - " > /etc/cron"
+            - " >> /etc/cron"
+            - " > /var/spool/cron"
+            - " >> /var/spool/cron"
+            - "tee /etc/cron"
+            - "tee -a /etc/cron"
+            - "tee /var/spool/cron"
+            - "tee -a /var/spool/cron"
+        - field: process.name
+          operator: in
+          value:
+            - bash
+            - sh
+            - dash
+            - zsh
+            - python3
+            - python
+            - perl
+            - ruby
+risk_adjustment:
+  increase_if:
+    - field: process.normalized_command
+      operator: contains_any
+      value:
+        - "curl "
+        - "wget "
+        - "ncat"
+        - "socat"
+      add_score: 15
+      reason: Cron file written by a process fetching content from the network
+    - field: process.normalized_command
+      operator: contains_any
+      value:
+        - "/dev/shm/"
+        - "/var/tmp/"
+      add_score: 10
+      reason: Cron entry references a highly suspicious in-memory or temp location
+false_positives:
+  - System administrator creating custom cron jobs for authorized software
+  - Configuration management tools (Ansible, Puppet, Chef) deploying cron files
+  - Package managers writing cron files during software installation
+investigation_guide: |
+  1. Identify the process that wrote the cron file and verify it is expected.
+  2. Review the full command line for payload paths (/tmp, /dev/shm) or download activity.
+  3. Inspect the created cron file content — focus on the scheduled command and the user it runs as.
+  4. Check for network connections made around the same time by the writing process.
+  5. Determine whether the cron entry runs as root and how frequently it fires.
+  6. Correlate with other persistence indicators: systemd units, SSH key additions, SUID binaries.
+references:
+  - https://attack.mitre.org/techniques/T1053/003/
+  - https://man7.org/linux/man-pages/man5/crontab.5.html

