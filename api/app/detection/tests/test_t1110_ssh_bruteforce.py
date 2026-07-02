@@ -187,3 +187,75 @@ def test_ssh_bruteforce_match_includes_threshold_and_dedup():
     assert match.threshold == threshold, "threshold must be carried on the match"
     assert match.dedup_seconds == dedup_secs, "dedup_seconds must be carried on the match"
     assert match.time_window_seconds == 60  # default window
+
+
+# ---------------------------------------------------------------------------
+# DB-backed counting + password-spray escalation
+# ---------------------------------------------------------------------------
+
+from unittest.mock import MagicMock
+
+
+class _LogRow:
+    def __init__(self, message):
+        self.message = message
+
+
+def _db_returning(messages):
+    """Mock DB whose Log query returns rows with the given messages."""
+    db = MagicMock()
+    rows = [_LogRow(m) for m in messages]
+    db.query.return_value.filter.return_value.order_by.return_value.limit.return_value.all.return_value = rows
+    return db
+
+
+def test_db_count_crosses_threshold_with_empty_buffer():
+    # Simulates a restart: the in-memory buffer is empty, but the DB already
+    # holds prior failures, so the current failure crosses the threshold.
+    db = _db_returning([f"Failed password for root from 10.9.9.9 port 22 ssh2"] * 5)
+    bf = SSHBruteForceEngine(
+        buffer=SSHFailureBuffer(), dedup=SSHBFDedupCache(), threshold=5, db=db
+    )
+    match = bf.evaluate(_failed_ssh_event(source_ip="10.9.9.9", agent_id="agent-db"))
+    assert match is not None
+    assert match.failure_count == 5
+
+
+def test_db_error_falls_back_to_buffer():
+    db = MagicMock()
+    db.query.side_effect = RuntimeError("db down")
+    bf = SSHBruteForceEngine(
+        buffer=SSHFailureBuffer(), dedup=SSHBFDedupCache(), threshold=3, db=db
+    )
+    event = _failed_ssh_event(source_ip="10.8.8.8", agent_id="agent-fb")
+    # Buffer path: needs 3 failures to trigger.
+    assert bf.evaluate(event) is None
+    assert bf.evaluate(event) is None
+    assert bf.evaluate(event) is not None
+
+
+def test_password_spray_escalates_risk():
+    messages = [
+        f"Failed password for {u} from 10.7.7.7 port 22 ssh2"
+        for u in ["root", "admin", "oracle", "postgres", "deploy"]
+    ]
+    db = _db_returning(messages)
+    bf = SSHBruteForceEngine(
+        buffer=SSHFailureBuffer(), dedup=SSHBFDedupCache(), threshold=5, db=db
+    )
+    match = bf.evaluate(_failed_ssh_event(source_ip="10.7.7.7", agent_id="agent-spray"))
+    assert match is not None
+    assert match.risk_score == 55  # base 45 + spray bonus 10
+    assert any("spraying" in r.lower() for r in match.match_reasons)
+
+
+def test_single_username_no_spray_bonus():
+    messages = [f"Failed password for root from 10.6.6.6 port 22 ssh2"] * 5
+    db = _db_returning(messages)
+    bf = SSHBruteForceEngine(
+        buffer=SSHFailureBuffer(), dedup=SSHBFDedupCache(), threshold=5, db=db
+    )
+    match = bf.evaluate(_failed_ssh_event(source_ip="10.6.6.6", agent_id="agent-single"))
+    assert match is not None
+    assert match.risk_score == 45  # no spray bonus
+    assert match.user_name == "root"

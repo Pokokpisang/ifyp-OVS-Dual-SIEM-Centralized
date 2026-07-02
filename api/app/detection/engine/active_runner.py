@@ -300,6 +300,7 @@ class ActiveDetectionRunner:
             bf_engine = SSHBruteForceEngine(
                 buffer=get_ssh_failure_buffer(),
                 dedup=get_ssh_bf_dedup(),
+                db=self.db,
             )
             match = bf_engine.evaluate(event)
         except Exception as e:
