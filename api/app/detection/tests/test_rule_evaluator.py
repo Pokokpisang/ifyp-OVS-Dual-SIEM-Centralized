@@ -178,3 +178,60 @@ def test_not_condition_excludes_parent(evaluator):
     assert evaluator.evaluate({"process": {"parent": {"name": "npm"}}}, rule).matched is False
     # Allowed parent (non-excluded)
     assert evaluator.evaluate({"process": {"parent": {"name": "bash"}}}, rule).matched is True
+
+
+# ---------------------------------------------------------------------------
+# New operators (Step 6)
+# ---------------------------------------------------------------------------
+
+class TestNewOperators:
+    def _cond(self, evaluator, event, **cond):
+        return evaluator.evaluate_condition(event, cond)[0]
+
+    def test_contains_all_all_present(self, evaluator):
+        ev = {"cmd": "chmod +x /tmp/x && run"}
+        assert self._cond(evaluator, ev, field="cmd", operator="contains_all",
+                          value=["chmod", "+x"]) is True
+
+    def test_contains_all_one_missing(self, evaluator):
+        ev = {"cmd": "chmod /tmp/x"}
+        assert self._cond(evaluator, ev, field="cmd", operator="contains_all",
+                          value=["chmod", "+x"]) is False
+
+    def test_contains_all_empty_list_is_false(self, evaluator):
+        assert self._cond(evaluator, {"cmd": "x"}, field="cmd",
+                          operator="contains_all", value=[]) is False
+
+    def test_gte_numeric(self, evaluator):
+        assert self._cond(evaluator, {"n": 90}, field="n", operator="gte", value=80) is True
+        assert self._cond(evaluator, {"n": 70}, field="n", operator="gte", value=80) is False
+
+    def test_lte_numeric(self, evaluator):
+        assert self._cond(evaluator, {"n": 5}, field="n", operator="lte", value=10) is True
+        assert self._cond(evaluator, {"n": 15}, field="n", operator="lte", value=10) is False
+
+    def test_gte_string_coercion(self, evaluator):
+        # numeric-looking strings are coerced
+        assert self._cond(evaluator, {"n": "90"}, field="n", operator="gte", value="80") is True
+
+    def test_gte_non_numeric_fails_closed(self, evaluator):
+        assert self._cond(evaluator, {"n": "abc"}, field="n", operator="gte", value=80) is False
+
+    def test_list_intersects_true(self, evaluator):
+        ev = {"tags": ["Linux", "T1059"]}
+        assert self._cond(evaluator, ev, field="tags", operator="list_intersects",
+                          value=["t1059", "t1110"]) is True
+
+    def test_list_intersects_false(self, evaluator):
+        ev = {"tags": ["Linux", "T1543"]}
+        assert self._cond(evaluator, ev, field="tags", operator="list_intersects",
+                          value=["t1059", "t1110"]) is False
+
+    def test_not_exists_on_missing_field(self, evaluator):
+        assert self._cond(evaluator, {"process": {}}, field="process.parent.name",
+                          operator="not_exists") is True
+
+    def test_not_exists_on_present_field(self, evaluator):
+        ev = {"process": {"parent": {"name": "sshd"}}}
+        assert self._cond(evaluator, ev, field="process.parent.name",
+                          operator="not_exists") is False
