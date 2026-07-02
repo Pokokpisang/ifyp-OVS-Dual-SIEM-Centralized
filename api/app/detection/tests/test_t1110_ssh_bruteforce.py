@@ -56,6 +56,23 @@ def test_t1110_yaml_rule_matches_failed_ssh_event(engine):
     assert t1110.mitre.get("technique", {}).get("id") == "T1110"
 
 
+def test_t1110_privileged_account_raises_score(engine):
+    # root is a privileged account: base 35 + 5 = 40, still "low".
+    root = next(
+        c for c in engine.evaluate_event(_failed_ssh_event(user="root"))
+        if c.rule_id == "linux_t1110_ssh_bruteforce"
+    )
+    assert root.risk_score == 40
+    assert any("Privileged account" in r for r in root.adjustment_reasons)
+
+    # A non-privileged account gets no bump: stays 35.
+    nonpriv = next(
+        c for c in engine.evaluate_event(_failed_ssh_event(user="deploybot"))
+        if c.rule_id == "linux_t1110_ssh_bruteforce"
+    )
+    assert nonpriv.risk_score == 35
+
+
 def test_t1110_yaml_rule_no_match_success_event(engine):
     candidates = engine.evaluate_event(_success_ssh_event())
     t1110 = next(
