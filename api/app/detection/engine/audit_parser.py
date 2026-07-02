@@ -1,6 +1,9 @@
 import binascii
 import re
 
+from .normalization import enrich_process_fields
+
+
 class AuditdParser:
     @staticmethod
     def is_hex(s: str) -> bool:
@@ -172,5 +175,8 @@ class AuditdParser:
             user_match = re.search(r'for (invalid user )?(\w+)', message)
             if user_match:
                 raw_log["user"]["name"] = user_match.group(2)
+
+        # 6. Add a canonical command line for matching (raw is left untouched).
+        enrich_process_fields(raw_log)
 
         return raw_log
