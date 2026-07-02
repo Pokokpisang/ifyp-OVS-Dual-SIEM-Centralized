@@ -1,0 +1,21 @@
+# Descriptive metadata for the SSH brute-force threshold engine.
+#
+# The DETECTION LOGIC lives in Python (detection/engine/ssh_bruteforce_engine.py) —
+# it counts failed SSH auth events per (agent, source IP) over a rolling window
+# and escalates. This file is the source of truth for the alert's descriptive
+# metadata only.
+#
+# NOTE: rule_id is intentionally shared with the single-failed-auth YAML rule
+# (linux_t1110_ssh_bruteforce.yaml) — both are T1110 SSH brute force. risk_score
+# here is the BASE score; the engine raises it via count/spray escalation bands.
+rule_id: linux_t1110_ssh_bruteforce
+rule_name: SSH Brute Force Authentication Failures
+severity: medium
+risk_score: 45
+mitre:
+  tactic:
+    id: TA0006
+    name: Credential Access
+  technique:
+    id: T1110
+    name: Brute Force

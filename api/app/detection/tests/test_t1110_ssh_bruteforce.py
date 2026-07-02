@@ -2,6 +2,7 @@ import pytest
 from app.detection.engine.yaml_detection_engine import YAMLDetectionEngine
 from app.detection.engine.ssh_bruteforce_engine import (
     SSHBruteForceEngine,
+    SSHBruteForceMatch,
     SSHFailureBuffer,
     SSHBFDedupCache,
 )
@@ -247,6 +248,16 @@ def test_password_spray_escalates_risk():
     assert match is not None
     assert match.risk_score == 55  # base 45 + spray bonus 10
     assert any("spraying" in r.lower() for r in match.match_reasons)
+
+
+def test_ssh_bruteforce_match_metadata_sourced_from_yaml():
+    """rule_id/name/mitre come from engine_meta YAML (base risk/severity too)."""
+    m = SSHBruteForceMatch()
+    assert m.rule_id == "linux_t1110_ssh_bruteforce"
+    assert m.rule_name == "SSH Brute Force Authentication Failures"
+    assert m.mitre_tactic == "TA0006"
+    assert m.mitre_technique == "T1110"
+    assert m.risk_score == 45  # base; escalated per-alert by the engine
 
 
 def test_single_username_no_spray_bonus():

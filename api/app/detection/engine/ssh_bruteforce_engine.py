@@ -23,6 +23,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
+from .engine_metadata import load_engine_metadata, mitre_id
+
 logger = logging.getLogger("detection.ssh_bruteforce_engine")
 
 # ---------------------------------------------------------------------------
@@ -60,6 +62,11 @@ SSH_BF_DB_ROW_LIMIT = 500
 # Matches the parser's username extraction ("for [invalid user ]<name>").
 _SSH_USER_RE = re.compile(r"for (?:invalid user )?(\w+)")
 
+# Descriptive alert metadata is defined in engine_meta/ (detection-as-code); the
+# hardcoded literals in SSHBruteForceMatch are only fallbacks. risk_score/severity
+# here are the BASE — evaluate() escalates them via the count/spray bands.
+_META = load_engine_metadata("ssh_bruteforce_threshold")
+
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
@@ -75,13 +82,18 @@ class SSHFailureEvent:
 
 @dataclass
 class SSHBruteForceMatch:
-    """Returned when the failure threshold is exceeded for a source IP."""
-    rule_id: str = "linux_t1110_ssh_bruteforce"
-    rule_name: str = "SSH Brute Force Authentication Failures"
-    severity: str = "medium"
-    risk_score: int = 45
-    mitre_tactic: str = "TA0006"
-    mitre_technique: str = "T1110"
+    """Returned when the failure threshold is exceeded for a source IP.
+
+    Descriptive metadata (rule_id/name/severity/risk/mitre) is sourced from
+    engine_meta/ssh_bruteforce_threshold.yaml; the literals here are fallbacks.
+    severity/risk_score are the BASE values — evaluate() overrides them per alert.
+    """
+    rule_id: str = field(default_factory=lambda: _META.get("rule_id", "linux_t1110_ssh_bruteforce"))
+    rule_name: str = field(default_factory=lambda: _META.get("rule_name", "SSH Brute Force Authentication Failures"))
+    severity: str = field(default_factory=lambda: _META.get("severity", "medium"))
+    risk_score: int = field(default_factory=lambda: int(_META.get("risk_score", 45)))
+    mitre_tactic: str = field(default_factory=lambda: mitre_id(_META, "tactic", "TA0006"))
+    mitre_technique: str = field(default_factory=lambda: mitre_id(_META, "technique", "T1110"))
     agent_id: str = ""
     source_ip: str = ""
     user_name: Optional[str] = None

@@ -1,0 +1,19 @@
+# Descriptive metadata for the correlation engine.
+#
+# The DETECTION LOGIC lives in Python (detection/engine/correlation_engine.py) —
+# it correlates a network download (Event A) followed by a shell execution
+# (Event B) across two auditd records, which is not expressible as a single-event
+# YAML rule. This file is the source of truth for the alert's descriptive
+# metadata only, so correlation output follows the same detection-as-code
+# governance as the YAML rules.
+rule_id: linux_t1059_download_then_shell_execution
+rule_name: Network Script Download Followed by Shell Execution
+severity: high
+risk_score: 70
+mitre:
+  tactic:
+    id: TA0002
+    name: Execution
+  technique:
+    id: T1059.004
+    name: Unix Shell
