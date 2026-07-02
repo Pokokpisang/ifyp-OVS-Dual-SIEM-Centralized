@@ -3,7 +3,7 @@ rule_exceptions:
     description: Suppress specific T1059 low-risk build workflow events.
     enabled: true
     allow_high_risk: false
-    rule_id: linux_t1059_shell_network_tool_sample
+    rule_id: linux_t1059_shell_network_tool
     conditions:
       all:
         - any:

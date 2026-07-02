@@ -38,7 +38,7 @@ condition:
         - bash
         - dash
         - zsh
-    - field: process.command_line
+    - field: process.normalized_command
       operator: contains_any
       value:
         - curl
@@ -47,7 +47,7 @@ condition:
         - ncat
         - socat
         - openssl
-    - field: process.command_line
+    - field: process.normalized_command
       operator: contains_any
       value:
         - "| bash"
@@ -60,7 +60,7 @@ condition:
         - "sh <"
 risk_adjustment:
   increase_if:
-    - field: process.command_line
+    - field: process.normalized_command
       operator: contains_any
       value:
         - "/tmp/"
@@ -69,6 +69,26 @@ risk_adjustment:
         - "base64"
       add_score: 20
       reason: Shell command contains secondary high-risk indicators
+    - field: process.normalized_command
+      operator: contains_any
+      value:
+        - "base64 -d"
+        - "base64 --decode"
+      add_score: 10
+      reason: Encoded-payload decode-and-run staging indicator
+    - field: process.normalized_command
+      operator: contains_all
+      value:
+        - "chmod"
+        - "+x"
+      add_score: 15
+      reason: Marks a downloaded file executable in the same command (drop-and-run)
+    - field: process.normalized_command
+      operator: contains_any
+      value:
+        - "/var/tmp/"
+      add_score: 10
+      reason: Execution references world-writable temp directory
     - field: process.parent.name
       operator: in
       value:

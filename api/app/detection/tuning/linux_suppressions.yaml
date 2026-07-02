@@ -23,3 +23,50 @@ linux_suppressions:
             - base64
             - chmod
     reason: Normal lsof check without suspicious indicators.
+
+  - id: benign_package_manager_service_write
+    description: >
+      Suppress package managers writing/updating systemd unit files during
+      install or upgrade, unless the command carries high-risk indicators.
+    enabled: true
+    allow_high_risk: false
+    scope:
+      platform:
+        - linux
+    conditions:
+      all:
+        - any:
+            - field: process.name
+              operator: in
+              value:
+                - dpkg
+                - apt
+                - apt-get
+                - rpm
+                - yum
+                - dnf
+                - pacman
+                - unattended-upgr
+                - snapd
+            - field: process.parent.name
+              operator: in
+              value:
+                - dpkg
+                - apt
+                - apt-get
+                - rpm
+                - yum
+                - dnf
+                - pacman
+        - field: process.normalized_command
+          operator: not_contains_any
+          value:
+            - curl
+            - wget
+            - /tmp/
+            - /dev/shm/
+            - base64
+            - "| bash"
+            - "| sh"
+            - "chmod +x"
+    reason: Package manager writing service unit files during install/upgrade.

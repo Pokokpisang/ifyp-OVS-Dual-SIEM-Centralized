@@ -53,7 +53,7 @@ condition:
         - write
         - change
     - any:
-        - field: process.command_line
+        - field: process.normalized_command
           operator: contains_any
           value:
             - "ExecStart="
@@ -83,7 +83,7 @@ condition:
             - ruby
 risk_adjustment:
   increase_if:
-    - field: process.command_line
+    - field: process.normalized_command
       operator: contains_any
       value:
         - "curl "
@@ -92,7 +92,7 @@ risk_adjustment:
         - "socat"
       add_score: 15
       reason: Service file written by process downloading content from network
-    - field: process.command_line
+    - field: process.normalized_command
       operator: contains_any
       value:
         - "/dev/shm/"

