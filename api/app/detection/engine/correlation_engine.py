@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import threading
 import time
 from collections import defaultdict, deque
@@ -244,11 +245,21 @@ def _get(event: Dict[str, Any], *path: str) -> str:
     return str(cur) if cur else ""
 
 
+# Bare IP-based URL pattern (no scheme): matches 1.2.3.4/path or 1.2.3.4:port/path
+# Intentionally requires a path component (/) to avoid matching plain IPs.
+_BARE_IP_URL_RE = re.compile(
+    r'\b(\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?/\S*)'
+)
+
+
 def _extract_url(cmd: str) -> str:
-    """Extract the first http(s):// URL token from a command line string."""
+    """Extract the first URL (http(s):// or bare IP:port/path) from a command line string."""
     for token in cmd.split():
         if token.startswith("http://") or token.startswith("https://"):
             return token
+    m = _BARE_IP_URL_RE.search(cmd)
+    if m:
+        return m.group(1)
     return ""
 
 
@@ -260,6 +271,10 @@ def _is_event_a(process_name: str, command_line: str) -> Tuple[bool, str]:
     pattern (download tool + URL, then shell execution within the correlation
     window) is sufficient evidence on its own.  False positives are handled
     by the existing suppression engine.
+
+    Accepts both scheme-prefixed URLs (http://, https://) and bare IP-based
+    URLs (e.g. 192.168.1.1:8080/script.sh) since curl/wget default to HTTP
+    when no scheme is supplied.
     """
     name_lower = process_name.lower()
     if name_lower not in _DOWNLOAD_TOOLS:
@@ -267,12 +282,16 @@ def _is_event_a(process_name: str, command_line: str) -> Tuple[bool, str]:
 
     cmd_lower = command_line.lower()
 
-    # Must contain a remote URL
-    if "http://" not in cmd_lower and "https://" not in cmd_lower:
-        return False, ""
+    if "http://" in cmd_lower or "https://" in cmd_lower:
+        url = _extract_url(command_line)
+        return True, url
 
-    url = _extract_url(command_line)
-    return True, url
+    # Also accept bare IP-based URLs (attacker omits http:// scheme)
+    if _BARE_IP_URL_RE.search(command_line):
+        url = _extract_url(command_line)
+        return True, url
+
+    return False, ""
 
 
 def _is_event_b(process_name: str, command_line: str) -> bool:
