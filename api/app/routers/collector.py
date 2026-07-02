@@ -1,6 +1,5 @@
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Depends, Header
+from fastapi import APIRouter, BackgroundTasks, Request, Depends
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 import httpx
@@ -8,7 +7,7 @@ import os
 import json
 from .. import db, models
 from ..detection.engine.detection_engine import RuleEngine
-from ..services.agent_service import update_last_seen, get_agent_metadata_by_key
+from ..auth.dependencies import require_agent_key
 
 router = APIRouter()
 
@@ -39,19 +38,11 @@ async def forward_to_data_prepper(payload: dict):
 
 @router.post("/ingest/log")
 async def collect_agent_logs(
-    request: Request, 
-    background_tasks: BackgroundTasks, 
+    request: Request,
+    background_tasks: BackgroundTasks,
     database: Session = Depends(db.get_db),
-    x_agent_key: Optional[str] = Header(None, alias="X-Agent-Key")
+    agent_meta: dict = Depends(require_agent_key),
 ):
-    # 0. Authenticate — reject requests from unknown or missing agent keys
-    if not x_agent_key:
-        raise HTTPException(status_code=401, detail="X-Agent-Key header is required.")
-    agent_meta = get_agent_metadata_by_key(agent_key=x_agent_key, db=database)
-    if agent_meta is None:
-        raise HTTPException(status_code=401, detail="Invalid or unregistered agent key.")
-    update_last_seen(agent_key=x_agent_key, db=database)
-
     # 1. Read Raw JSON
     try:
         payload = await request.json()

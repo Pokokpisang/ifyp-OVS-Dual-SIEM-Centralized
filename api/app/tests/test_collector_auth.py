@@ -72,7 +72,7 @@ def test_missing_key_returns_401():
     assert "required" in response.json()["detail"].lower()
 
 
-@patch("app.routers.collector.get_agent_metadata_by_key", return_value=None)
+@patch("app.auth.dependencies.get_agent_metadata_by_key", return_value=None)
 def test_invalid_key_returns_401(mock_meta):
     """X-Agent-Key present but not found in DB → 401."""
     response = _post(
@@ -87,8 +87,8 @@ def test_invalid_key_returns_401(mock_meta):
 
 @patch("app.routers.collector.forward_to_data_prepper", new_callable=AsyncMock)
 @patch("app.routers.collector.process_log_for_alerts", new_callable=AsyncMock)
-@patch("app.routers.collector.update_last_seen", return_value=True)
-@patch("app.routers.collector.get_agent_metadata_by_key", return_value=_VALID_META)
+@patch("app.auth.dependencies.update_last_seen", return_value=True)
+@patch("app.auth.dependencies.get_agent_metadata_by_key", return_value=_VALID_META)
 def test_valid_key_accepts_log(mock_meta, mock_update, mock_alerts, mock_forward):
     """Valid registered key → 200 accepted; enrichment and side-effects fire."""
     response = _post(
