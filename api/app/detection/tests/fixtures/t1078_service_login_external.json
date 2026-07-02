@@ -1,0 +1,6 @@
+{
+  "message": "Accepted password for postgres from 45.55.10.10 port 22 ssh2",
+  "log_type": "auth",
+  "agent_id": "agent-fx",
+  "host": {"name": "prod-1"}
+}
