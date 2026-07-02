@@ -41,12 +41,14 @@ condition:
       value: ssh
 risk_adjustment:
   increase_if:
-    - conditions:
-        all:
-          - field: source.ip
-            operator: exists
-      increase_by: 5
-      reason: "Source IP present — external actor confirmed"
+    - field: user.name
+      operator: in
+      value:
+        - root
+        - admin
+        - administrator
+      add_score: 5
+      reason: "Privileged account targeted"
 false_positives:
   - Automated configuration management tools authenticating over SSH
   - Misconfigured SSH clients retrying with wrong credentials
