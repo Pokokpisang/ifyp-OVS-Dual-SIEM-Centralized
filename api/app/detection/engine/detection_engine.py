@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from .audit_parser import AuditdParser
 from .active_runner import ActiveDetectionRunner
 from .audit_event_aggregator import get_audit_event_aggregator
+from .process_cache import enrich_parent_name
 
 logger = logging.getLogger("detection.engine")
 
@@ -29,6 +30,10 @@ class RuleEngine:
         if audit_event_id and agent_id:
             completed = aggregator.add_record(agent_id, audit_event_id, raw_log)
             for merged_event in completed:
+                # Resolve parent name on the fully-merged event (SYSCALL ppid +
+                # EXECVE comm may arrive as separate fragments).
+                enrich_parent_name(merged_event)
                 ActiveDetectionRunner(self.db).run(merged_event)
         else:
+            enrich_parent_name(raw_log)
             ActiveDetectionRunner(self.db).run(raw_log)

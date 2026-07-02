@@ -8,6 +8,7 @@ from .rule_loader import RuleLoader
 from .rule_evaluator import RuleEvaluator, RuleMatchResult
 from .risk_scoring import RiskScorer, RiskScoreResult
 from .suppressions import SuppressionEngine, SuppressionResult
+from .normalization import enrich_process_fields
 from ..schemas.rule_schema import DetectionRule
 
 class DetectionCandidate(BaseModel):
@@ -45,7 +46,12 @@ class YAMLDetectionEngine:
         Evaluate a normalized event against all loaded YAML rules.
         """
         candidates = []
-        
+
+        # 0. Ensure the canonical command field exists for matching. This is a
+        # no-op when the parser already populated it; it makes direct callers
+        # (and tests) robust without depending on upstream enrichment.
+        enrich_process_fields(event)
+
         # 1. Load rules
         rules = self.loader.load_rules_from_directory(self.loader.rules_path, include_disabled=include_disabled)
         

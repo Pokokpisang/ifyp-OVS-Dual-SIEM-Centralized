@@ -8,14 +8,27 @@ global_suppressions:
         - linux
     conditions:
       all:
-        - field: process.parent.name
-          operator: in
-          value:
-            - npm
-            - pnpm
-            - make
-            - node-gyp
-        - field: process.command_line
+        # Build context: either a known build parent (resolved best-effort) OR
+        # a recognisable build command. Parent name is not always available, so
+        # the normalized-command fallback keeps this suppression effective.
+        - any:
+            - field: process.parent.name
+              operator: in
+              value:
+                - npm
+                - pnpm
+                - make
+                - node-gyp
+            - field: process.normalized_command
+              operator: contains_any
+              value:
+                - "npm install"
+                - "npm run"
+                - "pnpm install"
+                - "node-gyp rebuild"
+                - "make -"
+        # Mandatory guard: never suppress when high-risk indicators are present.
+        - field: process.normalized_command
           operator: not_contains_any
           value:
             - curl
