@@ -101,10 +101,17 @@ class RuleEvaluator:
             
             actual_value = self.get_field_value(event, field)
             
-            # Special case for 'exists' operator which doesn't need a value comparison in the same way
+            # Special cases for existence operators — these must be evaluable
+            # even when the field is absent, so handle them before the
+            # missing-field early-return below.
             if operator == "exists":
                 if actual_value is not None:
                     return True, [f"Field '{field}' exists"]
+                return False, []
+
+            if operator == "not_exists":
+                if actual_value is None:
+                    return True, [f"Field '{field}' does not exist"]
                 return False, []
 
             if actual_value is None:
@@ -178,6 +185,33 @@ class RuleEvaluator:
                     return True, f"{field} matched regex '{expected}'"
             except re.error:
                 pass
+            return False, ""
+
+        elif op == "contains_all":
+            if isinstance(expected, list) and expected:
+                if all(to_lower_str(val) in actual_str for val in expected):
+                    return True, f"{field} contains all of {expected}"
+            return False, ""
+
+        elif op == "list_intersects":
+            if isinstance(expected, list):
+                actual_items = actual if isinstance(actual, list) else [actual]
+                actual_lowers = {to_lower_str(a) for a in actual_items}
+                if actual_lowers & {to_lower_str(v) for v in expected}:
+                    return True, f"{field} intersects {expected}"
+            return False, ""
+
+        elif op in ("gte", "lte"):
+            # Numeric comparison; fail closed (never raise) on non-numeric input.
+            try:
+                a_num = float(actual)
+                e_num = float(expected)
+            except (TypeError, ValueError):
+                return False, ""
+            if op == "gte" and a_num >= e_num:
+                return True, f"{field} >= {expected}"
+            if op == "lte" and a_num <= e_num:
+                return True, f"{field} <= {expected}"
             return False, ""
 
         return False, ""
