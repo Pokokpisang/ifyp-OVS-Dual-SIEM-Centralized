@@ -73,13 +73,14 @@ make test-t1059   # sends a test auditd payload, waits 15s, queries DB for T1059
 
 The active detection path: `POST /ingest/log` → `collector.py` → background task → `RuleEngine.evaluate_raw()` → `ActiveDetectionRunner` → `YAMLDetectionEngine` + `CorrelationEngine` → `models.Alert`.
 
-**Detection engine modes** (controlled by `DETECTION_ENGINE_MODE` env var in `api/.env`):
-- `YAML` (default/primary): uses `ActiveDetectionRunner` + `YAMLDetectionEngine`
-- `SHADOW`: runs both legacy and YAML engines; YAML results only logged, not persisted
-- `LEGACY`: legacy rule-matching engine only (fallback/rollback)
+**Detection engine mode:** the engine is YAML-only. `RuleEngine` delegates
+unconditionally to `ActiveDetectionRunner` (YAML rules + correlation + SSH
+brute-force). The legacy `DETECTION_ENGINE_MODE` env var (`YAML`/`SHADOW`/`LEGACY`)
+is retained for backward compatibility but is **intentionally ignored** — there
+is no separate legacy or shadow path anymore.
 
 **Key detection engine files:**
-- `api/app/detection/engine/detection_engine.py` — `RuleEngine` orchestrator; routes to YAML/SHADOW/LEGACY
+- `api/app/detection/engine/detection_engine.py` — `RuleEngine` thin wrapper; always delegates to `ActiveDetectionRunner`
 - `api/app/detection/engine/active_runner.py` — `ActiveDetectionRunner`: calls `YAMLDetectionEngine`, then optionally `CorrelationEngine`
 - `api/app/detection/engine/yaml_detection_engine.py` — `YAMLDetectionEngine`: load rules → evaluate → score risk → check suppressions → return `DetectionCandidate`
 - `api/app/detection/engine/correlation_engine.py` — `CorrelationEngine`: in-memory rolling buffer detecting "curl/wget → bash" two-event patterns (T1059.004)
@@ -163,7 +164,7 @@ Started by `docker-compose-v2`:
 
 ```
 DATABASE_URL=postgresql://...
-DETECTION_ENGINE_MODE=YAML              # YAML | LEGACY | SHADOW
+DETECTION_ENGINE_MODE=YAML              # legacy/no-op — engine is YAML-only
 ENABLE_CORRELATION_ENGINE=true
 CORRELATION_WINDOW_SECONDS=10
 SIEM_SERVER_ADDRESS=<host-IP>           # Used to generate agent installer scripts
