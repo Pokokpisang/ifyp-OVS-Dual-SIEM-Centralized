@@ -1,0 +1,7 @@
+{
+  "event": {"category": "file", "type": "change", "action": "created"},
+  "file": {"path": "/etc/systemd/system/myapp.service", "name": "myapp.service"},
+  "process": {"name": "sh", "command_line": "sh -c 'systemctl daemon-reload'", "parent": {"name": "dpkg"}},
+  "user": {"name": "root"},
+  "host": {"name": "prod-1"}
+}

