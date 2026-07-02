@@ -145,7 +145,9 @@ def test_unmatched_rule_skips_scoring(scorer, evaluator):
     assert result.final_severity == "informational"
     assert "Rule did not match; risk scoring skipped" in result.adjustment_reasons
 
-def test_malformed_adjustment_records_error(scorer, evaluator):
+def test_malformed_adjustment_rejected_at_schema_load():
+    # A malformed risk_adjustment is now rejected at construction time by the
+    # schema validator rather than silently reaching the scorer.
     rule_data = {
         "id": "test_malformed",
         "name": "Malformed",
@@ -157,14 +159,10 @@ def test_malformed_adjustment_records_error(scorer, evaluator):
         "required_fields": ["f1"],
         "condition": {"field": "f1", "operator": "equals", "value": "v1"},
         "risk_adjustment": {
-            "increase_if": "not a list" # Malformed
+            "increase_if": "not a list"  # Malformed
         },
         "investigation_guide": "test"
     }
-    rule = DetectionRule(**rule_data)
-    event = {"f1": "v1"}
-    match_result = evaluator.evaluate(event, rule)
-    
-    result = scorer.calculate(event, rule, match_result)
-    assert result.final_score == 50
-    assert any("must be a list" in e for e in result.errors)
+    with pytest.raises(Exception) as exc:
+        DetectionRule(**rule_data)
+    assert "must be a list" in str(exc.value)
