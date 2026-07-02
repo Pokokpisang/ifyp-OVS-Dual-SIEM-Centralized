@@ -2,43 +2,49 @@ document.addEventListener('DOMContentLoaded', () => {
     const hostSelect = document.getElementById('hostSelect');
 
     // Init Charts
-    const cpuCtx = document.getElementById('cpuChart').getContext('2d');
-    const netCtx = document.getElementById('netChart').getContext('2d');
+    let cpuChart = null;
+    let netChart = null;
+    try {
+        const cpuCtx = document.getElementById('cpuChart').getContext('2d');
+        const netCtx = document.getElementById('netChart').getContext('2d');
 
-    Chart.defaults.color = '#888';
-    Chart.defaults.borderColor = '#332f36';
+        Chart.defaults.color = '#888';
+        Chart.defaults.borderColor = '#332f36';
 
-    const cpuChart = new Chart(cpuCtx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [
-                { label: 'CPU %', data: [], borderColor: '#F05484', backgroundColor: 'rgba(240,84,132,0.08)', fill: true, tension: 0.4, pointRadius: 0 },
-                { label: 'RAM %', data: [], borderColor: '#f59b00', backgroundColor: 'rgba(245,155,0,0.08)', fill: true, tension: 0.4, pointRadius: 0 }
-            ]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { position: 'top', labels: { boxWidth: 10, padding: 16 } } },
-            scales: { y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.04)' } } }
-        }
-    });
+        cpuChart = new Chart(cpuCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'CPU %', data: [], borderColor: '#F05484', backgroundColor: 'rgba(240,84,132,0.08)', fill: true, tension: 0.4, pointRadius: 0 },
+                    { label: 'RAM %', data: [], borderColor: '#f59b00', backgroundColor: 'rgba(245,155,0,0.08)', fill: true, tension: 0.4, pointRadius: 0 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'top', labels: { boxWidth: 10, padding: 16 } } },
+                scales: { y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.04)' } } }
+            }
+        });
 
-    const netChart = new Chart(netCtx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [
-                { label: 'In (MB/s)', data: [], borderColor: '#36a2eb', backgroundColor: 'rgba(54,162,235,0.08)', fill: true, tension: 0.4, pointRadius: 0 },
-                { label: 'Out (MB/s)', data: [], borderColor: '#ce2e46', backgroundColor: 'rgba(206,46,70,0.08)', fill: true, tension: 0.4, pointRadius: 0 }
-            ]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { position: 'top', labels: { boxWidth: 10, padding: 16 } } },
-            scales: { y: { min: 0, grid: { color: 'rgba(255,255,255,0.04)' } } }
-        }
-    });
+        netChart = new Chart(netCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'In (MB/s)', data: [], borderColor: '#36a2eb', backgroundColor: 'rgba(54,162,235,0.08)', fill: true, tension: 0.4, pointRadius: 0 },
+                    { label: 'Out (MB/s)', data: [], borderColor: '#ce2e46', backgroundColor: 'rgba(206,46,70,0.08)', fill: true, tension: 0.4, pointRadius: 0 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'top', labels: { boxWidth: 10, padding: 16 } } },
+                scales: { y: { min: 0, grid: { color: 'rgba(255,255,255,0.04)' } } }
+            }
+        });
+    } catch (e) {
+        console.warn('Chart.js unavailable, charts disabled:', e);
+    }
 
     function buildSeverityBadge(sev) {
         const s = (sev || '').toUpperCase();
@@ -201,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 2. Alert stats KPIs
         try {
-            const res = await fetch('/api/alerts/stats');
+            const res = await fetch(`/api/alerts/stats?host=${host}`);
             const stats = await res.json();
             
             const el = document.getElementById('kpi-mitre');
@@ -224,24 +230,26 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch(e) { console.error('Stats error:', e); }
 
         // 3. Timeseries Charts
-        try {
-            const res = await fetch(`/api/metrics/timeseries?minutes=10&host=${host}`);
-            const data = await res.json();
+        if (cpuChart && netChart) {
+            try {
+                const res = await fetch(`/api/metrics/timeseries?minutes=10&host=${host}`);
+                const data = await res.json();
 
-            cpuChart.data.labels = data.labels.map(t => new Date(t).toLocaleTimeString());
-            cpuChart.data.datasets[0].data = data.cpu;
-            cpuChart.data.datasets[1].data = data.ram;
-            cpuChart.update('none');
+                cpuChart.data.labels = data.labels.map(t => new Date(t).toLocaleTimeString());
+                cpuChart.data.datasets[0].data = data.cpu;
+                cpuChart.data.datasets[1].data = data.ram;
+                cpuChart.update('none');
 
-            netChart.data.labels = data.labels.map(t => new Date(t).toLocaleTimeString());
-            netChart.data.datasets[0].data = data.net_in.map(v => v / 1024 / 1024);
-            netChart.data.datasets[1].data = data.net_out.map(v => v / 1024 / 1024);
-            netChart.update('none');
-        } catch (e) { console.error('Timeseries error:', e); }
+                netChart.data.labels = data.labels.map(t => new Date(t).toLocaleTimeString());
+                netChart.data.datasets[0].data = data.net_in.map(v => v / 1024 / 1024);
+                netChart.data.datasets[1].data = data.net_out.map(v => v / 1024 / 1024);
+                netChart.update('none');
+            } catch (e) { console.error('Timeseries error:', e); }
+        }
 
         // 4. Security Alert Feed — use /api/alerts/threats for the MITRE panel
         try {
-            const res = await fetch(`/api/alerts/threats`);
+            const res = await fetch(`/api/alerts/threats?host=${host}`);
             const threats = await res.json();
             const container = document.getElementById('alert-container');
             if (threats.length === 0) {
@@ -266,10 +274,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Restore previously selected host from localStorage
+    if (hostSelect) {
+        const saved = localStorage.getItem('ovs_dashboard_host') || '';
+        const match = Array.from(hostSelect.options).find(o => o.value === saved);
+        if (match) hostSelect.value = saved;
+
+        hostSelect.addEventListener('change', () => {
+            localStorage.setItem('ovs_dashboard_host', hostSelect.value);
+            updateData();
+        });
+    }
+
+    window.updateData = updateData;
+
     setInterval(updateData, 5000);
     updateData();
-
-    if (hostSelect) {
-        hostSelect.addEventListener('change', updateData);
-    }
 });
