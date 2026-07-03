@@ -73,6 +73,32 @@ def test_agents_view_merges_metric_only_hosts_with_status():
     s.close()
 
 
+def test_agents_view_excludes_deleted_agent_with_stale_metrics():
+    """A soft-deleted agent must not reappear as a metric-only ghost (its stale
+    metrics used to resurrect it, which then 404'd on click)."""
+    from app.services.agent_service import create_agent, delete_agent_by_id
+    s = _Session()
+    _clear(s)
+
+    agent, _ = create_agent(
+        agent_name="gone-1", group="g", tags="", os_type="Linux",
+        distribution="Ubuntu", architecture="x86_64",
+        enable_logs=True, enable_fim=False, enable_metrics=True, db=s,
+    )
+    agent.hostname = "gone-1"
+    s.commit()
+    _metric(s, "gone-1", 10.0, minutes_ago=1)     # stale metrics for the deleted host
+    delete_agent_by_id(agent.agent_id, s)          # soft delete
+
+    _metric(s, "legacy-host", 10.0, minutes_ago=1)  # truly-unregistered metric host
+
+    ctx = dashboard_service.build_agents_view(s)
+    hostnames = {a["hostname"] for a in ctx["agents"]}
+    assert "gone-1" not in hostnames               # deleted agent is gone
+    assert "legacy-host" in hostnames              # unregistered host still shown
+    s.close()
+
+
 def test_agents_view_filter_and_pagination():
     s = _Session()
     _clear(s)
