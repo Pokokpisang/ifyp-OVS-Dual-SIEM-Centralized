@@ -49,6 +49,15 @@ def test_t1078_service_account_external_login_raises_score(engine):
     assert any("external" in r.lower() for r in c.adjustment_reasons)
 
 
+@pytest.mark.parametrize("internal_ip", ["::1", "fe80::1", "fc00::1", "fd12::34"])
+def test_t1078_ipv6_internal_source_is_not_scored_external(engine, internal_ip):
+    """IPv6 loopback/link-local/ULA must not be labelled 'external' (+15)."""
+    c = _t1078(engine, _login_event(user="postgres", source_ip=internal_ip))
+    assert c is not None and c.matched is True
+    assert c.risk_score == 65  # no external bump
+    assert not any("external" in r.lower() for r in c.adjustment_reasons)
+
+
 # ---------------------------------------------------------------------------
 # False positives (no match)
 # ---------------------------------------------------------------------------

