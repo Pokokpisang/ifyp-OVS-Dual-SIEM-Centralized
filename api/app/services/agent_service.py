@@ -341,7 +341,12 @@ def get_agent_by_id(agent_id: str, db: Session) -> models.AgentRecord | None:
 
 
 def delete_agent_by_id(agent_id: str, db: Session, reason: str | None = None) -> bool:
-    """Soft-delete an agent: marks is_deleted=True, records reason and timestamp."""
+    """Soft-delete an agent: marks is_deleted=True, records reason and timestamp.
+
+    Also drops the host's resource-usage Metric rows — those are high-volume,
+    disposable telemetry with no value once the agent is removed. Logs, alerts,
+    and the AgentRecord itself are kept (security/lifecycle history).
+    """
     agent = get_agent_by_id(agent_id, db)
     if not agent:
         return False
@@ -349,6 +354,13 @@ def delete_agent_by_id(agent_id: str, db: Session, reason: str | None = None) ->
     agent.deleted_at = datetime.utcnow()
     agent.deleted_reason = reason or "Deleted from dashboard"
     agent.lifecycle_status = "deleted"
+
+    host_id = agent.hostname or agent.agent_name
+    if host_id and host_id != "—":
+        db.query(models.Metric).filter(models.Metric.host == host_id).delete(
+            synchronize_session=False
+        )
+
     db.commit()
     return True
 
