@@ -99,6 +99,7 @@
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">CPU Load</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Memory</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Last Seen</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-primary/5">
@@ -106,8 +107,13 @@
                     <tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
                         <td class="px-6 py-5">
                             <div class="flex flex-col">
+                                {% if agent.id %}
                                 <a href="/agents/{{ agent.agent_id }}" class="text-sm font-bold hover:text-primary transition-colors">{{ agent.agent_name }}</a>
                                 <span class="text-xs text-slate-400 font-mono">{{ agent.agent_id[:16] }}…</span>
+                                {% else %}
+                                <span class="text-sm font-bold">{{ agent.agent_name }}</span>
+                                <span class="text-xs text-slate-400">metrics-only host</span>
+                                {% endif %}
                             </div>
                         </td>
                         <td class="px-6 py-5">
@@ -146,10 +152,21 @@
                         <td class="px-6 py-5">
                             <span class="text-xs text-slate-500">{{ agent.last_seen }}</span>
                         </td>
+                        <td class="px-6 py-5 text-right">
+                            {% if not agent.id %}
+                            <form action="/agents/{{ agent.agent_id }}/delete" method="POST"
+                                  onsubmit="return confirm('Remove metrics-only host {{ agent.agent_name }}? Its logs and alerts are kept.');">
+                                <button type="submit"
+                                        class="px-2.5 py-1 rounded text-[11px] font-bold uppercase tracking-wider text-red-500 border border-red-500/30 hover:bg-red-500/10 transition-colors">
+                                    Remove
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="px-6 py-12 text-center text-slate-500 text-sm">
+                        <td colspan="7" class="px-6 py-12 text-center text-slate-500 text-sm">
                             <div class="flex flex-col items-center gap-3">
                                 <span class="material-symbols-outlined text-slate-300 text-4xl">dns</span>
                                 <p>No agents found. <a href="/agents/new" class="text-primary underline">Register your first agent</a>.</p>

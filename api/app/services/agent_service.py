@@ -366,13 +366,52 @@ def delete_agent_by_id(agent_id: str, db: Session, reason: str | None = None) ->
 
 
 def purge_agent_by_id(agent_id: str, db: Session) -> bool:
-    """Permanently hard-delete an agent record. Use only in dev/admin contexts."""
+    """Permanently hard-delete an agent record. Use only in dev/admin contexts.
+
+    Also drops the host's Metric rows (disposable telemetry). Logs and alerts are
+    kept for security/investigation history.
+    """
     agent = get_agent_by_id(agent_id, db)
     if not agent:
         return False
+    host_id = agent.hostname or agent.agent_name
+    if host_id and host_id != "—":
+        db.query(models.Metric).filter(models.Metric.host == host_id).delete(
+            synchronize_session=False
+        )
     db.delete(agent)
     db.commit()
     return True
+
+
+def delete_metric_only_host(host: str, db: Session) -> bool:
+    """Remove a metric-only host (one that has Metric rows but no AgentRecord —
+    e.g. a test/injected host) from the /agents inventory by deleting its Metric
+    rows. Returns True if any metrics were removed.
+
+    Refuses (returns False) when an AgentRecord owns this id/host, so a real
+    agent can only be removed via delete_agent_by_id / purge_agent_by_id. Logs
+    and alerts for the host are kept.
+    """
+    if not host:
+        return False
+    owned = (
+        db.query(models.AgentRecord)
+        .filter(
+            (models.AgentRecord.agent_id == host)
+            | (models.AgentRecord.hostname == host)
+        )
+        .first()
+    )
+    if owned:
+        return False
+    removed = (
+        db.query(models.Metric)
+        .filter(models.Metric.host == host)
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+    return removed > 0
 
 
 def get_latest_agent_metrics(host: str, db: Session) -> models.Metric | None:

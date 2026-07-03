@@ -10,7 +10,7 @@ from ..auth.csrf import verify_form_csrf
 from ..auth.dependencies import require_admin_auth
 from ..services.agent_service import (
     create_agent, compute_agent_status,
-    get_agent_by_id, delete_agent_by_id, purge_agent_by_id,
+    get_agent_by_id, delete_agent_by_id, purge_agent_by_id, delete_metric_only_host,
     get_latest_agent_metrics, get_recent_agent_alerts, get_recent_agent_logs,
 )
 from ..services.server_address import get_server_address, normalize_server_url, validate_server_address
@@ -368,10 +368,13 @@ def delete_agent(
     reason: str = Form(""),
     database: Session = Depends(db.get_db),
 ):
-    success = delete_agent_by_id(agent_id, database, reason=reason or None)
-    if not success:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    return RedirectResponse(url="/agents", status_code=303)
+    if delete_agent_by_id(agent_id, database, reason=reason or None):
+        return RedirectResponse(url="/agents", status_code=303)
+    # Not a registered agent — it may be a metric-only host (id == hostname),
+    # e.g. a leftover test/injected host. Remove it by clearing its metrics.
+    if delete_metric_only_host(agent_id, database):
+        return RedirectResponse(url="/agents", status_code=303)
+    raise HTTPException(status_code=404, detail="Agent not found")
 
 
 @router.post(
