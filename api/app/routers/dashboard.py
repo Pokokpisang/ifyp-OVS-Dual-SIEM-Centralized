@@ -7,7 +7,7 @@ from .. import models, db
 import math
 import os
 from ..auth.csrf import verify_form_csrf
-from ..auth.dependencies import require_admin_auth
+from ..auth.dependencies import require_admin_auth, require_admin_html, require_analyst_html
 from ..services.agent_service import (
     create_agent, compute_agent_status,
     get_agent_by_id, delete_agent_by_id, purge_agent_by_id, delete_metric_only_host,
@@ -22,11 +22,25 @@ templates = Jinja2Templates(directory="templates")
 
 @router.get("/dashboard")
 def view_dashboard(request: Request, db: Session = Depends(db.get_db)):
+    from ..detection.engine.rule_loader import RuleLoader
+
     # Get list of hosts for dropdown
     hosts = db.query(models.Metric.host).distinct().all()
     host_list = [h[0] for h in hosts]
-    return templates.TemplateResponse("dashboard.html", {"request": request, "hosts": host_list})
-@router.get("/system-health-rules", response_class=HTMLResponse)
+
+    loader = RuleLoader()
+    active_rule_count = len(loader.load_rules_from_directory(loader.rules_path))
+
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "hosts": host_list,
+        "active_rule_count": active_rule_count,
+    })
+@router.get(
+    "/system-health-rules",
+    response_class=HTMLResponse,
+    dependencies=[Depends(require_admin_html)],
+)
 def view_system_health_rules(request: Request, db: Session = Depends(db.get_db)):
     rules = db.query(models.SystemHealthRule).all()
     return templates.TemplateResponse("system_health_rules.html", {"request": request, "rules": rules})
@@ -144,9 +158,19 @@ def view_agents(
 
 
 # ---------------------------------------------------------------------------
-# GET /agents/new — Render agent creation form
+# GET /agents/deploy — Render agent creation form (admin only)
 # ---------------------------------------------------------------------------
-@router.get("/agents/new", response_class=HTMLResponse)
+@router.get("/agents/new", include_in_schema=False)
+def redirect_agents_new():
+    """Legacy path — the deployment page moved to /agents/deploy."""
+    return RedirectResponse(url="/agents/deploy", status_code=302)
+
+
+@router.get(
+    "/agents/deploy",
+    response_class=HTMLResponse,
+    dependencies=[Depends(require_admin_html)],
+)
 def view_agents_new(request: Request, database: Session = Depends(db.get_db)):
     raw_server = get_server_address(request)
     port = int(os.getenv("SIEM_API_PORT", "8000"))
@@ -164,9 +188,13 @@ def view_agents_new(request: Request, database: Session = Depends(db.get_db)):
 
 
 # ---------------------------------------------------------------------------
-# POST /agents/new — Create agent record, display install command
+# POST /agents/deploy — Create agent record, display install command (admin only)
 # ---------------------------------------------------------------------------
-@router.post("/agents/new", response_class=HTMLResponse)
+@router.post(
+    "/agents/deploy",
+    response_class=HTMLResponse,
+    dependencies=[Depends(require_admin_html), Depends(verify_form_csrf)],
+)
 def submit_agents_new(
     request: Request,
     agent_name: str = Form(...),
@@ -231,6 +259,12 @@ def submit_agents_new(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/alerts/{alert_id}", include_in_schema=False)
+def redirect_alert_detail(alert_id: int):
+    """Alert detail lives on the investigation page."""
+    return RedirectResponse(url=f"/alerts/{alert_id}/investigation", status_code=302)
+
+
 @router.get("/alerts/{alert_id}/investigation", response_class=HTMLResponse)
 def view_investigation(alert_id: int, request: Request, db: Session = Depends(db.get_db)):
     """HTML page for a single alert investigation."""
@@ -265,19 +299,31 @@ def view_agents_history(
     return templates.TemplateResponse("agents_history.html", {"request": request, **ctx})
 
 
-@router.get("/network", response_class=HTMLResponse)
+@router.get(
+    "/network",
+    response_class=HTMLResponse,
+    dependencies=[Depends(require_analyst_html)],
+)
 def view_network(request: Request, database: Session = Depends(db.get_db)):
     """Network Investigation page — agent network status, suspicious activity, SOAR actions."""
     ctx = dashboard_service.build_network_view(database)
     return templates.TemplateResponse("network_investigation.html", {"request": request, **ctx})
 
 
-@router.get("/soar/settings", response_class=HTMLResponse)
+@router.get(
+    "/soar/settings",
+    response_class=HTMLResponse,
+    dependencies=[Depends(require_admin_html)],
+)
 def view_soar_settings(request: Request):
     return templates.TemplateResponse("soar_settings.html", {"request": request})
 
 
-@router.get("/soar/history", response_class=HTMLResponse)
+@router.get(
+    "/soar/history",
+    response_class=HTMLResponse,
+    dependencies=[Depends(require_analyst_html)],
+)
 def view_soar_history(
     request: Request,
     status: str | None = None,

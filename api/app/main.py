@@ -1,7 +1,7 @@
 import os
 
 from fastapi import FastAPI, Depends, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -129,6 +129,19 @@ async def _login_redirect(request: Request, exc: LoginRequiredException):
     return RedirectResponse(url="/login", status_code=302)
 
 
+@app.exception_handler(404)
+async def _not_found(request: Request, exc: HTTPException):
+    """Render a typed 404 page for browser navigation; keep JSON for API paths."""
+    accepts_html = "text/html" in request.headers.get("accept", "")
+    is_api_path = request.url.path.startswith(("/api/", "/ingest/"))
+    if accepts_html and not is_api_path:
+        from fastapi.templating import Jinja2Templates
+        return Jinja2Templates(directory="templates").TemplateResponse(
+            "404.html", {"request": request}, status_code=404
+        )
+    return JSONResponse(status_code=404, content={"detail": getattr(exc, "detail", "Not Found")})
+
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Serve agent binary downloads — create dir if missing so the app doesn't crash
@@ -213,6 +226,12 @@ async def startup_event():
         _purge_db.close()
     print("API Started - Real-time Ingestion Enabled")
     seed_health_rules()
+
+
+@app.get("/", include_in_schema=False)
+def root_redirect():
+    """Land users on the dashboard; unauthenticated browsers bounce to /login."""
+    return RedirectResponse(url="/dashboard", status_code=302)
 
 
 @app.get("/health")

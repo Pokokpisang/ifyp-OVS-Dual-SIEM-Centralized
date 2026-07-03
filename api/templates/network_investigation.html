@@ -162,6 +162,12 @@
 {% endblock %}
 
 {% block main_content %}
+<!-- ========== DEMO DATA NOTICE ========== -->
+<div class="flex items-center gap-3 px-6 py-2.5 border-b border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs">
+    <span class="material-symbols-outlined text-[16px]">science</span>
+    <span><strong>Demo data:</strong> the connection table, topology map and traffic chart below show sample data.
+    Agent status, per-agent traffic counters and alerts are live.</span>
+</div>
 <!-- ========== TIME RANGE BAR ========== -->
 <div class="sticky top-0 z-10 flex items-center justify-between px-6 py-2 border-b border-primary/10 bg-background-dark/90 backdrop-blur-md">
   <div class="flex items-center gap-3 text-xs text-slate-400 font-mono">
@@ -479,7 +485,7 @@
             </tr>
             {% endfor %}
           {% else %}
-            <tr><td colspan="7" style="text-align:center;padding:32px;color:#6b6670;">No agents registered. <a href="/agents/new" style="color:#F05484;">Register an agent →</a></td></tr>
+            <tr><td colspan="7" style="text-align:center;padding:32px;color:#6b6670;">No agents registered. <a href="/agents/deploy" style="color:#F05484;">Register an agent →</a></td></tr>
           {% endif %}
         </tbody>
       </table>
@@ -496,7 +502,7 @@
           <span class="ni-section-count" id="sus-count">8 events · demo</span>
         </div>
       </div>
-      <a href="/rules" class="ni-btn ni-btn-ghost ni-btn-sm">Tune rules</a>
+      <a href="/detection/rules" class="ni-btn ni-btn-ghost ni-btn-sm">Tune rules</a>
     </div>
     <div id="suspicious-feed" style="display:flex;flex-direction:column;">
       <!-- populated by JS demo data -->

@@ -24,20 +24,6 @@
 
 {% block main_content %}
 <div class="p-4 lg:p-8 space-y-6">
-    <!-- System Status Banner -->
-    <div class="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/20">
-        <div class="flex items-center gap-3">
-            <div class="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined">check_circle</span>
-            </div>
-            <div>
-                <h3 class="text-sm font-bold">System Status</h3>
-                <p class="text-xs text-slate-500 dark:text-slate-400">OVS Core running stable. No critical outages reported in the last 24h.</p>
-            </div>
-        </div>
-        <a href="/logs" class="text-xs font-bold text-primary hover:underline">View System Logs</a>
-    </div>
-
     <!-- Summary Cards (KPIs) -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
@@ -115,12 +101,14 @@
                 <span class="text-[10px] font-bold text-violet-400/80 uppercase tracking-widest">Active Coverage</span>
             </div>
             <div class="flex items-center gap-3 mt-1">
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-violet-500/10 text-violet-300 border border-violet-500/20">
-                    <span class="material-symbols-outlined text-[12px]">shield</span>T1059.004
-                </span>
-                <span class="text-[11px] text-slate-400">Command &amp; Scripting Interpreter — Unix Shell</span>
+                <span class="text-3xl font-black tracking-tight text-violet-300">{{ active_rule_count }}</span>
+                <span class="text-[11px] text-slate-400">active MITRE ATT&amp;CK-mapped detection rules</span>
             </div>
-            <p class="text-[10px] text-slate-500 mt-1">Detection via OpenSearch Data Prepper pipeline + rule engine</p>
+            {% if request.state.user and request.state.user.role == 'admin' %}
+            <a href="/detection/rules" class="text-[10px] font-bold text-violet-400 hover:underline mt-1">View detection rules →</a>
+            {% else %}
+            <p class="text-[10px] text-slate-500 mt-1">YAML detection-as-code rule engine</p>
+            {% endif %}
         </div>
     </div>
 
@@ -159,7 +147,7 @@
                     <h3 class="text-sm font-bold">MITRE Threat Feed</h3>
                     <button onclick="markAllRead()" class="ml-2 px-2 py-0.5 rounded text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-colors">MARK ALL READ</button>
                 </div>
-                <a href="/alerts?source=T1059.004" class="text-xs font-bold text-primary hover:underline">View All →</a>
+                <a href="/alerts" class="text-xs font-bold text-primary hover:underline">View All →</a>
             </div>
             <div class="flex-1 overflow-y-auto p-3 space-y-2" id="alert-container">
                 <div class="p-4 rounded-lg bg-slate-800/30 border border-slate-700/30">
