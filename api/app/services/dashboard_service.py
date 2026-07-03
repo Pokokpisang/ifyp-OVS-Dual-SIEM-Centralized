@@ -50,12 +50,20 @@ def build_agents_view(
     registered = list_agents(db, include_deleted=False)
 
     hosts_with_metrics = {h[0] for h in db.query(models.Metric.host).distinct().all()}
-    registered_hostnames = {a["hostname"] for a in registered if a["hostname"] != "—"}
+
+    # Hostnames of ALL agent records (including deleted / retired / test), so a
+    # deleted or uninstalled agent's stale metric rows do not resurrect it as a
+    # metric-only "ghost" that 404s when opened. Only truly-unregistered hosts
+    # (never had an AgentRecord) appear as metric-only entries.
+    known_agent_hostnames = {
+        h[0] for h in db.query(models.AgentRecord.hostname).distinct().all()
+        if h[0] and h[0] != "—"
+    }
 
     now = datetime.utcnow()
     agents: List[dict] = list(registered)
 
-    for host in hosts_with_metrics - registered_hostnames:
+    for host in hosts_with_metrics - known_agent_hostnames:
         latest = _latest_metric(db, host)
         if not latest:
             continue
