@@ -249,13 +249,20 @@ class SSHBruteForceEngine:
             from ... import models
 
             cutoff = datetime.utcnow() - timedelta(seconds=self._window)
-            like_ip = f"%{source_ip}%"
+            # Match the IP within the sshd log framing ("from <ip> port …"), NOT a
+            # bare "%<ip>%" substring — otherwise "10.0.0.5" would also match
+            # "10.0.0.50"/"110.0.0.5" and attribute a neighbour's failures to it.
+            # The trailing delimiter (space) after the IP prevents the collision.
+            source_match = or_(
+                models.Log.message.ilike(f"%from {source_ip} port%"),
+                models.Log.message.ilike(f"%from {source_ip} %"),
+            )
             rows = (
                 self._db.query(models.Log)
                 .filter(
                     models.Log.agent_id == agent_id,
                     models.Log.timestamp >= cutoff,
-                    models.Log.message.ilike(like_ip),
+                    source_match,
                     or_(
                         models.Log.message.ilike("%failed password%"),
                         models.Log.message.ilike("%authentication failure%"),

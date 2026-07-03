@@ -258,8 +258,11 @@ def _get(event: Dict[str, Any], *path: str) -> str:
 
 # Bare IP-based URL pattern (no scheme): matches 1.2.3.4/path or 1.2.3.4:port/path
 # Intentionally requires a path component (/) to avoid matching plain IPs.
+# Octets are bounded to 0-255 so version-like/invalid dotted-quads (e.g.
+# 999.999.999.999/x) are not misread as download URLs.
+_OCTET = r'(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)'
 _BARE_IP_URL_RE = re.compile(
-    r'\b(\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?/\S*)'
+    rf'\b({_OCTET}(?:\.{_OCTET}){{3}}(?::\d{{1,5}})?/\S*)'
 )
 
 

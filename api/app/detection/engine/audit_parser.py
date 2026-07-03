@@ -171,8 +171,10 @@ class AuditdParser:
             if ip_match:
                 raw_log["source"]["ip"] = ip_match.group(1)
             
-            # Extract user
-            user_match = re.search(r'for (invalid user )?(\w+)', message)
+            # Extract user. Allow hyphens/dots so service accounts like www-data,
+            # systemd-network, or user.name are captured whole (plain \w would
+            # truncate www-data -> www and silently defeat the T1078 rule).
+            user_match = re.search(r'for (invalid user )?([\w.-]+)', message)
             if user_match:
                 raw_log["user"]["name"] = user_match.group(2)
 
