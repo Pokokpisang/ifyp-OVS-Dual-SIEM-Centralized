@@ -18,4 +18,6 @@ api/.env.*
 api/.venv/
 
 # Local FYP academic documentation (not part of the codebase)
-docs/
+# docs/roadmap/ is product documentation and stays tracked
+docs/*
+!docs/roadmap/
