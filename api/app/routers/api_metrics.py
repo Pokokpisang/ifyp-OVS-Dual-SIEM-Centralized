@@ -137,6 +137,7 @@ def get_alert_stats(host: str = Query(None), db: Session = Depends(db.get_db)):
         return q
 
     total = _base().scalar() or 0
+    unread = _base().filter(models.Alert.is_read == False).scalar() or 0
     high = _base().filter(
         models.Alert.severity.in_(["HIGH", "CRITICAL", "high", "critical"])
     ).scalar() or 0
@@ -154,6 +155,7 @@ def get_alert_stats(host: str = Query(None), db: Session = Depends(db.get_db)):
     ).scalar() or 0
     return {
         "total": total,
+        "unread": unread,
         "high_severity": high,
         "unread_high": unread_high,
         "mitre_detections": mitre,

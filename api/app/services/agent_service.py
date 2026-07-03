@@ -187,7 +187,7 @@ def regenerate_agent_token(agent_id: str, db: Session) -> str:
         
     raw_token = secrets.token_hex(16)
     agent.registration_token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
-    agent.token_expires_at = datetime.utcnow() + timedelta(hours=TOKEN_TTL_HOURS)
+    agent.registration_token_expires_at = datetime.utcnow() + timedelta(hours=TOKEN_TTL_HOURS)
     
     db.commit()
     return raw_token

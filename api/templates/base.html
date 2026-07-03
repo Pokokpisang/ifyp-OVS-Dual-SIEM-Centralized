@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>{% block title %}OVS SIEM{% endblock %}</title>
+    <title>{% block title %}OVS — Security Operations{% endblock %}</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <!-- Google Fonts -->
@@ -56,7 +56,7 @@
             -ms-overflow-style: none; /* IE and Edge */
             scrollbar-width: none; /* Firefox */
         }
-        
+
         /* Force hide scrollbars on specific elements */
         aside nav, main div {
             -ms-overflow-style: none;
@@ -69,9 +69,32 @@
     {% block head %}{% endblock %}
 </head>
 
+{% set current_user = request.state.user if request.state.user else {'username': '', 'role': 'client'} %}
+{% set role = current_user.role %}
+
+{# Nav entry: active-state link. #}
+{% macro nav_item(href, icon, label, active) -%}
+    <a class="flex items-center gap-3 px-3 py-2 rounded-lg {% if active %}bg-primary text-white{% else %}text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary{% endif %} font-medium transition-colors"
+        href="{{ href }}">
+        <span class="material-symbols-outlined text-[20px]">{{ icon }}</span>
+        <span class="text-sm">{{ label }}</span>
+        {{ caller() if caller }}
+    </a>
+{%- endmacro %}
+
+{# Nav entry for a page that has no route yet: visibly disabled, never a dead link. #}
+{% macro nav_soon(icon, label) -%}
+    <div class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 dark:text-slate-600 cursor-not-allowed select-none"
+        title="Coming soon — not yet available">
+        <span class="material-symbols-outlined text-[20px]">{{ icon }}</span>
+        <span class="text-sm">{{ label }}</span>
+        <span class="ml-auto text-[9px] font-bold uppercase tracking-widest border border-slate-300 dark:border-slate-700 rounded px-1.5 py-0.5">Soon</span>
+    </div>
+{%- endmacro %}
+
 <body
     class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-text-main font-display h-screen flex overflow-hidden">
-    
+
     <!-- Mobile Sidebar Backdrop -->
     <div id="sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-40 lg:hidden hidden backdrop-blur-sm"></div>
 
@@ -80,92 +103,90 @@
         class="fixed inset-y-0 left-0 w-72 border-r border-slate-200 dark:border-primary/10 flex flex-col h-full bg-background-light dark:bg-background-dark z-50 transition-transform -translate-x-full lg:translate-x-0 lg:static shrink-0">
         <div class="p-6 flex items-center justify-between">
             <div class="flex flex-col gap-1">
-                <h1 class="text-xl font-bold text-primary tracking-tight">OVS SIEM</h1>
-                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-widest">Security Monitoring</p>
+                <h1 class="text-xl font-bold text-primary tracking-tight">OVS</h1>
+                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-widest">Security Ops</p>
             </div>
             <button onclick="toggleSidebar()" class="lg:hidden p-2 text-slate-500 hover:text-primary">
                 <span class="material-symbols-outlined">close</span>
             </button>
         </div>
         <nav class="flex-1 px-4 py-4 space-y-8 overflow-y-auto no-scrollbar">
-            <!-- Monitoring Section -->
+            <!-- Command -->
             <div>
-                <p class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Monitoring</p>
+                <p class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Command</p>
                 <div class="space-y-1">
-                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg {% if request.url.path == '/dashboard' %}bg-primary text-white{% else %}text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary{% endif %} font-medium transition-colors"
-                        href="/dashboard">
-                        <span class="material-symbols-outlined text-[20px]">dashboard</span>
-                        <span class="text-sm">Dashboard</span>
-                    </a>
-
-                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg {% if request.url.path == '/agents' %}bg-primary text-white{% else %}text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary{% endif %} font-medium transition-colors"
-                        href="/agents">
-                        <span class="material-symbols-outlined text-[20px]">badge</span>
-                        <span class="text-sm">Agents</span>
-                    </a>
-                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg {% if request.url.path == '/alerts' %}bg-primary text-white{% else %}text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary{% endif %} transition-colors"
-                        href="/alerts">
-                        <span class="material-symbols-outlined text-[20px]">notifications_active</span>
-                        <span class="text-sm">Alerts</span>
-                    </a>
-                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg {% if request.url.path == '/logs' %}bg-primary text-white{% else %}text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary{% endif %} transition-colors"
-                        href="/logs">
-                        <span class="material-symbols-outlined text-[20px]">description</span>
-                        <span class="text-sm">Logs</span>
-                    </a>
-                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg {% if request.url.path == '/network' %}bg-primary text-white{% else %}text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary{% endif %} transition-colors"
-                        href="/network">
-                        <span class="material-symbols-outlined text-[20px]">lan</span>
-                        <span class="text-sm">Network</span>
-                    </a>
+                    {{ nav_item('/dashboard', 'dashboard', 'Overview', request.url.path == '/dashboard') }}
+                    {% call nav_item('/alerts', 'notifications_active', 'Alerts', request.url.path == '/alerts') %}
+                        <span id="nav-alerts-badge" class="ml-auto hidden text-[10px] font-bold bg-primary/20 text-primary rounded-full px-2 py-0.5"></span>
+                    {% endcall %}
                 </div>
             </div>
-            <!-- System Section -->
+            <!-- Assets -->
+            <div>
+                <p class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Assets</p>
+                <div class="space-y-1">
+                    {{ nav_item('/agents', 'badge', 'Agents', request.url.path == '/agents') }}
+                    {{ nav_item('/logs', 'description', 'Logs', request.url.path == '/logs') }}
+                    {% if role in ('admin', 'analyst') %}
+                        {{ nav_item('/network', 'lan', 'Network', request.url.path == '/network') }}
+                        {{ nav_soon('group', 'Clients') }}
+                    {% endif %}
+                </div>
+            </div>
+            {% if role in ('admin', 'analyst') %}
+            <!-- Detection -->
+            <div>
+                <p class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Detection</p>
+                <div class="space-y-1">
+                    {% if role == 'admin' %}
+                        {{ nav_item('/detection/rules', 'gavel', 'Detection Rules', request.url.path == '/detection/rules') }}
+                    {% endif %}
+                    {{ nav_soon('psychology', 'AI Triage') }}
+                </div>
+            </div>
+            <!-- Response -->
+            <div>
+                <p class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Response</p>
+                <div class="space-y-1">
+                    {{ nav_soon('bolt', 'SOAR') }}
+                    {{ nav_item('/soar/history', 'history', 'SOAR History', request.url.path == '/soar/history') }}
+                    {% if role == 'admin' %}
+                        {{ nav_item('/soar/settings', 'security', 'SOAR Settings', request.url.path == '/soar/settings') }}
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            {% if role == 'admin' %}
+            <!-- System -->
             <div>
                 <p class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">System</p>
                 <div class="space-y-1">
-                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg {% if '/rules' in request.url.path and '/system-health-rules' not in request.url.path %}bg-primary text-white{% else %}text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary{% endif %} transition-colors"
-                        href="/rules">
-                        <span class="material-symbols-outlined text-[20px]">gavel</span>
-                        <span class="text-sm">Detection Rules</span>
-                    </a>
-                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg {% if request.url.path == '/system-health-rules' %}bg-primary text-white{% else %}text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary{% endif %} transition-colors"
-                        href="/system-health-rules">
-                        <span class="material-symbols-outlined text-[20px]">health_and_safety</span>
-                        <span class="text-sm">System Health Rules</span>
-                    </a>
-                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-colors cursor-not-allowed"
-                        href="#" title="Not implemented">
-                        <span class="material-symbols-outlined text-[20px]">group</span>
-                        <span class="text-sm">Clients</span>
-                    </a>
-                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg {% if request.url.path == '/soar/settings' %}bg-primary text-white{% else %}text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary{% endif %} transition-colors"
-                        href="/soar/settings">
-                        <span class="material-symbols-outlined text-[20px]">security</span>
-                        <span class="text-sm">SOAR Settings</span>
-                    </a>
-                    <a class="flex items-center gap-3 px-3 py-2 rounded-lg {% if request.url.path == '/soar/history' %}bg-primary text-white{% else %}text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary{% endif %} transition-colors"
-                        href="/soar/history">
-                        <span class="material-symbols-outlined text-[20px]">history</span>
-                        <span class="text-sm">SOAR History</span>
-                    </a>
+                    {{ nav_item('/system-health-rules', 'health_and_safety', 'System Health Rules', request.url.path == '/system-health-rules') }}
+                    {{ nav_soon('receipt_long', 'Audit Trail') }}
                 </div>
             </div>
+            {% endif %}
         </nav>
         <div class="p-4 border-t border-slate-200 dark:border-primary/10 flex flex-col gap-4">
             <div
                 class="flex items-center flex-col 2xl:flex-row xl:flex-row gap-3 xs:px-1 2xl:px-2 xl:px-2 px-1 text-center 2xl:text-left xl:text-left">
                 <span class="material-symbols-outlined text-slate-400 text-[18px]">info</span>
-                <span class="text-xs text-slate-500 font-medium">v2.0.0 Prototype</span>
+                <span class="text-xs text-slate-500 font-medium">v2.9.0</span>
             </div>
             <div
                 class="flex items-center gap-3 p-2 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5">
-                <div class="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs"
-                    data-alt="User avatar placeholder">JD</div>
-                <div class="flex flex-col overflow-hidden">
-                    <span class="text-xs font-semibold truncate">Admin Profile</span>
-                    <span class="text-[10px] text-slate-500 truncate">admin@ovs-siem.io</span>
+                <div class="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
+                    {{ current_user.username[:2]|upper if current_user.username else '?' }}</div>
+                <div class="flex flex-col overflow-hidden flex-1">
+                    <span class="text-xs font-semibold truncate">{{ current_user.username or 'Unknown' }}</span>
+                    <span class="text-[10px] text-slate-500 uppercase tracking-widest truncate">{{ role }}</span>
                 </div>
+                <form method="POST" action="/logout" class="shrink-0">
+                    <button type="submit" title="Log out"
+                        class="p-1.5 rounded-lg text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors flex items-center">
+                        <span class="material-symbols-outlined text-[18px]">logout</span>
+                    </button>
+                </form>
             </div>
         </div>
     </aside>
@@ -182,25 +203,12 @@
                 <h2 class="text-lg font-bold whitespace-nowrap">{% block page_title %}Overview{% endblock %}</h2>
             </div>
 
-            <div class="hidden md:flex items-center flex-1 max-w-md mx-8">
-                <div class="relative w-full">
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
-                    <input
-                        class="w-full bg-slate-100 dark:bg-card-dark border-none rounded-lg pl-10 pr-4 py-1.5 text-sm focus:ring-1 focus:ring-primary"
-                        placeholder="Search incidents..." type="text" />
-                </div>
-            </div>
-
             <div class="flex items-center gap-2 sm:gap-4">
                 {% block header_actions %}
                 {% endblock %}
-                <button class="relative p-2 text-slate-500 hover:text-primary transition-colors">
-                    <span class="material-symbols-outlined">notifications</span>
-                    <span class="absolute top-2 right-2 h-2 w-2 bg-primary rounded-full border-2 border-background-dark"></span>
-                </button>
-                <button class="hidden sm:block p-2 text-slate-500 hover:text-primary transition-colors">
-                    <span class="material-symbols-outlined">help_outline</span>
-                </button>
+                <span class="hidden sm:inline text-[10px] font-bold uppercase tracking-widest border rounded-full px-2.5 py-1 {% if role == 'client' %}border-sky-500/40 text-sky-400{% else %}border-primary/40 text-primary{% endif %}">
+                    {% if role == 'client' %}Client view{% else %}Admin / SOC{% endif %}
+                </span>
             </div>
         </header>
 
@@ -218,6 +226,19 @@
             sidebar.classList.toggle('-translate-x-full');
             backdrop.classList.toggle('hidden');
         }
+
+        // Unread-alert count badge in the sidebar.
+        fetch('/api/alerts/stats')
+            .then(r => r.ok ? r.json() : null)
+            .then(stats => {
+                if (!stats || !stats.unread) return;
+                const badge = document.getElementById('nav-alerts-badge');
+                if (badge) {
+                    badge.textContent = stats.unread > 99 ? '99+' : stats.unread;
+                    badge.classList.remove('hidden');
+                }
+            })
+            .catch(() => {});
     </script>
     {% block scripts %}
     {% endblock %}

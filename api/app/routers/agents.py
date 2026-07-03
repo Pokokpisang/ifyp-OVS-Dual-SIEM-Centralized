@@ -6,6 +6,7 @@ Routes
 GET  /install.sh              Return the bash installer script (plain text)
 POST /api/agents/register     One-time token → activate agent, return agent_key
 POST /api/agents/heartbeat    agent_key header → update last_seen
+GET  /api/agent/rules         Client-side matching rules for the agent poller
 """
 
 import os
@@ -70,6 +71,22 @@ def get_uninstall_script():
     """
     script = generate_uninstall_script()
     return PlainTextResponse(content=script, media_type="text/plain")
+
+
+# ---------------------------------------------------------------------------
+# GET /api/agent/rules
+# ---------------------------------------------------------------------------
+
+@router.get("/api/agent/rules")
+def get_agent_rules():
+    """
+    Client-side matching rules for the Go agent's 5-minute rule poller.
+
+    Server-side rules are YAML detection-as-code files that are not shipped
+    to agents; until a client-side rule distribution format exists this
+    returns an empty list so agents stop logging 404s on every poll.
+    """
+    return []
 
 
 # ---------------------------------------------------------------------------
