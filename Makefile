@@ -10,8 +10,11 @@ up: build-agent
 	@sudo -v
 	@# Kill any existing agent process before starting a new one
 	@-sudo pkill -f "./agent/agent" 2>/dev/null || true
-	@sudo AGENT_SERVER_URL=http://localhost:8000 \
-		AGENT_KEY=75718048f662d6b143fc27c3b1053ea90923c2ba4b2601ae484f2653ab103e79 \
+	@AGENT_KEY="$$(grep -E '^AGENT_KEY=' api/.env 2>/dev/null | head -1 | cut -d= -f2-)"; \
+	if [ -z "$$AGENT_KEY" ]; then \
+		echo "❌ AGENT_KEY not found in api/.env — add 'AGENT_KEY=<localhost agent key>' (gitignored)"; exit 1; \
+	fi; \
+	sudo AGENT_SERVER_URL=http://localhost:8000 AGENT_KEY="$$AGENT_KEY" \
 		nohup ./agent/agent > agent.log 2>&1 &
 	@echo ""
 	@echo "✅ SIEM Prototype is UP & RUNNING!"
