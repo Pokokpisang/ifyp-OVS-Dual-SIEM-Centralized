@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Trail — OVS{% endblock %}
+{% block page_title %}Audit Trail{% endblock %}
+
+{% block header_actions %}
+<span class="hidden md:inline-flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-widest border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 rounded-full px-2.5 py-1">
+    <span class="material-symbols-outlined text-[12px]">lock</span>Read-only
+</span>
+<a id="export-btn" href="/api/audit/export.csv"
+    class="inline-flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all">
+    <span class="material-symbols-outlined text-[15px]">download</span>Export
+</a>
+{% endblock %}
+
+{% block main_content %}
+<div class="p-4 lg:p-8 space-y-4 max-w-[1680px]">
+
+    <div>
+        <h1 class="text-lg font-bold">Platform activity</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Who did what, when, to which object — logins, SOAR decisions, alert status changes, agent lifecycle, AI triage and configuration changes.</p>
+    </div>
+
+    <!-- KPI row -->
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 divide-x divide-y xl:divide-y-0 divide-slate-200 dark:divide-slate-700/40">
+        {% for key, label, cls in [
+            ('total_events', 'Total events', 'text-primary'),
+            ('failed_logins', 'Failed logins', 'text-red-400'),
+            ('soar_actions', 'SOAR actions', 'text-sky-400'),
+            ('agent_changes', 'Agent changes', 'text-orange-400'),
+            ('alert_status_changes', 'Alert status changes', 'text-violet-400'),
+            ('ai_triage_requests', 'AI triage requests', 'text-cyan-400'),
+        ] %}
+        <div class="p-4 flex flex-col gap-1">
+            <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">{{ label }}</span>
+            <span class="text-xl font-bold tracking-tight tabular-nums {{ cls }}" id="kpi-{{ key }}">—</span>
+            <span class="text-[10px] text-slate-500" data-kpi-range>Last 24 hours</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Filter row 1: search + category chips -->
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 p-3 flex flex-wrap items-center gap-2">
+        <div class="relative w-72 max-w-full">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+            <input id="f-q" type="text" placeholder="Search actor, action, object, details…"
+                class="w-full bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg pl-9 pr-3 py-1.5 text-xs focus:ring-1 focus:ring-primary focus:border-primary" />
+        </div>
+        <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest ml-2">Action</span>
+        <div id="category-chips" class="flex flex-wrap gap-1.5">
+            {% for cat in ['All', 'Authentication', 'SOAR', 'Alert', 'Agent', 'AI Triage', 'System'] %}
+            <button data-cat="{{ '' if cat == 'All' else cat }}"
+                class="cat-chip px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors {% if cat == 'All' %}bg-primary text-white border-primary{% else %}border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary{% endif %}">{{ cat }}</button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Filter row 2: selects -->
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 p-3 flex flex-wrap items-center gap-3">
+        {% for id, label in [('f-range', 'Date range'), ('f-actor', 'Actor'), ('f-objtype', 'Object type')] %}
+        <label class="flex items-center gap-2">
+            <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">{{ label }}</span>
+            <select id="{{ id }}"
+                class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2 py-1.5 text-xs focus:ring-1 focus:ring-primary">
+                {% if id == 'f-range' %}
+                <option value="24h">Last 24 hours</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+                <option value="all">All time</option>
+                {% else %}
+                <option value="">All</option>
+                {% endif %}
+            </select>
+        </label>
+        {% endfor %}
+        <label class="flex items-center gap-2">
+            <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">Object id</span>
+            <input id="f-objid" type="text"
+                class="w-24 bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2 py-1.5 text-xs font-mono focus:ring-1 focus:ring-primary" />
+        </label>
+        <div class="flex-1"></div>
+        <button id="btn-reset" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-colors">Reset</button>
+        <button id="btn-apply" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-primary text-white hover:bg-primary/90 transition-all">Apply filters</button>
+    </div>
+
+    <!-- Read-only note -->
+    <div class="flex items-center gap-2 text-[11px] text-slate-500 px-1">
+        <span class="material-symbols-outlined text-[14px]">shield</span>
+        Audit events are read-only and cannot be modified from this page. Records are retained per your workspace retention policy.
+    </div>
+
+    <!-- Table card -->
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[720px] text-left">
+                <thead class="bg-slate-200/60 dark:bg-background-dark/60 sticky top-0">
+                    <tr class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
+                        <th class="px-4 py-2.5 w-40">Time</th>
+                        <th class="px-4 py-2.5 w-44">Actor</th>
+                        <th class="px-4 py-2.5 w-56">Action</th>
+                        <th class="px-4 py-2.5 w-40">Object</th>
+                        <th class="px-4 py-2.5 w-28">Result</th>
+                        <th class="px-4 py-2.5 w-20">Details</th>
+                    </tr>
+                </thead>
+                <tbody id="audit-tbody" class="divide-y divide-slate-200 dark:divide-slate-700/40 text-xs"></tbody>
+            </table>
+        </div>
+        <div id="empty-state" class="hidden flex-col items-center gap-2 py-14 text-center">
+            <span class="material-symbols-outlined text-[40px] text-slate-300 dark:text-slate-700">search_off</span>
+            <p class="text-sm font-bold" id="empty-title">No matching audit activity</p>
+            <p class="text-xs text-slate-500" id="empty-sub">No records match the current filters.</p>
+            <button id="btn-clear" class="mt-1 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-colors">Clear filters</button>
+        </div>
+        <div class="flex items-center justify-between px-4 py-2.5 border-t border-slate-200 dark:border-slate-700/40">
+            <span class="text-[11px] font-mono text-slate-500" id="page-info">—</span>
+            <div class="flex items-center gap-1" id="pager"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Detail drawer -->
+<div id="drawer-backdrop" class="hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"></div>
+<aside id="drawer" class="fixed inset-y-0 right-0 w-full max-w-[640px] bg-background-light dark:bg-background-dark border-l border-slate-200 dark:border-primary/10 z-50 translate-x-full transition-transform duration-200 flex flex-col shadow-2xl">
+    <div class="p-5 border-b border-slate-200 dark:border-primary/10 space-y-2">
+        <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono text-slate-500" id="d-eyebrow">Audit Event</span>
+            <button id="drawer-close" class="p-1.5 text-slate-500 hover:text-primary"><span class="material-symbols-outlined text-[20px]">close</span></button>
+        </div>
+        <div class="flex items-center gap-2" id="d-badges"></div>
+        <h2 class="text-base font-bold">Audit Event Details</h2>
+    </div>
+    <div class="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
+        <div id="d-fields" class="divide-y divide-slate-200 dark:divide-slate-700/40"></div>
+        <div>
+            <p class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest mb-2">Details</p>
+            <div id="d-details" class="rounded-lg border border-slate-200 dark:border-slate-700/40 overflow-hidden font-mono text-[11px]"></div>
+        </div>
+        <div id="d-related-wrap">
+            <p class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest mb-2">Related</p>
+            <div id="d-related" class="flex flex-wrap gap-2"></div>
+        </div>
+        <div class="flex items-center gap-2 text-[11px] text-slate-500 pt-2">
+            <span class="material-symbols-outlined text-[14px]">shield</span>
+            This record is read-only. Sensitive values (keys, tokens, secrets) are never stored or displayed.
+        </div>
+    </div>
+</aside>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const state = { category: '', actor: '', objType: '', objId: '', q: '', range: '24h', page: 1 };
+    let events = [];
+
+    const ACTION_STYLES = {
+        LOGIN_SUCCESS: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+        LOGIN_FAILURE: 'text-red-400 bg-red-500/10 border-red-500/20',
+        LOGOUT: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+        SOAR_RUN: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
+        SOAR_APPROVE: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+        SOAR_REJECT: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+        ALERT_STATUS_CHANGED: 'text-violet-400 bg-violet-500/10 border-violet-500/20',
+        AGENT_REGISTERED: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
+        AGENT_KEY_ROTATED: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
+        AI_TRIAGE_REQUESTED: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+        SYSTEM_CONFIG_CHANGED: 'text-slate-300 bg-slate-500/10 border-slate-500/20',
+    };
+    const RESULT_STYLES = {
+        ok: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+        info: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
+        high: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+        crit: 'text-red-400 bg-red-500/10 border-red-500/20',
+        muted: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+    };
+    const RANGE_LABELS = { '24h': 'Last 24 hours', '7d': 'Last 7 days', '30d': 'Last 30 days', 'all': 'All time' };
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    function params() {
+        return new URLSearchParams({
+            category: state.category, actor: state.actor, object_type: state.objType,
+            object_id: state.objId, q: state.q, range: state.range,
+        });
+    }
+
+    function actionBadge(ev, extra = '') {
+        const cls = ACTION_STYLES[ev.action] || RESULT_STYLES.muted;
+        return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold uppercase ${cls}">` +
+            `<span class="h-1 w-1 rounded-full bg-current"></span>${esc(ev.action)}</span>` +
+            (ev.sensitive ? `<span class="material-symbols-outlined text-[13px] text-amber-400 align-middle ml-1" title="Security-sensitive event">key</span>` : '') + extra;
+    }
+
+    function resultBadge(ev) {
+        const cls = RESULT_STYLES[ev.result_tone] || RESULT_STYLES.muted;
+        return `<span class="inline-flex px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold ${cls}">${esc(ev.result)}</span>`;
+    }
+
+    function objectCell(ev) {
+        if (!ev.object_type) return '<span class="text-slate-500">—</span>';
+        const id = ev.object_id ? `<span class="text-slate-500">:</span>${esc(ev.object_id)}` : '';
+        return `<span class="font-mono"><span class="text-slate-500">${esc(ev.object_type)}</span>${id}</span>`;
+    }
+
+    function actorCell(ev) {
+        const system = (ev.actor || '').startsWith('system:') || (ev.actor || '').startsWith('agent:');
+        const dot = system ? 'bg-amber-400' : 'bg-emerald-400';
+        return `<span class="flex items-center gap-2"><span class="h-1.5 w-1.5 rounded-full ${dot}"></span>` +
+            `<span class="${system ? 'font-mono' : 'font-medium'}">${esc(ev.actor)}</span></span>`;
+    }
+
+    function skeleton() {
+        const tb = document.getElementById('audit-tbody');
+        tb.innerHTML = Array.from({ length: 8 }).map(() =>
+            `<tr>${Array.from({ length: 6 }).map(() =>
+                `<td class="px-4 py-3"><div class="h-3 rounded bg-slate-200 dark:bg-slate-700/40 animate-pulse"></div></td>`).join('')}</tr>`
+        ).join('');
+        document.getElementById('empty-state').classList.add('hidden');
+    }
+
+    function renderRows(data) {
+        events = data.events;
+        const tb = document.getElementById('audit-tbody');
+        const empty = document.getElementById('empty-state');
+        if (!events.length) {
+            tb.innerHTML = '';
+            const hasFilters = state.category || state.actor || state.objType || state.objId || state.q;
+            document.getElementById('empty-title').textContent = hasFilters ? 'No matching audit activity' : 'No audit events found';
+            document.getElementById('empty-sub').textContent = hasFilters ? 'No records match the current filters.' : 'Try selecting a wider date range.';
+            document.getElementById('btn-clear').style.display = hasFilters ? '' : 'none';
+            empty.classList.remove('hidden');
+            empty.classList.add('flex');
+        } else {
+            empty.classList.add('hidden');
+            empty.classList.remove('flex');
+            tb.innerHTML = events.map((ev, i) =>
+                `<tr class="cursor-pointer hover:bg-slate-200/50 dark:hover:bg-background-dark/60 transition-colors" data-idx="${i}">` +
+                `<td class="px-4 py-2.5 font-mono text-slate-500 whitespace-nowrap">${esc(ev.timestamp_utc)}</td>` +
+                `<td class="px-4 py-2.5">${actorCell(ev)}</td>` +
+                `<td class="px-4 py-2.5 whitespace-nowrap">${actionBadge(ev)}</td>` +
+                `<td class="px-4 py-2.5">${objectCell(ev)}</td>` +
+                `<td class="px-4 py-2.5">${resultBadge(ev)}</td>` +
+                `<td class="px-4 py-2.5 text-primary font-bold whitespace-nowrap">View ›</td></tr>`
+            ).join('');
+            tb.querySelectorAll('tr').forEach(tr =>
+                tr.addEventListener('click', () => openDrawer(events[+tr.dataset.idx])));
+        }
+        const from = data.total ? (data.page - 1) * 12 + 1 : 0;
+        const to = Math.min(data.page * 12, data.total);
+        document.getElementById('page-info').textContent = `Showing ${from}–${to} of ${data.total} records`;
+        renderPager(data.page, data.page_count);
+    }
+
+    function renderPager(page, count) {
+        const pager = document.getElementById('pager');
+        const btn = (label, target, active, disabled) =>
+            `<button data-page="${target}" ${disabled ? 'disabled' : ''} class="px-2.5 py-1 rounded text-[11px] font-bold border transition-colors ${active ? 'bg-primary text-white border-primary' : disabled ? 'border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-700' : 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary'}">${label}</button>`;
+        let pages = [];
+        for (let p = Math.max(1, page - 2); p <= Math.min(count, page + 2); p++) pages.push(btn(p, p, p === page, false));
+        pager.innerHTML = btn('Prev', page - 1, false, page <= 1) + pages.join('') + btn('Next', page + 1, false, page >= count);
+        pager.querySelectorAll('button[data-page]:not([disabled])').forEach(b =>
+            b.addEventListener('click', () => { state.page = +b.dataset.page; fetchEvents(false); }));
+    }
+
+    async function fetchEvents(showSkeleton = true) {
+        if (showSkeleton) skeleton();
+        const p = params(); p.set('page', state.page);
+        try {
+            const r = await fetch(`/api/audit/events?${p}`);
+            if (!r.ok) throw new Error(r.status);
+            renderRows(await r.json());
+        } catch (e) {
+            document.getElementById('audit-tbody').innerHTML =
+                `<tr><td colspan="6" class="px-4 py-8 text-center text-red-400 text-xs">Failed to load audit events — check your connection and try again.</td></tr>`;
+        }
+        document.getElementById('export-btn').href = `/api/audit/export.csv?${params()}`;
+    }
+
+    async function fetchMeta() {
+        try {
+            const r = await fetch(`/api/audit/meta?range=${state.range}`);
+            if (!r.ok) return;
+            const meta = await r.json();
+            for (const [k, v] of Object.entries(meta.summary))
+                document.getElementById(`kpi-${k}`).textContent = v.toLocaleString();
+            document.querySelectorAll('[data-kpi-range]').forEach(el => el.textContent = RANGE_LABELS[state.range]);
+            fillSelect('f-actor', meta.actors, state.actor);
+            fillSelect('f-objtype', meta.object_types, state.objType);
+        } catch (e) { /* KPIs stay em-dash */ }
+    }
+
+    function fillSelect(id, values, current) {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '<option value="">All</option>' +
+            values.map(v => `<option value="${esc(v)}" ${v === current ? 'selected' : ''}>${esc(v)}</option>`).join('');
+    }
+
+    // --- drawer ---
+    function relatedLinks(ev) {
+        const links = [];
+        const det = Object.fromEntries(ev.details);
+        const alertId = ev.object_type === 'alert' ? ev.object_id : det.alert_id;
+        if (alertId) links.push(['Open Alert Investigation', `/alerts/${alertId}/investigation`]);
+        if (ev.action.startsWith('SOAR')) links.push(['Open SOAR History', '/soar/history']);
+        if (ev.object_type === 'agent')
+            links.push(['Open Agent', ev.action === 'AGENT_KEY_ROTATED' && ev.object_id ? `/agents/${ev.object_id}` : '/agents']);
+        if (ev.object_type === 'system')
+            links.push(['Open Settings', (det.setting || '').startsWith('health_rule') ? '/system-health-rules' : '/soar/settings']);
+        return links;
+    }
+
+    function openDrawer(ev) {
+        document.getElementById('d-eyebrow').textContent = `Audit Event · ev-${ev.id}`;
+        document.getElementById('d-badges').innerHTML = actionBadge(ev) + resultBadge(ev) +
+            (ev.sensitive ? `<span class="inline-flex px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold text-amber-400 bg-amber-500/10 border-amber-500/20">Sensitive</span>` : '');
+        const field = (label, html) =>
+            `<div class="flex gap-3 py-2"><span class="w-24 shrink-0 text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest pt-0.5">${label}</span><span>${html}</span></div>`;
+        document.getElementById('d-fields').innerHTML =
+            field('Time', `<span class="font-mono">${esc(ev.timestamp_utc)}</span>`) +
+            field('Actor', actorCell(ev)) +
+            field('Action', actionBadge(ev)) +
+            field('Object type', `<span class="font-mono">${esc(ev.object_type || '—')}</span>`) +
+            field('Object id', `<span class="font-mono">${esc(ev.object_id || '—')}</span>`) +
+            field('Result', resultBadge(ev)) +
+            field('Source', `<span class="font-mono">${esc(ev.source_ip || '—')}</span>`);
+        document.getElementById('d-details').innerHTML = ev.details.length
+            ? ev.details.map(([k, v], i) =>
+                `<div class="grid grid-cols-[130px_1fr] gap-2 px-3 py-2 ${i % 2 ? '' : 'bg-slate-200/40 dark:bg-background-dark/50'}">` +
+                `<span class="text-slate-500">${esc(k)}</span>` +
+                (v === '__SENSITIVE__'
+                    ? `<span class="inline-flex items-center gap-1 w-fit px-1.5 py-0.5 rounded border border-dashed border-amber-500/40 text-amber-400 text-[10px]"><span class="material-symbols-outlined text-[12px]">key</span>Sensitive value hidden</span>`
+                    : `<span class="break-all">${esc(v)}</span>`) + `</div>`).join('')
+            : '<div class="px-3 py-2 text-slate-500">No additional detail recorded.</div>';
+        const links = relatedLinks(ev);
+        document.getElementById('d-related-wrap').style.display = links.length ? '' : 'none';
+        document.getElementById('d-related').innerHTML = links.map(([label, href]) =>
+            `<a href="${href}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-colors"><span class="material-symbols-outlined text-[13px]">open_in_new</span>${esc(label)}</a>`).join('');
+        document.getElementById('drawer').classList.remove('translate-x-full');
+        document.getElementById('drawer-backdrop').classList.remove('hidden');
+    }
+
+    function closeDrawer() {
+        document.getElementById('drawer').classList.add('translate-x-full');
+        document.getElementById('drawer-backdrop').classList.add('hidden');
+    }
+    document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+    document.getElementById('drawer-backdrop').addEventListener('click', closeDrawer);
+
+    // --- filter events ---
+    document.querySelectorAll('.cat-chip').forEach(chip => chip.addEventListener('click', () => {
+        state.category = chip.dataset.cat; state.page = 1;
+        document.querySelectorAll('.cat-chip').forEach(c => {
+            const active = c.dataset.cat === state.category;
+            c.className = `cat-chip px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors ${active ? 'bg-primary text-white border-primary' : 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary'}`;
+        });
+        fetchEvents();
+    }));
+    let qTimer;
+    document.getElementById('f-q').addEventListener('input', e => {
+        clearTimeout(qTimer);
+        qTimer = setTimeout(() => { state.q = e.target.value.trim(); state.page = 1; fetchEvents(); }, 300);
+    });
+    document.getElementById('f-range').addEventListener('change', e => { state.range = e.target.value; state.page = 1; fetchEvents(); fetchMeta(); });
+    document.getElementById('f-actor').addEventListener('change', e => { state.actor = e.target.value; state.page = 1; fetchEvents(); });
+    document.getElementById('f-objtype').addEventListener('change', e => { state.objType = e.target.value; state.page = 1; fetchEvents(); });
+    document.getElementById('f-objid').addEventListener('input', e => {
+        clearTimeout(qTimer);
+        qTimer = setTimeout(() => { state.objId = e.target.value.trim(); state.page = 1; fetchEvents(); }, 300);
+    });
+    document.getElementById('btn-apply').addEventListener('click', () => { state.page = 1; fetchEvents(); fetchMeta(); });
+    function resetFilters() {
+        Object.assign(state, { category: '', actor: '', objType: '', objId: '', q: '', range: '24h', page: 1 });
+        document.getElementById('f-q').value = '';
+        document.getElementById('f-objid').value = '';
+        document.getElementById('f-range').value = '24h';
+        document.querySelector('.cat-chip[data-cat=""]').click();
+        fetchMeta();
+    }
+    document.getElementById('btn-reset').addEventListener('click', resetFilters);
+    document.getElementById('btn-clear').addEventListener('click', resetFilters);
+
+    fetchEvents();
+    fetchMeta();
+})();
+</script>
+{% endblock %}

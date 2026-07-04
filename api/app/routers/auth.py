@@ -57,7 +57,8 @@ async def login(
             database,
             actor=username,
             action=LOGIN_SUCCESS,
-            details={"role": role, "ip": get_remote_address(request)},
+            source_ip=get_remote_address(request),
+            details={"role": role},
             commit=True,
         )
         return RedirectResponse(url="/dashboard", status_code=303)
@@ -67,7 +68,8 @@ async def login(
         database,
         actor=username,
         action=LOGIN_FAILURE,
-        details={"ip": get_remote_address(request), "reason": "invalid_credentials"},
+        source_ip=get_remote_address(request),
+        details={"reason": "invalid_credentials"},
         commit=True,
     )
     return templates.TemplateResponse(
@@ -90,7 +92,7 @@ async def logout(request: Request, database: Session = Depends(_db.get_db)):
         database,
         actor=username,
         action=LOGOUT,
-        details={"ip": get_remote_address(request)},
+        source_ip=get_remote_address(request),
         commit=True,
     )
     return RedirectResponse(url="/login", status_code=303)

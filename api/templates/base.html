@@ -162,7 +162,7 @@
                 <p class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">System</p>
                 <div class="space-y-1">
                     {{ nav_item('/system-health-rules', 'health_and_safety', 'System Health Rules', request.url.path == '/system-health-rules') }}
-                    {{ nav_soon('receipt_long', 'Audit Trail') }}
+                    {{ nav_item('/audit', 'receipt_long', 'Audit Trail', request.url.path == '/audit') }}
                 </div>
             </div>
             {% endif %}

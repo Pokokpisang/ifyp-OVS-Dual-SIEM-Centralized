@@ -370,6 +370,7 @@ def get_agent_detail(
             action=audit_service.AGENT_KEY_ROTATED,
             object_type="agent",
             object_id=agent_id,
+            source_ip=audit_service.client_ip(request),
             details={"agent_id": agent_id},
             commit=True,
         )

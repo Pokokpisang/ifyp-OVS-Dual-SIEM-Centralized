@@ -91,7 +91,7 @@ def test_soar_run_uses_session_username():
     cookies = _make_admin_cookies("session_analyst")
     captured = {}
 
-    def _mock_run_action(alert_id, playbook_id, action_id, db, executed_by):
+    def _mock_run_action(alert_id, playbook_id, action_id, db, executed_by, source_ip=None):
         captured["executed_by"] = executed_by
         result = MagicMock()
         result.model_dump.return_value = {"status": "executed", "message": "ok"}
@@ -115,7 +115,7 @@ def test_soar_approve_uses_session_username():
     cookies = _make_admin_cookies("approve_admin")
     captured = {}
 
-    def _mock_approve(alert_id, execution_id, db, approved_by):
+    def _mock_approve(alert_id, execution_id, db, approved_by, source_ip=None):
         captured["approved_by"] = approved_by
         result = MagicMock()
         result.model_dump.return_value = {"status": "approved"}
@@ -139,7 +139,7 @@ def test_soar_reject_uses_session_username():
     cookies = _make_admin_cookies("reject_admin")
     captured = {}
 
-    def _mock_reject(alert_id, execution_id, db, rejected_by):
+    def _mock_reject(alert_id, execution_id, db, rejected_by, source_ip=None):
         captured["rejected_by"] = rejected_by
         return {"status": "rejected"}
 

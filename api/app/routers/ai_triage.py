@@ -48,6 +48,7 @@ async def trigger_ai_triage(alert_id: int, request: Request, database: Session =
         action=audit_service.AI_TRIAGE_REQUESTED,
         object_type="alert",
         object_id=alert_id,
+        source_ip=audit_service.client_ip(request),
         details={"provider": row.provider, "triage_status": row.triage_status},
         commit=True,
     )
