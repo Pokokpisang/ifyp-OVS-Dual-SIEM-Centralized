@@ -252,6 +252,30 @@ def seed_health_rules():
         database.close()
 
 
+# Agent dead-silence sweep — one alert per silence episode (see agent_monitor).
+_SILENCE_SWEEP_SECONDS = int(os.getenv("AGENT_SILENCE_SWEEP_SECONDS", "60"))
+_SILENCE_SWEEP_ENABLED = os.getenv("AGENT_SILENCE_ALERTING_ENABLED", "true").lower() == "true"
+
+
+def _run_silence_sweep():
+    from .services.agent_monitor import check_silent_agents
+    session = db.SessionLocal()
+    try:
+        check_silent_agents(session)
+    finally:
+        session.close()
+
+
+async def _agent_silence_sweeper():
+    import asyncio as _asyncio
+    while True:
+        await _asyncio.sleep(_SILENCE_SWEEP_SECONDS)
+        try:
+            await _asyncio.to_thread(_run_silence_sweep)
+        except Exception as exc:  # noqa: BLE001 — sweep must never kill the loop
+            print(f"[AGENT_MONITOR] sweep failed: {exc}")
+
+
 @app.on_event("startup")
 async def startup_event():
     # Purge expired server sessions on startup to keep the table tidy.
@@ -263,6 +287,8 @@ async def startup_event():
         _purge_db.close()
     print("API Started - Real-time Ingestion Enabled")
     seed_health_rules()
+    if _SILENCE_SWEEP_ENABLED:
+        asyncio.create_task(_agent_silence_sweeper())
 
 
 @app.get("/", include_in_schema=False)

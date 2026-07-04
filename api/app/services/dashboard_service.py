@@ -14,7 +14,7 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from .. import models
-from .agent_service import get_all_agents_for_history, list_agents
+from .agent_service import get_all_agents_for_history, get_offline_threshold_minutes, list_agents
 
 _AGENTS_PER_PAGE = 20
 
@@ -67,7 +67,7 @@ def build_agents_view(
         latest = _latest_metric(db, host)
         if not latest:
             continue
-        is_offline = (now - latest.timestamp) > timedelta(minutes=5)
+        is_offline = (now - latest.timestamp) > timedelta(minutes=get_offline_threshold_minutes())
         is_high_load = float(latest.cpu_percent) > 85.0
         status = "offline" if is_offline else ("HIGH LOAD" if is_high_load else "active")
         agents.append({
@@ -160,7 +160,7 @@ def build_network_view(db: Session) -> dict:
     for a in registered:
         host = a.get("hostname") or a.get("agent_name", "")
         latest = _latest_metric(db, host)
-        is_offline = (now - latest.timestamp) > timedelta(minutes=5) if latest else True
+        is_offline = (now - latest.timestamp) > timedelta(minutes=get_offline_threshold_minutes()) if latest else True
         net_in = int(float(latest.net_in_bytes)) if latest else 0
         net_out = int(float(latest.net_out_bytes)) if latest else 0
         agent_rows.append({
