@@ -8,7 +8,7 @@ from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 from typing import List
 from . import models, db
-from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings, ai_triage
+from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings, ai_triage, audit
 from .routers import auth as auth_router_module
 from .auth.dependencies import require_html_auth, require_api_auth, require_admin_auth, require_admin_html
 from .auth.exceptions import LoginRequiredException
@@ -76,6 +76,10 @@ def run_startup_migrations():
         ),
         "CREATE INDEX IF NOT EXISTS ix_server_sessions_token_hash ON server_sessions (token_hash)",
         "CREATE INDEX IF NOT EXISTS ix_server_sessions_expires_at ON server_sessions (expires_at)",
+        # v2.10.0 Audit Trail page
+        "ALTER TABLE activity_audit ADD COLUMN IF NOT EXISTS source_ip VARCHAR",
+        "CREATE INDEX IF NOT EXISTS ix_activity_audit_action ON activity_audit (action)",
+        "CREATE INDEX IF NOT EXISTS ix_activity_audit_actor ON activity_audit (actor)",
     ]
     with db.engine.connect() as conn:
         for sql in migrations:
@@ -158,6 +162,8 @@ app.include_router(agents.router)        # agent registration, heartbeat, instal
 app.include_router(dashboard.router, dependencies=[Depends(require_html_auth)])
 # ST-012: Rules page restricted to admin role only
 app.include_router(rules.router, dependencies=[Depends(require_admin_html)])
+# Audit Trail — per-route admin deps (mixed HTML page + JSON/CSV endpoints)
+app.include_router(audit.router)
 
 # Protected JSON API routes — unauthenticated request → 401
 # api_metrics: POST /api/metrics is agent-key protected (per-route), other endpoints need session

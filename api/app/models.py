@@ -88,6 +88,7 @@ class ActivityAudit(Base):
     action = Column(String) # RULE_CREATED, RULE_MATCHED, etc
     object_type = Column(String)
     object_id = Column(String)
+    source_ip = Column(String, nullable=True)  # requester IP, or "system" for automation
     details = Column(Text) # JSON
 
 class AlertAssessment(Base):

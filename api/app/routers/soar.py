@@ -14,6 +14,7 @@ from ..soar.response_service import (
     run_action,
 )
 from ..soar.schemas import SOARApproveRequest, SOARRejectRequest, SOARRunRequest
+from ..services import audit_service
 from ..services.alert_service import get_actor_username
 
 router = APIRouter(prefix="/api", tags=["soar"])
@@ -43,6 +44,7 @@ def soar_run(
         action_id=body.action_id,
         db=database,
         executed_by=actor,
+        source_ip=audit_service.client_ip(request),
     )
     return result.model_dump()
 
@@ -65,6 +67,7 @@ def soar_approve(
         execution_id=execution_id,
         db=database,
         approved_by=actor,
+        source_ip=audit_service.client_ip(request),
     )
     return result.model_dump()
 
@@ -87,6 +90,7 @@ def soar_reject(
         execution_id=execution_id,
         db=database,
         rejected_by=actor,
+        source_ip=audit_service.client_ip(request),
     )
 
 

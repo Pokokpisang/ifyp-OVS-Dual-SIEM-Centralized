@@ -32,6 +32,7 @@ def run_action(
     action_id: str,
     db: Session,
     executed_by: str = "analyst",
+    source_ip: str = None,
 ) -> SOARExecutionResult:
     alert = db.query(models.Alert).filter(models.Alert.id == alert_id).first()
     if not alert:
@@ -131,6 +132,7 @@ def run_action(
             action=audit_service.SOAR_RUN,
             object_type="alert",
             object_id=alert_id,
+            source_ip=source_ip,
             details={
                 "playbook_id": playbook.id,
                 "action_id": action.id,
@@ -185,6 +187,7 @@ def run_action(
         action=audit_service.SOAR_RUN,
         object_type="alert",
         object_id=alert_id,
+        source_ip=source_ip,
         details={
             "playbook_id": playbook.id,
             "action_id": action.id,
@@ -214,6 +217,7 @@ def approve_action(
     execution_id: int,
     db: Session,
     approved_by: str = "analyst",
+    source_ip: str = None,
 ) -> SOARExecutionResult:
     exec_record = (
         db.query(models.SOARActionExecution)
@@ -270,6 +274,7 @@ def approve_action(
         action=audit_service.SOAR_APPROVE,
         object_type="alert",
         object_id=alert_id,
+        source_ip=source_ip,
         details={
             "execution_id": execution_id,
             "playbook_id": playbook.id,
@@ -304,6 +309,7 @@ def reject_action(
     execution_id: int,
     db: Session,
     rejected_by: str = "analyst",
+    source_ip: str = None,
 ) -> Dict[str, Any]:
     exec_record = (
         db.query(models.SOARActionExecution)
@@ -333,6 +339,7 @@ def reject_action(
         action=audit_service.SOAR_REJECT,
         object_type="alert",
         object_id=alert_id,
+        source_ip=source_ip,
         details={
             "execution_id": execution_id,
             "playbook_id": exec_record.playbook_id,
@@ -423,7 +430,7 @@ def auto_run_for_alert(
             continue
 
         try:
-            result = run_action(alert_id, rec.playbook_id, action.id, db, executed_by)
+            result = run_action(alert_id, rec.playbook_id, action.id, db, executed_by, source_ip="system")
             results.append(result.model_dump())
             executed += 1
             logger.info(

@@ -225,6 +225,7 @@ def save_assessment(alert_id: int, payload: AssessmentIn, request: Request, db: 
         action=audit_service.ALERT_STATUS_CHANGED,
         object_type="alert",
         object_id=alert_id,
+        source_ip=audit_service.client_ip(request),
         details={"from": previous_status, "to": payload.status},
         commit=False,
     )

@@ -127,6 +127,7 @@ def api_register_agent(
         action=audit_service.AGENT_REGISTERED,
         object_type="agent",
         object_id=body.hostname,
+        source_ip=body.ip_address,
         details={
             "hostname": body.hostname,
             "ip": body.ip_address,
