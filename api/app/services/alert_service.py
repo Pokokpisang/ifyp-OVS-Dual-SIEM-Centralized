@@ -109,6 +109,10 @@ def create_alert(
         )
         if trigger_soar:
             trigger_soar_auto_run_for_alert(alert.id, db)
+        # Notification dispatch is threaded + failure-isolated; it can never
+        # block or break the ingestion/detection path.
+        from .notification_service import dispatch_async
+        dispatch_async(alert.id)
 
     return alert
 

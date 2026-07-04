@@ -43,6 +43,10 @@ AGENT_REGISTERED = "AGENT_REGISTERED"
 AGENT_KEY_ROTATED = "AGENT_KEY_ROTATED"
 AI_TRIAGE_REQUESTED = "AI_TRIAGE_REQUESTED"
 SYSTEM_CONFIG_CHANGED = "SYSTEM_CONFIG_CHANGED"
+NOTIFICATION_CHANNEL_CREATED = "NOTIFICATION_CHANNEL_CREATED"
+NOTIFICATION_CHANNEL_UPDATED = "NOTIFICATION_CHANNEL_UPDATED"
+NOTIFICATION_CHANNEL_DELETED = "NOTIFICATION_CHANNEL_DELETED"
+NOTIFICATION_TEST_SENT = "NOTIFICATION_TEST_SENT"
 
 # Category shown in the Audit Trail UI, keyed by action.
 ACTION_CATEGORIES: Dict[str, str] = {
@@ -57,6 +61,10 @@ ACTION_CATEGORIES: Dict[str, str] = {
     AGENT_KEY_ROTATED: "Agent",
     AI_TRIAGE_REQUESTED: "AI Triage",
     SYSTEM_CONFIG_CHANGED: "System",
+    NOTIFICATION_CHANNEL_CREATED: "System",
+    NOTIFICATION_CHANNEL_UPDATED: "System",
+    NOTIFICATION_CHANNEL_DELETED: "System",
+    NOTIFICATION_TEST_SENT: "System",
 }
 
 # Actions whose records reference secret material (rendered with a
@@ -194,6 +202,14 @@ def _derive_result(action: str, details: Dict[str, str]) -> Tuple[str, str]:
         return "Queued", "high"
     if action == SYSTEM_CONFIG_CHANGED:
         return "Updated", "info"
+    if action == NOTIFICATION_CHANNEL_CREATED:
+        return "Created", "ok"
+    if action == NOTIFICATION_CHANNEL_UPDATED:
+        return "Updated", "info"
+    if action == NOTIFICATION_CHANNEL_DELETED:
+        return "Removed", "muted"
+    if action == NOTIFICATION_TEST_SENT:
+        return ("Success", "ok") if details.get("status") == "sent" else ("Failed", "crit")
     return "Recorded", "muted"
 
 

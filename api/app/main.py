@@ -8,7 +8,7 @@ from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 from typing import List
 from . import models, db
-from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings, ai_triage, audit
+from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings, ai_triage, audit, notifications
 from .routers import auth as auth_router_module
 from .auth.dependencies import require_html_auth, require_api_auth, require_admin_auth, require_admin_html
 from .auth.exceptions import LoginRequiredException
@@ -80,6 +80,35 @@ def run_startup_migrations():
         "ALTER TABLE activity_audit ADD COLUMN IF NOT EXISTS source_ip VARCHAR",
         "CREATE INDEX IF NOT EXISTS ix_activity_audit_action ON activity_audit (action)",
         "CREATE INDEX IF NOT EXISTS ix_activity_audit_actor ON activity_audit (actor)",
+        # v2.11.0 Notification channels + delivery log
+        (
+            "CREATE TABLE IF NOT EXISTS notification_channels ("
+            "  id SERIAL PRIMARY KEY,"
+            "  name VARCHAR NOT NULL,"
+            "  channel_type VARCHAR NOT NULL,"
+            "  target VARCHAR NOT NULL,"
+            "  min_severity VARCHAR NOT NULL DEFAULT 'HIGH',"
+            "  enabled BOOLEAN NOT NULL DEFAULT TRUE,"
+            "  created_at TIMESTAMP DEFAULT NOW(),"
+            "  updated_at TIMESTAMP DEFAULT NOW()"
+            ")"
+        ),
+        (
+            "CREATE TABLE IF NOT EXISTS notification_deliveries ("
+            "  id SERIAL PRIMARY KEY,"
+            "  channel_id INTEGER,"
+            "  channel_name VARCHAR,"
+            "  channel_type VARCHAR,"
+            "  target VARCHAR,"
+            "  alert_id INTEGER,"
+            "  subject VARCHAR,"
+            "  status VARCHAR NOT NULL,"
+            "  error_message TEXT,"
+            "  created_at TIMESTAMP DEFAULT NOW()"
+            ")"
+        ),
+        "CREATE INDEX IF NOT EXISTS ix_notification_deliveries_created_at ON notification_deliveries (created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_notification_deliveries_alert_id ON notification_deliveries (alert_id)",
     ]
     with db.engine.connect() as conn:
         for sql in migrations:
@@ -164,6 +193,8 @@ app.include_router(dashboard.router, dependencies=[Depends(require_html_auth)])
 app.include_router(rules.router, dependencies=[Depends(require_admin_html)])
 # Audit Trail — per-route admin deps (mixed HTML page + JSON/CSV endpoints)
 app.include_router(audit.router)
+# Notifications — per-route admin deps (mixed HTML page + JSON endpoints)
+app.include_router(notifications.router)
 
 # Protected JSON API routes — unauthenticated request → 401
 # api_metrics: POST /api/metrics is agent-key protected (per-route), other endpoints need session
