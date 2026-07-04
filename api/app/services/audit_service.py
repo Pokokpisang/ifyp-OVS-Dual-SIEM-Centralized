@@ -47,6 +47,9 @@ NOTIFICATION_CHANNEL_CREATED = "NOTIFICATION_CHANNEL_CREATED"
 NOTIFICATION_CHANNEL_UPDATED = "NOTIFICATION_CHANNEL_UPDATED"
 NOTIFICATION_CHANNEL_DELETED = "NOTIFICATION_CHANNEL_DELETED"
 NOTIFICATION_TEST_SENT = "NOTIFICATION_TEST_SENT"
+USER_CREATED = "USER_CREATED"
+USER_UPDATED = "USER_UPDATED"
+USER_DELETED = "USER_DELETED"
 
 # Category shown in the Audit Trail UI, keyed by action.
 ACTION_CATEGORIES: Dict[str, str] = {
@@ -65,6 +68,9 @@ ACTION_CATEGORIES: Dict[str, str] = {
     NOTIFICATION_CHANNEL_UPDATED: "System",
     NOTIFICATION_CHANNEL_DELETED: "System",
     NOTIFICATION_TEST_SENT: "System",
+    USER_CREATED: "System",
+    USER_UPDATED: "System",
+    USER_DELETED: "System",
 }
 
 # Actions whose records reference secret material (rendered with a
@@ -210,6 +216,12 @@ def _derive_result(action: str, details: Dict[str, str]) -> Tuple[str, str]:
         return "Removed", "muted"
     if action == NOTIFICATION_TEST_SENT:
         return ("Success", "ok") if details.get("status") == "sent" else ("Failed", "crit")
+    if action == USER_CREATED:
+        return "Created", "ok"
+    if action == USER_UPDATED:
+        return "Updated", "info"
+    if action == USER_DELETED:
+        return "Removed", "muted"
     return "Recorded", "muted"
 
 

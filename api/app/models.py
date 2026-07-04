@@ -226,6 +226,22 @@ class SystemHealthRule(Base):
     last_triggered = Column(DateTime, nullable=True)
 
 
+class User(Base):
+    """Dashboard user account. The env-var bootstrap accounts
+    (DASHBOARD_USERNAME / CLIENT_USERNAME) remain as fallback logins and are
+    not rows here; DB users take precedence for matching usernames."""
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    password_hash = Column(String, nullable=False)  # bcrypt
+    role = Column(String, nullable=False, default="analyst")  # admin | analyst | client
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_login = Column(DateTime, nullable=True)
+
+
 class NotificationChannel(Base):
     __tablename__ = "notification_channels"
 

@@ -162,8 +162,8 @@
                 <p class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Admin</p>
                 <div class="space-y-1">
                     {{ nav_item('/notifications', 'notifications', 'Notifications', request.url.path == '/notifications') }}
+                    {{ nav_item('/settings/users', 'manage_accounts', 'Users & RBAC', request.url.path == '/settings/users') }}
                     {{ nav_soon('summarize', 'Reports') }}
-                    {{ nav_soon('manage_accounts', 'Users & RBAC') }}
                 </div>
             </div>
             <!-- System -->

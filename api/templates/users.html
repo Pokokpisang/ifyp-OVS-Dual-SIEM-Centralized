@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Users & RBAC — OVS{% endblock %}
+{% block page_title %}Users & RBAC{% endblock %}
+
+{% block main_content %}
+<div class="p-4 lg:p-8 space-y-4 max-w-[1200px]">
+
+    <div>
+        <h1 class="text-lg font-bold">Dashboard users</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+            Roles: <span class="font-mono">admin</span> (full access) ·
+            <span class="font-mono">analyst</span> (SOC operations, can submit SOAR actions) ·
+            <span class="font-mono">client</span> (read-only).
+            Role changes and deactivation revoke the user's active sessions immediately.
+        </p>
+    </div>
+
+    {% if env_accounts %}
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 p-4">
+        <p class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest mb-2">Environment bootstrap accounts</p>
+        <div class="flex flex-wrap gap-2">
+            {% for acc in env_accounts %}
+            <span class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-xs">
+                <span class="font-medium">{{ acc.username }}</span>
+                <span class="font-mono text-[10px] font-bold uppercase text-slate-500">{{ acc.role }}</span>
+                <span class="text-[10px] text-slate-500">· managed via api/.env</span>
+            </span>
+            {% endfor %}
+        </div>
+        <p class="text-[10px] text-slate-500 mt-2">Break-glass fallback logins — a DB user with the same name cannot be created. DB users below take precedence for all other usernames.</p>
+    </div>
+    {% endif %}
+
+    <!-- Add user -->
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 p-4">
+        <p class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest mb-3">Add user</p>
+        <div class="flex flex-wrap items-end gap-3">
+            <label class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold text-slate-500 uppercase">Username</span>
+                <input id="u-name" type="text" autocomplete="off"
+                    class="w-44 bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary" />
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold text-slate-500 uppercase">Password (min 12 chars)</span>
+                <input id="u-pass" type="password" autocomplete="new-password"
+                    class="w-52 bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary" />
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold text-slate-500 uppercase">Role</span>
+                <select id="u-role" class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2 py-1.5 text-xs">
+                    {% for r in roles %}<option value="{{ r }}" {% if r == 'analyst' %}selected{% endif %}>{{ r }}</option>{% endfor %}
+                </select>
+            </label>
+            <button id="btn-add" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-primary text-white hover:bg-primary/90 transition-all">Add user</button>
+        </div>
+        <p id="form-msg" class="hidden text-xs mt-2"></p>
+    </div>
+
+    <!-- Users table -->
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[640px] text-left">
+                <thead class="bg-slate-200/60 dark:bg-background-dark/60">
+                    <tr class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
+                        <th class="px-4 py-2.5">Username</th>
+                        <th class="px-4 py-2.5 w-36">Role</th>
+                        <th class="px-4 py-2.5 w-24">Status</th>
+                        <th class="px-4 py-2.5 w-36">Created</th>
+                        <th class="px-4 py-2.5 w-36">Last login</th>
+                        <th class="px-4 py-2.5 w-56">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="users-tbody" class="divide-y divide-slate-200 dark:divide-slate-700/40 text-xs"></tbody>
+            </table>
+        </div>
+        <div id="users-empty" class="hidden flex-col items-center gap-2 py-10 text-center">
+            <span class="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-700">group_off</span>
+            <p class="text-sm font-bold">No database users yet</p>
+            <p class="text-xs text-slate-500">Only the environment bootstrap accounts exist. Add your first analyst or admin above.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const H = { 'Content-Type': 'application/json' };
+    const ROLE_STYLES = {
+        admin: 'text-primary bg-primary/10 border-primary/20',
+        analyst: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
+        client: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+    };
+    let roles = [];
+
+    function msg(text, ok) {
+        const el = document.getElementById('form-msg');
+        el.textContent = text;
+        el.className = `text-xs mt-2 ${ok ? 'text-emerald-400' : 'text-red-400'}`;
+        setTimeout(() => el.classList.add('hidden'), 6000);
+    }
+
+    async function call(method, path, body) {
+        const r = await fetch(path, { method, headers: H, body: body ? JSON.stringify(body) : undefined });
+        const out = await r.json().catch(() => ({}));
+        if (!r.ok) { msg(out.detail || 'Request failed', false); return null; }
+        return out;
+    }
+
+    async function load() {
+        const r = await fetch('/api/users');
+        if (!r.ok) return;
+        const data = await r.json();
+        roles = data.roles;
+        const users = data.users;
+        const tb = document.getElementById('users-tbody');
+        const empty = document.getElementById('users-empty');
+        empty.classList.toggle('hidden', users.length > 0);
+        empty.classList.toggle('flex', users.length === 0);
+        tb.innerHTML = users.map(u => `
+            <tr class="${u.is_active ? '' : 'opacity-50'}">
+                <td class="px-4 py-2.5 font-medium">${esc(u.username)}</td>
+                <td class="px-4 py-2.5">
+                    <select data-role="${u.id}" class="bg-white dark:bg-background-dark border rounded-lg px-1.5 py-1 text-[11px] font-mono font-bold ${ROLE_STYLES[u.role] || ''}">
+                        ${roles.map(r => `<option value="${r}" ${r === u.role ? 'selected' : ''}>${r}</option>`).join('')}
+                    </select>
+                </td>
+                <td class="px-4 py-2.5">
+                    <span class="inline-flex px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold ${u.is_active ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-slate-400 bg-slate-500/10 border-slate-500/20'}">${u.is_active ? 'ACTIVE' : 'DISABLED'}</span>
+                </td>
+                <td class="px-4 py-2.5 font-mono text-slate-500">${esc(u.created_at || '—')}</td>
+                <td class="px-4 py-2.5 font-mono text-slate-500">${esc(u.last_login || 'never')}</td>
+                <td class="px-4 py-2.5 space-x-2 whitespace-nowrap">
+                    <button data-toggle="${u.id}" data-active="${u.is_active}" class="text-[11px] font-bold ${u.is_active ? 'text-amber-400' : 'text-emerald-400'} hover:underline">${u.is_active ? 'Deactivate' : 'Activate'}</button>
+                    <button data-reset="${u.id}" class="text-[11px] font-bold text-sky-400 hover:underline">Reset password</button>
+                    <button data-del="${u.id}" data-name="${esc(u.username)}" class="text-[11px] font-bold text-red-400 hover:underline">Delete</button>
+                </td>
+            </tr>`).join('');
+
+        tb.querySelectorAll('[data-role]').forEach(sel => sel.addEventListener('change', async () => {
+            const out = await call('PUT', `/api/users/${sel.dataset.role}`, { role: sel.value });
+            if (out) msg(`Role updated — the user's sessions were revoked.`, true);
+            load();
+        }));
+        tb.querySelectorAll('[data-toggle]').forEach(b => b.addEventListener('click', async () => {
+            const out = await call('PUT', `/api/users/${b.dataset.toggle}`, { is_active: b.dataset.active !== 'true' });
+            if (out) msg('Status updated.', true);
+            load();
+        }));
+        tb.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', async () => {
+            const pw = prompt('New password (min 12 characters):');
+            if (!pw) return;
+            const out = await call('PUT', `/api/users/${b.dataset.reset}`, { new_password: pw });
+            if (out) msg('Password reset.', true);
+        }));
+        tb.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+            if (!confirm(`Delete user "${b.dataset.name}"? Their sessions are revoked immediately.`)) return;
+            const out = await call('DELETE', `/api/users/${b.dataset.del}`);
+            if (out) msg('User deleted.', true);
+            load();
+        }));
+    }
+
+    document.getElementById('btn-add').addEventListener('click', async () => {
+        const out = await call('POST', '/api/users', {
+            username: document.getElementById('u-name').value,
+            password: document.getElementById('u-pass').value,
+            role: document.getElementById('u-role').value,
+        });
+        if (out) {
+            document.getElementById('u-name').value = '';
+            document.getElementById('u-pass').value = '';
+            msg('User created ✓', true);
+            load();
+        }
+    });
+
+    load();
+})();
+</script>
+{% endblock %}
