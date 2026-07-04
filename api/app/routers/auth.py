@@ -40,7 +40,7 @@ async def login(
     password: str = Form(...),
     database: Session = Depends(_db.get_db),
 ):
-    role = authenticate(username, password)
+    role = authenticate(username, password, db=database)
 
     if role is not None:
         # Revoke any existing server session before creating a new one.

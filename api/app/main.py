@@ -8,7 +8,7 @@ from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 from typing import List
 from . import models, db
-from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings, ai_triage, audit, notifications
+from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings, ai_triage, audit, notifications, users
 from .routers import auth as auth_router_module
 from .auth.dependencies import require_html_auth, require_api_auth, require_admin_auth, require_admin_html
 from .auth.exceptions import LoginRequiredException
@@ -109,6 +109,20 @@ def run_startup_migrations():
         ),
         "CREATE INDEX IF NOT EXISTS ix_notification_deliveries_created_at ON notification_deliveries (created_at)",
         "CREATE INDEX IF NOT EXISTS ix_notification_deliveries_alert_id ON notification_deliveries (alert_id)",
+        # v2.12.0 DB-backed users (env accounts remain as bootstrap fallback)
+        (
+            "CREATE TABLE IF NOT EXISTS users ("
+            "  id SERIAL PRIMARY KEY,"
+            "  username VARCHAR UNIQUE NOT NULL,"
+            "  password_hash VARCHAR NOT NULL,"
+            "  role VARCHAR NOT NULL DEFAULT 'analyst',"
+            "  is_active BOOLEAN NOT NULL DEFAULT TRUE,"
+            "  created_at TIMESTAMP DEFAULT NOW(),"
+            "  updated_at TIMESTAMP DEFAULT NOW(),"
+            "  last_login TIMESTAMP"
+            ")"
+        ),
+        "CREATE INDEX IF NOT EXISTS ix_users_username ON users (username)",
     ]
     with db.engine.connect() as conn:
         for sql in migrations:
@@ -195,6 +209,8 @@ app.include_router(rules.router, dependencies=[Depends(require_admin_html)])
 app.include_router(audit.router)
 # Notifications — per-route admin deps (mixed HTML page + JSON endpoints)
 app.include_router(notifications.router)
+# Users & RBAC — per-route admin deps (mixed HTML page + JSON endpoints)
+app.include_router(users.router)
 
 # Protected JSON API routes — unauthenticated request → 401
 # api_metrics: POST /api/metrics is agent-key protected (per-route), other endpoints need session
