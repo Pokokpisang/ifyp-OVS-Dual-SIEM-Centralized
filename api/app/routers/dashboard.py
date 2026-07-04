@@ -23,6 +23,7 @@ templates = Jinja2Templates(directory="templates")
 @router.get("/dashboard")
 def view_dashboard(request: Request, db: Session = Depends(db.get_db)):
     from ..detection.engine.rule_loader import RuleLoader
+    from ..services.agent_monitor import list_silent_agents
 
     # Get list of hosts for dropdown
     hosts = db.query(models.Metric.host).distinct().all()
@@ -31,10 +32,13 @@ def view_dashboard(request: Request, db: Session = Depends(db.get_db)):
     loader = RuleLoader()
     active_rule_count = len(loader.load_rules_from_directory(loader.rules_path))
 
+    silent_agents = [a.agent_name for a in list_silent_agents(db)]
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "hosts": host_list,
         "active_rule_count": active_rule_count,
+        "silent_agents": silent_agents,
     })
 @router.get(
     "/system-health-rules",

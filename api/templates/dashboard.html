@@ -24,6 +24,25 @@
 
 {% block main_content %}
 <div class="p-4 lg:p-8 space-y-6">
+    {% if silent_agents %}
+    <!-- Silent agents banner -->
+    <div class="flex items-center justify-between p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+        <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400">
+                <span class="material-symbols-outlined">sensors_off</span>
+            </div>
+            <div>
+                <h3 class="text-sm font-bold text-amber-300">{{ silent_agents|length }} agent{{ 's' if silent_agents|length != 1 }} silent</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400">
+                    No heartbeat past the silence threshold:
+                    <span class="font-mono">{{ silent_agents[:5]|join(', ') }}{% if silent_agents|length > 5 %} +{{ silent_agents|length - 5 }} more{% endif %}</span>
+                </p>
+            </div>
+        </div>
+        <a href="/agents" class="text-xs font-bold text-amber-400 hover:underline whitespace-nowrap">View Agents →</a>
+    </div>
+    {% endif %}
+
     <!-- Summary Cards (KPIs) -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">

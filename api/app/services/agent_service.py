@@ -10,6 +10,7 @@ Responsibilities:
 """
 
 import hashlib
+import os
 import secrets
 import uuid
 from datetime import datetime, timedelta
@@ -24,7 +25,19 @@ from .. import models
 # ---------------------------------------------------------------------------
 
 TOKEN_TTL_HOURS = 1  # Registration token expires after 1 hour
-OFFLINE_THRESHOLD_MINUTES = 5  # Agent considered offline after 5 min without heartbeat
+OFFLINE_THRESHOLD_MINUTES = 5  # Default when AGENT_SILENCE_THRESHOLD_MINUTES is unset
+
+
+def get_offline_threshold_minutes() -> int:
+    """Minutes without heartbeat before an agent counts as offline/silent.
+
+    Read from AGENT_SILENCE_THRESHOLD_MINUTES at call time (not import time)
+    so deployments and tests can adjust it without a restart of this module.
+    """
+    try:
+        return max(1, int(os.getenv("AGENT_SILENCE_THRESHOLD_MINUTES", str(OFFLINE_THRESHOLD_MINUTES))))
+    except ValueError:
+        return OFFLINE_THRESHOLD_MINUTES
 
 
 # ---------------------------------------------------------------------------
@@ -240,14 +253,14 @@ def compute_agent_status(agent: models.AgentRecord) -> str:
     Derive the *current* status of *agent* at read time.
 
     Server-side offline detection: we do not rely on the agent to self-report
-    its own death.  If ``last_seen`` is older than OFFLINE_THRESHOLD_MINUTES we
+    its own death.  If ``last_seen`` is older than the silence threshold we
     flip the status to ``offline``.
     """
     if agent.status == "pending":
         return "pending"
     if agent.last_seen is None:
         return "offline"
-    if datetime.utcnow() - agent.last_seen > timedelta(minutes=OFFLINE_THRESHOLD_MINUTES):
+    if datetime.utcnow() - agent.last_seen > timedelta(minutes=get_offline_threshold_minutes()):
         return "offline"
     return "active"
 
@@ -302,7 +315,7 @@ def get_all_agents_for_history(
             query = query.filter(models.AgentRecord.lifecycle_status == status)
         elif lifecycle_filter == "offline":
             # offline is a runtime computed status — filter by active_inventory with stale last_seen
-            cutoff = datetime.utcnow() - timedelta(minutes=OFFLINE_THRESHOLD_MINUTES)
+            cutoff = datetime.utcnow() - timedelta(minutes=get_offline_threshold_minutes())
             query = query.filter(
                 models.AgentRecord.lifecycle_status == "active_inventory",
                 models.AgentRecord.last_seen < cutoff,
