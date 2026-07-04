@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications — OVS{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+
+{% block main_content %}
+<div class="p-4 lg:p-8 space-y-4 max-w-[1400px]">
+
+    <div>
+        <h1 class="text-lg font-bold">Notification channels</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Deliver new alerts by email or webhook. Every send — including tests — is recorded in the delivery log below.</p>
+    </div>
+
+    {% if not smtp_configured %}
+    <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs">
+        <span class="material-symbols-outlined text-[16px]">warning</span>
+        <span><strong>SMTP is not configured</strong> — email channels will fail until SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASSWORD / SMTP_FROM are set in <code class="font-mono">api/.env</code>. Webhook channels work without configuration.</span>
+    </div>
+    {% endif %}
+
+    <!-- Add channel -->
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 p-4">
+        <p class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest mb-3">Add channel</p>
+        <div class="flex flex-wrap items-end gap-3">
+            <label class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold text-slate-500 uppercase">Name</span>
+                <input id="c-name" type="text" placeholder="SOC on-call email"
+                    class="w-48 bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary" />
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold text-slate-500 uppercase">Type</span>
+                <select id="c-type" class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2 py-1.5 text-xs">
+                    <option value="email">Email</option>
+                    <option value="webhook">Webhook</option>
+                </select>
+            </label>
+            <label class="flex flex-col gap-1 flex-1 min-w-[220px]">
+                <span class="text-[10px] font-bold text-slate-500 uppercase">Target</span>
+                <input id="c-target" type="text" placeholder="soc@example.com or https://hooks.example.com/…"
+                    class="w-full bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs font-mono focus:ring-1 focus:ring-primary" />
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold text-slate-500 uppercase">Min severity</span>
+                <select id="c-severity" class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2 py-1.5 text-xs">
+                    <option>LOW</option><option>MEDIUM</option><option selected>HIGH</option><option>CRITICAL</option>
+                </select>
+            </label>
+            <button id="btn-add" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-primary text-white hover:bg-primary/90 transition-all">Add channel</button>
+        </div>
+        <p id="add-error" class="hidden text-xs text-red-400 mt-2"></p>
+    </div>
+
+    <!-- Channels table -->
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[640px] text-left">
+                <thead class="bg-slate-200/60 dark:bg-background-dark/60">
+                    <tr class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
+                        <th class="px-4 py-2.5">Name</th>
+                        <th class="px-4 py-2.5 w-24">Type</th>
+                        <th class="px-4 py-2.5">Target</th>
+                        <th class="px-4 py-2.5 w-28">Min severity</th>
+                        <th class="px-4 py-2.5 w-24">Enabled</th>
+                        <th class="px-4 py-2.5 w-40">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="channels-tbody" class="divide-y divide-slate-200 dark:divide-slate-700/40 text-xs"></tbody>
+            </table>
+        </div>
+        <div id="channels-empty" class="hidden flex-col items-center gap-2 py-10 text-center">
+            <span class="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-700">notifications_off</span>
+            <p class="text-sm font-bold">No channels configured</p>
+            <p class="text-xs text-slate-500">Add an email or webhook channel above to start receiving alert notifications.</p>
+        </div>
+    </div>
+
+    <!-- Delivery log -->
+    <div>
+        <h2 class="text-sm font-bold mb-2">Delivery log</h2>
+        <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[640px] text-left">
+                    <thead class="bg-slate-200/60 dark:bg-background-dark/60">
+                        <tr class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
+                            <th class="px-4 py-2.5 w-40">Time</th>
+                            <th class="px-4 py-2.5">Channel</th>
+                            <th class="px-4 py-2.5">Subject</th>
+                            <th class="px-4 py-2.5 w-24">Alert</th>
+                            <th class="px-4 py-2.5 w-24">Status</th>
+                            <th class="px-4 py-2.5">Error</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deliveries-tbody" class="divide-y divide-slate-200 dark:divide-slate-700/40 text-xs"></tbody>
+                </table>
+            </div>
+            <div id="deliveries-empty" class="hidden flex-col items-center gap-2 py-10 text-center">
+                <span class="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-700">outbox</span>
+                <p class="text-sm font-bold">No deliveries yet</p>
+                <p class="text-xs text-slate-500">Send a test or wait for the next alert.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+    async function loadChannels() {
+        const r = await fetch('/api/notifications/channels');
+        if (!r.ok) return;
+        const { channels } = await r.json();
+        const tb = document.getElementById('channels-tbody');
+        const empty = document.getElementById('channels-empty');
+        empty.classList.toggle('hidden', channels.length > 0);
+        empty.classList.toggle('flex', channels.length === 0);
+        tb.innerHTML = channels.map(c => `
+            <tr>
+                <td class="px-4 py-2.5 font-medium">${esc(c.name)}</td>
+                <td class="px-4 py-2.5"><span class="inline-flex px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold ${c.channel_type === 'email' ? 'text-sky-400 bg-sky-500/10 border-sky-500/20' : 'text-violet-400 bg-violet-500/10 border-violet-500/20'}">${esc(c.channel_type)}</span></td>
+                <td class="px-4 py-2.5 font-mono text-slate-500 break-all">${esc(c.target)}</td>
+                <td class="px-4 py-2.5 font-mono text-[10px] font-bold">${esc(c.min_severity)}+</td>
+                <td class="px-4 py-2.5">
+                    <button data-toggle="${c.id}" data-enabled="${c.enabled}"
+                        class="px-2 py-0.5 rounded text-[10px] font-bold border transition-colors ${c.enabled ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-slate-400 bg-slate-500/10 border-slate-500/20'}">${c.enabled ? 'ON' : 'OFF'}</button>
+                </td>
+                <td class="px-4 py-2.5 space-x-2 whitespace-nowrap">
+                    <button data-test="${c.id}" class="text-[11px] font-bold text-primary hover:underline">Send test</button>
+                    <button data-del="${c.id}" data-name="${esc(c.name)}" class="text-[11px] font-bold text-red-400 hover:underline">Delete</button>
+                </td>
+            </tr>`).join('');
+
+        tb.querySelectorAll('[data-toggle]').forEach(b => b.addEventListener('click', async () => {
+            await fetch(`/api/notifications/channels/${b.dataset.toggle}`, {
+                method: 'PUT', headers: JSON_HEADERS,
+                body: JSON.stringify({ enabled: b.dataset.enabled !== 'true' }),
+            });
+            loadChannels();
+        }));
+        tb.querySelectorAll('[data-test]').forEach(b => b.addEventListener('click', async () => {
+            b.textContent = 'Sending…'; b.disabled = true;
+            const r = await fetch(`/api/notifications/channels/${b.dataset.test}/test`, { method: 'POST', headers: JSON_HEADERS });
+            const out = await r.json().catch(() => ({}));
+            b.textContent = 'Send test'; b.disabled = false;
+            alertBanner(out.status === 'sent' ? 'Test sent ✓' : `Test failed: ${out.error_message || 'unknown error'}`, out.status === 'sent');
+            loadDeliveries();
+        }));
+        tb.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+            if (!confirm(`Delete channel "${b.dataset.name}"? The delivery log is kept.`)) return;
+            await fetch(`/api/notifications/channels/${b.dataset.del}`, { method: 'DELETE', headers: JSON_HEADERS });
+            loadChannels();
+        }));
+    }
+
+    async function loadDeliveries() {
+        const r = await fetch('/api/notifications/deliveries');
+        if (!r.ok) return;
+        const { deliveries } = await r.json();
+        const tb = document.getElementById('deliveries-tbody');
+        const empty = document.getElementById('deliveries-empty');
+        empty.classList.toggle('hidden', deliveries.length > 0);
+        empty.classList.toggle('flex', deliveries.length === 0);
+        tb.innerHTML = deliveries.map(d => `
+            <tr>
+                <td class="px-4 py-2.5 font-mono text-slate-500 whitespace-nowrap">${esc(d.created_at)}</td>
+                <td class="px-4 py-2.5">${esc(d.channel_name)} <span class="text-slate-500 font-mono text-[10px]">(${esc(d.channel_type)})</span></td>
+                <td class="px-4 py-2.5">${esc(d.subject)}</td>
+                <td class="px-4 py-2.5">${d.alert_id ? `<a class="text-primary font-bold hover:underline" href="/alerts/${d.alert_id}/investigation">#${d.alert_id}</a>` : '<span class="text-slate-500">test</span>'}</td>
+                <td class="px-4 py-2.5"><span class="inline-flex px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold ${d.status === 'sent' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : 'text-red-400 bg-red-500/10 border-red-500/20'}">${esc(d.status)}</span></td>
+                <td class="px-4 py-2.5 text-red-400/80 break-all">${esc(d.error_message || '')}</td>
+            </tr>`).join('');
+    }
+
+    function alertBanner(text, ok) {
+        const el = document.getElementById('add-error');
+        el.textContent = text;
+        el.className = `text-xs mt-2 ${ok ? 'text-emerald-400' : 'text-red-400'}`;
+        setTimeout(() => el.classList.add('hidden'), 6000);
+    }
+
+    document.getElementById('btn-add').addEventListener('click', async () => {
+        const body = {
+            name: document.getElementById('c-name').value,
+            channel_type: document.getElementById('c-type').value,
+            target: document.getElementById('c-target').value,
+            min_severity: document.getElementById('c-severity').value,
+        };
+        const r = await fetch('/api/notifications/channels', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(body) });
+        if (r.ok) {
+            document.getElementById('c-name').value = '';
+            document.getElementById('c-target').value = '';
+            alertBanner('Channel added ✓', true);
+            loadChannels();
+        } else {
+            const out = await r.json().catch(() => ({}));
+            alertBanner(out.detail || 'Failed to add channel', false);
+        }
+    });
+
+    loadChannels();
+    loadDeliveries();
+})();
+</script>
+{% endblock %}

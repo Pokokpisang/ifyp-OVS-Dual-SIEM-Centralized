@@ -226,6 +226,34 @@ class SystemHealthRule(Base):
     last_triggered = Column(DateTime, nullable=True)
 
 
+class NotificationChannel(Base):
+    __tablename__ = "notification_channels"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    channel_type = Column(String, nullable=False)  # "email" | "webhook"
+    target = Column(String, nullable=False)  # recipient address or webhook URL
+    min_severity = Column(String, nullable=False, default="HIGH")  # LOW | MEDIUM | HIGH | CRITICAL
+    enabled = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class NotificationDelivery(Base):
+    __tablename__ = "notification_deliveries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    channel_id = Column(Integer, index=True)  # channel may be deleted later; no FK cascade
+    channel_name = Column(String)  # denormalized so the log survives channel deletion
+    channel_type = Column(String)
+    target = Column(String)
+    alert_id = Column(Integer, nullable=True, index=True)  # null for test sends
+    subject = Column(String)
+    status = Column(String, nullable=False)  # "sent" | "failed"
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+
 class ServerSession(Base):
     """Server-side session record. One row per active authenticated session.
     token_hash stores sha256(raw_token) — the raw token lives only in the signed cookie."""

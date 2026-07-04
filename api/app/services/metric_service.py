@@ -137,5 +137,9 @@ def evaluate_health_rules(
         db.commit()
         if alert is not None:
             created.append(alert)
+            # commit=False skips create_alert's own dispatch; notify here
+            # once the alert id is committed. Threaded, never blocks ingestion.
+            from .notification_service import dispatch_async
+            dispatch_async(alert.id)
 
     return created
