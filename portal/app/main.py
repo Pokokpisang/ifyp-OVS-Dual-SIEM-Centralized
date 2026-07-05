@@ -48,8 +48,9 @@ def _authed(request: Request) -> bool:
 
 
 def _render(request: Request, template: str, **ctx):
-    return templates.TemplateResponse(template, {
-        "request": request,
+    # Modern Starlette signature (request first) — the legacy (name, ctx)
+    # form breaks on current Starlette, which this image installs unpinned.
+    return templates.TemplateResponse(request, template, {
         "gate_enabled": _gate_enabled(),
         **ctx,
     })
