@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block page_title %}My Agents{% endblock %}
+{% block main_content %}
+<div class="space-y-4 max-w-[1100px]">
+    <div>
+        <h1 class="text-lg font-bold">Monitored servers</h1>
+        <p class="text-xs text-slate-400">Agents are installed and managed by your security operations provider.</p>
+    </div>
+    <div class="rounded-xl bg-card-dark border border-accent/10 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[640px] text-left">
+                <thead class="bg-background-dark/60">
+                    <tr class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
+                        <th class="px-4 py-2.5">Server</th>
+                        <th class="px-4 py-2.5">Host / IP</th>
+                        <th class="px-4 py-2.5 w-32">OS</th>
+                        <th class="px-4 py-2.5 w-24">Status</th>
+                        <th class="px-4 py-2.5 w-40">Last seen</th>
+                        <th class="px-4 py-2.5 w-32">Monitored since</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-700/40 text-xs">
+                    {% for a in agents %}
+                    <tr>
+                        <td class="px-4 py-2.5 font-medium">{{ a.name }}</td>
+                        <td class="px-4 py-2.5 font-mono text-slate-500">{{ a.hostname or '—' }} · {{ a.ip_address or '—' }}</td>
+                        <td class="px-4 py-2.5 text-slate-400">{{ a.os }}</td>
+                        <td class="px-4 py-2.5">
+                            <span class="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold
+                                {% if a.status == 'active' %}text-emerald-400 bg-emerald-500/10 border-emerald-500/20
+                                {% elif a.status == 'pending' %}text-amber-400 bg-amber-500/10 border-amber-500/20
+                                {% else %}text-red-400 bg-red-500/10 border-red-500/20{% endif %}">
+                                {{ 'online' if a.status == 'active' else a.status }}</span>
+                        </td>
+                        <td class="px-4 py-2.5 font-mono text-slate-500">{{ a.last_seen or 'never' }}</td>
+                        <td class="px-4 py-2.5 font-mono text-slate-500">{{ a.monitored_since or '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="px-4 py-10 text-center text-slate-500 text-xs">
+                        No servers assigned yet — contact your security operations provider to onboard servers.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% set active = 'none' %}
+{% block page_title %}{{ 'Access problem' if kind == 'key' else 'Temporarily unavailable' }}{% endblock %}
+{% block main_content %}
+<div class="flex flex-col items-center justify-center h-full gap-3 text-center max-w-md mx-auto">
+    <span class="material-symbols-outlined text-[56px] text-slate-700">{{ 'key_off' if kind == 'key' else 'cloud_off' }}</span>
+    {% if kind == 'key' %}
+    <h1 class="text-xl font-bold">Portal access problem</h1>
+    <p class="text-sm text-slate-400">This portal's access key was rejected by the security operations server — it may have been rotated, revoked, or your service may be suspended.</p>
+    <p class="text-xs text-slate-500">Please contact your security operations provider to restore access.</p>
+    {% else %}
+    <h1 class="text-xl font-bold">Security server unreachable</h1>
+    <p class="text-sm text-slate-400">The portal could not reach the security operations server. Your servers are still being monitored — only this view is affected.</p>
+    <a href="" class="mt-2 px-4 py-2 rounded-lg bg-accent text-white text-xs font-bold">Retry</a>
+    {% endif %}
+</div>
+{% endblock %}
