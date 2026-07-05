@@ -7,8 +7,9 @@
     <title>{% block title %}OVS — Security Operations{% endblock %}</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap"
+    <!-- Google Fonts — IBM Plex per the 2026-07 design (styles.css tokens) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap"
         rel="stylesheet" />
     <!-- Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap"
@@ -17,21 +18,34 @@
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
         rel="stylesheet" />
     <script id="tailwind-config">
+        // Design tokens from Design/OVS SECOPS_Design/.../styles.css (dark theme)
         tailwind.config = {
             darkMode: "class",
             theme: {
                 extend: {
                     colors: {
-                        "primary": "#f05684",
+                        "primary": "#F05484",
                         "background-light": "#f8f6f6",
-                        "background-dark": "#18161a",
-                        "card-dark": "#232126",
+                        "background-dark": "#18161a",   // --bg
+                        "elev": "#1d1b20",              // --bg-elev
+                        "card-dark": "#1f1d22",         // --surface
+                        "hover-dark": "#26232b",        // --bg-hover
+                        "line": "#2a2730",              // --border
+                        "line-strong": "#3a3640",       // --border-strong
                         "text-main": "#ededed",
-                        "severity-critical": "#ce2e46",
-                        "severity-warning": "#f59b00",
+                        "text-muted": "#a09da6",
+                        "text-dim": "#6f6c75",
+                        "ok": "#3ecf8e",
+                        "info": "#5b9eff",
+                        "severity-critical": "#ff4d6d", // --crit
+                        "severity-warning": "#f59b00",  // --high
+                        "med": "#f0c04a",
+                        "low": "#5b9eff",
+                        "accent": "#f59b00",
                     },
                     fontFamily: {
-                        "display": ["Inter", "sans-serif"]
+                        "display": ["IBM Plex Sans", "sans-serif"],
+                        "mono": ["IBM Plex Mono", "ui-monospace", "monospace"],
                     },
                     borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
                 },
@@ -40,9 +54,11 @@
     </script>
     <style>
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-feature-settings: 'ss01', 'cv11';
             overflow: hidden; /* Prevent body scroll */
         }
+        .tabular-nums, .font-mono { font-variant-numeric: tabular-nums; }
 
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
@@ -98,13 +114,13 @@
     <!-- Mobile Sidebar Backdrop -->
     <div id="sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-40 lg:hidden hidden backdrop-blur-sm"></div>
 
-    <!-- Left Sidebar -->
+    <!-- Left Sidebar — 232px per the design shell spec -->
     <aside id="main-sidebar"
-        class="fixed inset-y-0 left-0 w-72 border-r border-slate-200 dark:border-primary/10 flex flex-col h-full bg-background-light dark:bg-background-dark z-50 transition-transform -translate-x-full lg:translate-x-0 lg:static shrink-0">
-        <div class="p-6 flex items-center justify-between">
-            <div class="flex flex-col gap-1">
+        class="fixed inset-y-0 left-0 w-[232px] border-r border-slate-200 dark:border-line flex flex-col h-full bg-background-light dark:bg-background-dark z-50 transition-transform -translate-x-full lg:translate-x-0 lg:static shrink-0">
+        <div class="p-5 flex items-center justify-between">
+            <div class="flex flex-col gap-0.5">
                 <h1 class="text-xl font-bold text-primary tracking-tight">OVS</h1>
-                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-widest">Security Ops</p>
+                <p class="text-[10px] text-slate-500 dark:text-text-dim font-medium uppercase tracking-widest">Security Ops</p>
             </div>
             <button onclick="toggleSidebar()" class="lg:hidden p-2 text-slate-500 hover:text-primary">
                 <span class="material-symbols-outlined">close</span>
@@ -174,14 +190,14 @@
             </div>
             {% endif %}
         </nav>
-        <div class="p-4 border-t border-slate-200 dark:border-primary/10 flex flex-col gap-4">
-            <div
-                class="flex items-center flex-col 2xl:flex-row xl:flex-row gap-3 xs:px-1 2xl:px-2 xl:px-2 px-1 text-center 2xl:text-left xl:text-left">
-                <span class="material-symbols-outlined text-slate-400 text-[18px]">info</span>
-                <span class="text-xs text-slate-500 font-medium">v2.9.0</span>
+        <div class="p-4 border-t border-slate-200 dark:border-line flex flex-col gap-4">
+            <div class="flex items-center gap-2 px-2">
+                <span class="h-1.5 w-1.5 rounded-full bg-ok animate-pulse"></span>
+                <span class="text-[11px] text-slate-500 dark:text-text-muted">Backend</span>
+                <span class="font-mono text-[10px] text-slate-500 dark:text-text-dim ml-auto">v2.13.0</span>
             </div>
             <div
-                class="flex items-center gap-3 p-2 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5">
+                class="flex items-center gap-3 p-2 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-line">
                 <div class="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
                     {{ current_user.username[:2]|upper if current_user.username else '?' }}</div>
                 <div class="flex flex-col overflow-hidden flex-1">
@@ -200,9 +216,9 @@
 
     <!-- Main Content Area -->
     <main class="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
-        <!-- Top Navigation -->
+        <!-- Top Navigation — 56px per the design shell spec -->
         <header
-            class="h-16 border-b border-slate-200 dark:border-primary/10 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md flex items-center justify-between px-4 lg:px-8 shrink-0 sticky top-0 z-30 w-full">
+            class="h-14 border-b border-slate-200 dark:border-line bg-white/80 dark:bg-background-dark/80 backdrop-blur-md flex items-center justify-between px-4 lg:px-6 shrink-0 sticky top-0 z-30 w-full">
             <div class="flex items-center gap-4">
                 <button onclick="toggleSidebar()" class="lg:hidden p-2 text-slate-500 hover:text-primary transition-colors flex items-center justify-center">
                     <span class="material-symbols-outlined !text-[24px]">menu</span>
