@@ -141,7 +141,7 @@
                     {% if role == 'admin' %}
                         {{ nav_item('/detection/rules', 'gavel', 'Detection Rules', request.url.path == '/detection/rules') }}
                     {% endif %}
-                    {{ nav_soon('psychology', 'AI Triage') }}
+                    {{ nav_item('/ai-triage', 'psychology', 'AI Triage', request.url.path == '/ai-triage') }}
                 </div>
             </div>
             <!-- Response -->

@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}AI Triage — OVS{% endblock %}
+{% block page_title %}AI Triage{% endblock %}
+
+{% block main_content %}
+<div class="p-4 lg:p-8 space-y-4 max-w-[1500px]">
+
+    <!-- Advisory banner -->
+    <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-violet-500/30 bg-violet-500/10 text-violet-300 text-xs">
+        <span class="material-symbols-outlined text-[16px]">psychology</span>
+        <span><strong>Advisory only:</strong> AI triage suggests verdicts and next steps for analysts.
+        It never changes alert status, runs SOAR actions, or makes decisions on its own.</span>
+    </div>
+
+    {% if not config.enabled %}
+    <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs">
+        <span class="material-symbols-outlined text-[16px]">warning</span>
+        <span><strong>AI triage is disabled</strong> — set <code class="font-mono">AI_TRIAGE_ENABLED=true</code>
+        and <code class="font-mono">GEMINI_API_KEY</code> in <code class="font-mono">api/.env</code> to enable it.
+        Past results (if any) are still shown below.</span>
+    </div>
+    {% elif not config.provider_configured %}
+    <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs">
+        <span class="material-symbols-outlined text-[16px]">key_off</span>
+        <span><strong>Provider key missing</strong> — AI triage is enabled but <code class="font-mono">GEMINI_API_KEY</code> is not set; runs will record a config error.</span>
+    </div>
+    {% endif %}
+
+    <div class="flex items-end justify-between flex-wrap gap-3">
+        <div>
+            <h1 class="text-lg font-bold">Triage queue</h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                Every AI triage run across all alerts, newest first. Model:
+                <span class="font-mono">{{ config.model_name }}</span>. Trigger runs from an alert's investigation page.
+            </p>
+        </div>
+        <div id="status-chips" class="flex flex-wrap gap-1.5"></div>
+    </div>
+
+    <!-- Filters -->
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 p-3 flex flex-wrap items-center gap-3">
+        <label class="flex items-center gap-2">
+            <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">Status</span>
+            <select id="f-status" class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2 py-1.5 text-xs">
+                <option value="">All</option>
+            </select>
+        </label>
+        <label class="flex items-center gap-2">
+            <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">Priority</span>
+            <select id="f-priority" class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2 py-1.5 text-xs">
+                <option value="">All</option>
+                <option>P1</option><option>P2</option><option>P3</option><option>P4</option>
+            </select>
+        </label>
+        <div class="flex-1"></div>
+        <button id="btn-refresh" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary transition-colors">Refresh</button>
+    </div>
+
+    <!-- Results table -->
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[860px] text-left">
+                <thead class="bg-slate-200/60 dark:bg-background-dark/60">
+                    <tr class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
+                        <th class="px-4 py-2.5 w-40">Time</th>
+                        <th class="px-4 py-2.5">Alert</th>
+                        <th class="px-4 py-2.5 w-28">Status</th>
+                        <th class="px-4 py-2.5 w-20">Priority</th>
+                        <th class="px-4 py-2.5 w-28">Confidence</th>
+                        <th class="px-4 py-2.5 w-32">FP likelihood</th>
+                        <th class="px-4 py-2.5">Summary</th>
+                    </tr>
+                </thead>
+                <tbody id="triage-tbody" class="divide-y divide-slate-200 dark:divide-slate-700/40 text-xs"></tbody>
+            </table>
+        </div>
+        <div id="triage-empty" class="hidden flex-col items-center gap-2 py-12 text-center">
+            <span class="material-symbols-outlined text-[40px] text-slate-300 dark:text-slate-700">psychology</span>
+            <p class="text-sm font-bold">No triage runs yet</p>
+            <p class="text-xs text-slate-500">Open an alert's investigation page and request AI triage — results appear here.</p>
+        </div>
+        <div class="flex items-center justify-between px-4 py-2.5 border-t border-slate-200 dark:border-slate-700/40">
+            <span class="text-[11px] font-mono text-slate-500" id="page-info">—</span>
+            <div class="flex items-center gap-1" id="pager"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const state = { status: '', priority: '', page: 1 };
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const STATUS_STYLES = {
+        ok: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+        completed: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+        disabled: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+        config_error: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+        error: 'text-red-400 bg-red-500/10 border-red-500/20',
+    };
+    const SEV = {
+        CRITICAL: 'text-red-400 bg-red-500/10 border-red-500/20', HIGH: 'text-red-400 bg-red-500/10 border-red-500/20',
+        MED: 'text-amber-400 bg-amber-500/10 border-amber-500/20', MEDIUM: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+        LOW: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
+    };
+    const badge = (text, cls) => `<span class="inline-flex px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold ${cls || STATUS_STYLES.disabled}">${esc(text)}</span>`;
+
+    async function load() {
+        const p = new URLSearchParams({ triage_status: state.status, priority: state.priority, page: state.page });
+        const r = await fetch(`/api/ai-triage/results?${p}`);
+        if (!r.ok) return;
+        const data = await r.json();
+
+        // status chips + filter options
+        document.getElementById('status-chips').innerHTML =
+            Object.entries(data.status_counts).map(([s, n]) => badge(`${s}: ${n}`, STATUS_STYLES[s])).join(' ');
+        const sel = document.getElementById('f-status');
+        const known = new Set([...sel.options].map(o => o.value));
+        Object.keys(data.status_counts).forEach(s => {
+            if (!known.has(s)) { const o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); }
+        });
+
+        const tb = document.getElementById('triage-tbody');
+        const empty = document.getElementById('triage-empty');
+        empty.classList.toggle('hidden', data.results.length > 0);
+        empty.classList.toggle('flex', data.results.length === 0);
+        tb.innerHTML = data.results.map(t => `
+            <tr class="hover:bg-slate-200/50 dark:hover:bg-background-dark/60 transition-colors cursor-pointer"
+                onclick="location.href='/alerts/${t.alert_id}/investigation'">
+                <td class="px-4 py-2.5 font-mono text-slate-500 whitespace-nowrap">${esc(t.created_at)}</td>
+                <td class="px-4 py-2.5">
+                    <span class="text-primary font-bold">#${t.alert_id}</span>
+                    <span class="inline-flex ml-1.5 px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold ${SEV[(t.alert_severity || '').toUpperCase()] || STATUS_STYLES.disabled}">${esc(t.alert_severity)}</span>
+                    <div class="text-slate-500 mt-0.5 truncate max-w-[280px]" title="${esc(t.alert_title)}">${esc(t.alert_title)}</div>
+                </td>
+                <td class="px-4 py-2.5">${badge(t.triage_status, STATUS_STYLES[t.triage_status])}</td>
+                <td class="px-4 py-2.5 font-mono font-bold">${esc(t.priority || '—')}</td>
+                <td class="px-4 py-2.5 font-mono">${esc(t.confidence || '—')}</td>
+                <td class="px-4 py-2.5 font-mono">${esc(t.false_positive_likelihood || '—')}</td>
+                <td class="px-4 py-2.5 text-slate-500 max-w-[340px]">
+                    <span class="line-clamp-2" title="${esc(t.summary || t.error_message || '')}">${esc(t.summary || t.error_message || '—')}</span>
+                </td>
+            </tr>`).join('');
+
+        const from = data.total ? (data.page - 1) * 20 + 1 : 0;
+        const to = Math.min(data.page * 20, data.total);
+        document.getElementById('page-info').textContent = `Showing ${from}–${to} of ${data.total} runs`;
+        const pager = document.getElementById('pager');
+        const btn = (label, target, active, disabled) =>
+            `<button data-page="${target}" ${disabled ? 'disabled' : ''} class="px-2.5 py-1 rounded text-[11px] font-bold border transition-colors ${active ? 'bg-primary text-white border-primary' : disabled ? 'border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-700' : 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary hover:text-primary'}">${label}</button>`;
+        let pages = [];
+        for (let p2 = Math.max(1, data.page - 2); p2 <= Math.min(data.page_count, data.page + 2); p2++)
+            pages.push(btn(p2, p2, p2 === data.page, false));
+        pager.innerHTML = btn('Prev', data.page - 1, false, data.page <= 1) + pages.join('') + btn('Next', data.page + 1, false, data.page >= data.page_count);
+        pager.querySelectorAll('button[data-page]:not([disabled])').forEach(b =>
+            b.addEventListener('click', e => { e.stopPropagation(); state.page = +b.dataset.page; load(); }));
+    }
+
+    document.getElementById('f-status').addEventListener('change', e => { state.status = e.target.value; state.page = 1; load(); });
+    document.getElementById('f-priority').addEventListener('change', e => { state.priority = e.target.value; state.page = 1; load(); });
+    document.getElementById('btn-refresh').addEventListener('click', () => load());
+    load();
+})();
+</script>
+{% endblock %}

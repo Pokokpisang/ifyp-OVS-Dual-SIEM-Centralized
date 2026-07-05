@@ -315,6 +315,20 @@ def view_network(request: Request, database: Session = Depends(db.get_db)):
 
 
 @router.get(
+    "/ai-triage",
+    response_class=HTMLResponse,
+    dependencies=[Depends(require_analyst_html)],
+)
+def view_ai_triage(request: Request):
+    """AI triage queue — cross-alert advisory triage history."""
+    from ..routers.ai_triage import triage_config_status
+    return templates.TemplateResponse("ai_triage.html", {
+        "request": request,
+        "config": triage_config_status(),
+    })
+
+
+@router.get(
     "/soar/actions",
     response_class=HTMLResponse,
     dependencies=[Depends(require_analyst_html)],
