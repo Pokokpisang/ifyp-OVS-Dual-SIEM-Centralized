@@ -41,13 +41,35 @@ def view_dashboard(request: Request, db: Session = Depends(db.get_db)):
         "silent_agents": silent_agents,
     })
 @router.get(
-    "/system-health-rules",
+    "/settings",
     response_class=HTMLResponse,
     dependencies=[Depends(require_admin_html)],
 )
-def view_system_health_rules(request: Request, db: Session = Depends(db.get_db)):
+def view_settings(request: Request, db: Session = Depends(db.get_db)):
+    """Settings hub: SOAR mode, health rules, retention, session, integrations."""
+    from ..routers.ai_triage import triage_config_status
+    from ..services.notification_service import smtp_configured
+    from ..services.agent_service import get_offline_threshold_minutes
+
     rules = db.query(models.SystemHealthRule).all()
-    return templates.TemplateResponse("system_health_rules.html", {"request": request, "rules": rules})
+    return templates.TemplateResponse("settings.html", {
+        "request": request,
+        "rules": rules,
+        "retention": {
+            "log_days": os.getenv("LOG_RETENTION_DAYS", ""),
+            "metrics_days": os.getenv("METRICS_RETENTION_DAYS", ""),
+        },
+        "session_max_age_hours": int(os.getenv("SESSION_MAX_AGE_SECONDS", "28800")) // 3600,
+        "silence_threshold_minutes": get_offline_threshold_minutes(),
+        "smtp_configured": smtp_configured(),
+        "triage_config": triage_config_status(),
+    })
+
+
+@router.get("/system-health-rules", include_in_schema=False, dependencies=[Depends(require_admin_html)])
+def redirect_system_health_rules():
+    """Health rules moved into the settings hub."""
+    return RedirectResponse(url="/settings#health", status_code=302)
 
 @router.get("/alerts", response_class=HTMLResponse)
 def view_alerts(
@@ -352,13 +374,10 @@ def redirect_soar_approvals():
     return RedirectResponse(url="/soar/actions#pending", status_code=302)
 
 
-@router.get(
-    "/soar/settings",
-    response_class=HTMLResponse,
-    dependencies=[Depends(require_admin_html)],
-)
-def view_soar_settings(request: Request):
-    return templates.TemplateResponse("soar_settings.html", {"request": request})
+@router.get("/soar/settings", include_in_schema=False, dependencies=[Depends(require_admin_html)])
+def redirect_soar_settings():
+    """SOAR execution mode moved into the settings hub."""
+    return RedirectResponse(url="/settings#soar", status_code=302)
 
 
 @router.get(

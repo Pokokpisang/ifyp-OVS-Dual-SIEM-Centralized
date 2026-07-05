@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}Settings — OVS{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block main_content %}
+<div class="p-4 lg:p-8 space-y-8 max-w-[1200px]">
+
+    <div>
+        <h1 class="text-lg font-bold">Platform settings</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">All changes here are recorded in the <a href="/audit" class="text-primary hover:underline">Audit Trail</a>.</p>
+    </div>
+
+    <!-- ============ SOAR execution mode ============ -->
+    <section id="soar" class="space-y-3">
+        <div class="flex items-center gap-2">
+            <h2 class="text-sm font-bold">SOAR execution mode</h2>
+            <span id="mode-badge" class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-primary/10 text-[10px] font-bold text-primary uppercase">Loading…</span>
+        </div>
+        <div id="status-msg" class="hidden px-4 py-3 rounded-lg text-sm font-medium"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label id="card-manual"
+                   class="flex flex-col gap-2 p-5 rounded-xl border-2 cursor-pointer transition-all
+                          border-slate-200 dark:border-primary/20 bg-white dark:bg-card-dark
+                          hover:border-primary/40 dark:hover:border-primary/50">
+                <input type="radio" name="soar_mode" value="manual" class="hidden" onchange="onModeChange()">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-[28px] text-slate-500 dark:text-slate-400">how_to_reg</span>
+                    <div>
+                        <p class="font-bold text-slate-900 dark:text-slate-50 text-sm">Manual Approval</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Analyst clicks "Run Simulated Action" to execute</p>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    All SOAR actions require explicit analyst approval. No actions fire automatically.
+                    This is the safe default for production environments.
+                </p>
+            </label>
+            <label id="card-automatic"
+                   class="flex flex-col gap-2 p-5 rounded-xl border-2 cursor-pointer transition-all
+                          border-slate-200 dark:border-primary/20 bg-white dark:bg-card-dark
+                          hover:border-primary/40 dark:hover:border-primary/50">
+                <input type="radio" name="soar_mode" value="automatic" class="hidden" onchange="onModeChange()">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-[28px] text-slate-500 dark:text-slate-400">auto_mode</span>
+                    <div>
+                        <p class="font-bold text-slate-900 dark:text-slate-50 text-sm">Automatic Simulation</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Eligible actions run automatically on new alerts</p>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Actions marked <code class="bg-slate-100 dark:bg-slate-700 px-1 rounded">auto_run_allowed: true</code>
+                    fire without analyst input. Containment actions remain manual.
+                </p>
+            </label>
+        </div>
+        <div class="flex gap-3 p-4 rounded-xl border border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10">
+            <span class="material-symbols-outlined text-[22px] text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">warning</span>
+            <div class="text-sm text-amber-800 dark:text-amber-300">
+                <p class="font-semibold mb-1">Automatic mode only runs simulation-safe actions</p>
+                <ul class="list-disc list-inside space-y-0.5 text-amber-700 dark:text-amber-400 text-xs">
+                    <li>Only actions with <code class="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">mode: simulation</code> can ever execute</li>
+                    <li>Only actions flagged <code class="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">auto_run_allowed: true</code> fire automatically</li>
+                    <li>Containment actions (block IP) require manual approval regardless of mode</li>
+                    <li>Each action runs at most once per alert — duplicate prevention is built-in</li>
+                    <li>No real network changes, no OS commands, no firewall rules are ever applied</li>
+                </ul>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="saveSetting()" class="px-5 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors">Save mode</button>
+            <button onclick="resetToManual()" class="px-5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">Reset to Manual</button>
+        </div>
+    </section>
+
+    <!-- ============ System health rules ============ -->
+    <section id="health" class="space-y-3">
+        <h2 class="text-sm font-bold">System health rules</h2>
+        <p class="text-xs text-slate-500 dark:text-slate-400">Threshold-based metric monitoring. Alerts from these rules flow through notification channels like any other alert.</p>
+        <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[640px] text-left">
+                    <thead class="bg-slate-200/60 dark:bg-background-dark/60">
+                        <tr class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
+                            <th class="px-4 py-2.5">Rule</th>
+                            <th class="px-4 py-2.5 w-24">Metric</th>
+                            <th class="px-4 py-2.5 w-32">Threshold</th>
+                            <th class="px-4 py-2.5 w-24">Severity</th>
+                            <th class="px-4 py-2.5 w-24">Enabled</th>
+                            <th class="px-4 py-2.5 w-40">Last triggered</th>
+                            <th class="px-4 py-2.5 w-20">Edit</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-700/40 text-xs">
+                        {% for rule in rules %}
+                        <tr>
+                            <td class="px-4 py-2.5 font-medium">{{ rule.rule_name }}</td>
+                            <td class="px-4 py-2.5"><span class="font-mono text-[10px] font-bold uppercase">{{ rule.metric_name }}</span></td>
+                            <td class="px-4 py-2.5 font-mono" id="threshold-{{ rule.rule_id }}">{{ rule.operator }} {{ rule.threshold_value }}{% if rule.metric_name in ['cpu', 'ram'] %}%{% else %} B/s{% endif %}</td>
+                            <td class="px-4 py-2.5">
+                                <span class="inline-flex px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold
+                                    {% if rule.severity in ['HIGH', 'CRITICAL'] %}text-red-400 bg-red-500/10 border-red-500/20
+                                    {% elif rule.severity in ['MEDIUM', 'WARNING'] %}text-amber-400 bg-amber-500/10 border-amber-500/20
+                                    {% else %}text-sky-400 bg-sky-500/10 border-sky-500/20{% endif %}">{{ rule.severity }}</span>
+                            </td>
+                            <td class="px-4 py-2.5">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer" onchange="toggleRule('{{ rule.rule_id }}', this)" {% if rule.enabled %}checked{% endif %}>
+                                    <div class="w-9 h-5 bg-slate-300 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                                </label>
+                            </td>
+                            <td class="px-4 py-2.5 font-mono text-slate-500">
+                                {% if rule.last_triggered %}{{ rule.last_triggered.strftime('%Y-%m-%d %H:%M') }}{% else %}Never{% endif %}
+                            </td>
+                            <td class="px-4 py-2.5">
+                                <button onclick="editThreshold('{{ rule.rule_id }}', '{{ rule.threshold_value }}')"
+                                    class="text-[11px] font-bold text-sky-400 hover:underline">Edit</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ Agent monitoring ============ -->
+    <section id="agents" class="space-y-3">
+        <h2 class="text-sm font-bold">Agent monitoring</h2>
+        <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 p-4 text-xs space-y-1">
+            <p>Dead-silence threshold: <span class="font-mono font-bold">{{ silence_threshold_minutes }} minutes</span> without a heartbeat → agent marked offline and a HIGH alert fires (once per outage).</p>
+            <p class="text-slate-500">Configured via <code class="font-mono">AGENT_SILENCE_THRESHOLD_MINUTES</code> in <code class="font-mono">api/.env</code> — restart the API to apply.</p>
+        </div>
+    </section>
+
+    <!-- ============ Retention ============ -->
+    <section id="retention" class="space-y-3">
+        <h2 class="text-sm font-bold">Data retention</h2>
+        <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs">
+            <span class="material-symbols-outlined text-[16px]">hourglass_empty</span>
+            <span><strong>Not yet enforced:</strong> retention values are configuration only — the cleanup job that deletes old rows has not been implemented. Logs and metrics currently grow unbounded.</span>
+        </div>
+        <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 p-4 text-xs space-y-1">
+            <p>Log retention: <span class="font-mono font-bold">{{ retention.log_days or 'not set' }}</span>{% if retention.log_days %} days{% endif %} <span class="text-slate-500">(<code class="font-mono">LOG_RETENTION_DAYS</code>)</span></p>
+            <p>Metrics retention: <span class="font-mono font-bold">{{ retention.metrics_days or 'not set' }}</span>{% if retention.metrics_days %} days{% endif %} <span class="text-slate-500">(<code class="font-mono">METRICS_RETENTION_DAYS</code>)</span></p>
+        </div>
+    </section>
+
+    <!-- ============ Sessions & integrations ============ -->
+    <section id="system" class="space-y-3">
+        <h2 class="text-sm font-bold">Sessions & integrations</h2>
+        <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 p-4 text-xs space-y-2">
+            <p>Dashboard session lifetime: <span class="font-mono font-bold">{{ session_max_age_hours }}h</span> <span class="text-slate-500">(<code class="font-mono">SESSION_MAX_AGE_SECONDS</code>; sessions are server-side and revocable from <a href="/settings/users" class="text-primary hover:underline">Users &amp; RBAC</a>)</span></p>
+            <p>Email notifications (SMTP):
+                {% if smtp_configured %}<span class="font-bold text-emerald-400">configured</span>{% else %}<span class="font-bold text-amber-400">not configured</span>{% endif %}
+                — manage channels in <a href="/notifications" class="text-primary hover:underline">Notifications</a></p>
+            <p>AI triage:
+                {% if triage_config.enabled and triage_config.provider_configured %}<span class="font-bold text-emerald-400">enabled</span> (<span class="font-mono">{{ triage_config.model_name }}</span>){% elif triage_config.enabled %}<span class="font-bold text-amber-400">enabled, provider key missing</span>{% else %}<span class="font-bold text-slate-400">disabled</span>{% endif %}
+                — advisory only; results in <a href="/ai-triage" class="text-primary hover:underline">AI Triage</a></p>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CARD_ACTIVE   = ['border-primary', 'dark:border-primary', 'bg-primary/5', 'dark:bg-primary/10'];
+const CARD_INACTIVE = ['border-slate-200', 'dark:border-primary/20', 'bg-white', 'dark:bg-card-dark'];
+
+function applyCardStyle(mode) {
+    ['manual', 'automatic'].forEach(m => {
+        const card  = document.getElementById('card-' + m);
+        const radio = card.querySelector('input[type="radio"]');
+        const icon  = card.querySelector('.material-symbols-outlined');
+        if (m === mode) {
+            CARD_INACTIVE.forEach(c => card.classList.remove(c));
+            CARD_ACTIVE.forEach(c => card.classList.add(c));
+            icon.classList.remove('text-slate-500', 'dark:text-slate-400');
+            icon.classList.add('text-primary');
+            radio.checked = true;
+        } else {
+            CARD_ACTIVE.forEach(c => card.classList.remove(c));
+            CARD_INACTIVE.forEach(c => card.classList.add(c));
+            icon.classList.remove('text-primary');
+            icon.classList.add('text-slate-500', 'dark:text-slate-400');
+            radio.checked = false;
+        }
+    });
+}
+
+function onModeChange() {
+    const selected = document.querySelector('input[name="soar_mode"]:checked');
+    if (selected) applyCardStyle(selected.value);
+}
+
+function setStatusMsg(text, isError) {
+    const el = document.getElementById('status-msg');
+    el.textContent = text;
+    el.className = `px-4 py-3 rounded-lg text-sm font-medium border ${isError
+        ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700'
+        : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700'}`;
+    setTimeout(() => el.classList.add('hidden'), 4000);
+}
+
+async function loadCurrentMode() {
+    try {
+        const res  = await fetch('/api/settings/soar');
+        const data = await res.json();
+        applyCardStyle(data.soar_execution_mode);
+        document.getElementById('mode-badge').textContent = data.label;
+    } catch (e) { /* badge stays "Loading…" */ }
+}
+
+async function saveSetting() {
+    const selected = document.querySelector('input[name="soar_mode"]:checked');
+    if (!selected) { setStatusMsg('Please select a mode.', true); return; }
+    try {
+        const res = await fetch('/api/settings/soar', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({soar_execution_mode: selected.value}),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { setStatusMsg('Error: ' + (data.detail || res.statusText), true); return; }
+        document.getElementById('mode-badge').textContent = data.label;
+        setStatusMsg('Setting saved: ' + data.label, false);
+    } catch (e) {
+        setStatusMsg('Network error: ' + e.message, true);
+    }
+}
+
+async function resetToManual() {
+    applyCardStyle('manual');
+    await saveSetting();
+}
+
+async function toggleRule(ruleId, checkbox) {
+    const res = await fetch(`/api/system-health-rules/${ruleId}/toggle`, { method: 'PUT' });
+    if (!res.ok) {
+        checkbox.checked = !checkbox.checked; // revert on failure
+        setStatusMsg('Failed to toggle rule.', true);
+    }
+}
+
+async function editThreshold(ruleId, current) {
+    const value = prompt(`New threshold for ${ruleId}:`, current);
+    if (value === null) return;
+    const parsed = parseFloat(value);
+    if (isNaN(parsed)) { setStatusMsg('Threshold must be a number.', true); return; }
+    const res = await fetch(`/api/system-health-rules/${ruleId}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({threshold_value: parsed}),
+    });
+    if (res.ok) location.reload();
+    else setStatusMsg('Failed to update threshold.', true);
+}
+
+loadCurrentMode();
+</script>
+{% endblock %}
