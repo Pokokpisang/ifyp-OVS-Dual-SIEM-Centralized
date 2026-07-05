@@ -21,7 +21,21 @@ that client — and its only data source is the SOC server's tenant-scoped
 | `/events` | Security Events — paginated detections with severity filter |
 | `/posture` | Monthly Posture — 7/30/90-day rollup |
 
-## Deployment
+## Local development (repo dev stack)
+
+`make up` at the repo root now includes the portal at **http://localhost:8100**
+(a `portal/.env` is created from `env.example` on first run). Until you set
+`CLIENT_API_KEY` there, the portal shows its access-problem page:
+
+1. SOC dashboard → **Assets → Clients** → add a client → assign agents →
+   **Issue portal key** (shown once).
+2. Paste it into `portal/.env` as `CLIENT_API_KEY=ovsc_…`.
+3. `./docker-compose-v2 restart portal` (or `make restart`).
+
+This in-stack instance is a dev convenience — production portals deploy
+separately, as below.
+
+## Production deployment
 
 1. On the SOC dashboard, open **Assets → Clients → (client) → Issue portal key**
    and copy the `ovsc_…` key (shown once).
