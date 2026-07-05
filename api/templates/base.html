@@ -152,9 +152,6 @@
                         <span id="nav-soar-badge" class="ml-auto hidden text-[10px] font-bold bg-amber-500/20 text-amber-400 rounded-full px-2 py-0.5"></span>
                     {% endcall %}
                     {{ nav_item('/soar/history', 'history', 'SOAR History', request.url.path == '/soar/history') }}
-                    {% if role == 'admin' %}
-                        {{ nav_item('/soar/settings', 'security', 'SOAR Settings', request.url.path == '/soar/settings') }}
-                    {% endif %}
                 </div>
             </div>
             {% endif %}
@@ -172,7 +169,7 @@
             <div>
                 <p class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">System</p>
                 <div class="space-y-1">
-                    {{ nav_item('/system-health-rules', 'health_and_safety', 'System Health Rules', request.url.path == '/system-health-rules') }}
+                    {{ nav_item('/settings', 'settings', 'Settings', request.url.path == '/settings') }}
                     {{ nav_item('/audit', 'receipt_long', 'Audit Trail', request.url.path == '/audit') }}
                 </div>
             </div>
