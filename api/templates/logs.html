@@ -4,27 +4,22 @@
 
 {% block page_title %}System Logs{% endblock %}
 
-{% block header_actions %}
-<div class="flex items-center gap-1 px-3 py-1.5 bg-green-500/10 text-green-500 rounded-full border border-green-500/20 text-[10px] font-bold uppercase tracking-wider">
-    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-    Live Connection
-</div>
-{% endblock %}
+
 
 {% block main_content %}
 <!-- Filter Bar -->
-<div class="p-6 bg-background-light dark:bg-background-dark/40 border-b border-primary/5">
+<div class="p-6 bg-background-light dark:bg-background-dark/40 border-b border-slate-200 dark:border-line">
     <form class="flex flex-wrap items-center justify-between gap-4" method="get" action="/logs">
         <div class="flex flex-wrap items-center gap-3 flex-1">
             <!-- Search -->
             <div class="relative w-full max-w-sm">
                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
-                <input name="q" value="{{ q }}" class="w-full pl-10 pr-4 py-2 bg-white dark:bg-background-dark border border-primary/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400" placeholder="Search logs, events, messages..." type="text"/>
+                <input name="q" value="{{ q }}" class="w-full pl-10 pr-4 py-2 bg-white dark:bg-background-dark border border-slate-200 dark:border-line rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400" placeholder="Search logs, events, messages..." type="text"/>
             </div>
 
             <!-- Host Dropdown -->
             <div class="relative inline-block text-left">
-                <select name="host" class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-background-dark border border-primary/20 rounded-lg text-sm font-medium hover:border-primary/50 transition-all text-slate-900 dark:text-slate-100 appearance-none pr-10 focus:ring-primary focus:border-primary">
+                <select name="host" class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-background-dark border border-slate-200 dark:border-line rounded-lg text-sm font-medium hover:border-primary/50 transition-all text-slate-900 dark:text-slate-100 appearance-none pr-10 focus:ring-primary focus:border-primary">
                     <option value="">Host: All</option>
                     {% for h in hosts %}
                     <option value="{{ h }}" {% if h==current_host %}selected{% endif %}>{{ h }}</option>
@@ -35,7 +30,7 @@
 
             <!-- Type / Source Dropdown -->
             <div class="relative inline-block text-left">
-                 <select name="log_type" class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-background-dark border border-primary/20 rounded-lg text-sm font-medium hover:border-primary/50 transition-all text-slate-900 dark:text-slate-100 appearance-none pr-10 focus:ring-primary focus:border-primary">
+                 <select name="log_type" class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-background-dark border border-slate-200 dark:border-line rounded-lg text-sm font-medium hover:border-primary/50 transition-all text-slate-900 dark:text-slate-100 appearance-none pr-10 focus:ring-primary focus:border-primary">
                     <option value="">Type: All</option>
                     {% for t in types %}
                     <option value="{{ t }}" {% if t==current_type %}selected{% endif %}>{{ t }}</option>
@@ -47,7 +42,7 @@
         </div>
         
         <div class="flex items-center gap-2">
-            <a href="/logs" class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-background-dark border border-primary/20 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-primary/10 transition-all">
+            <a href="/logs" class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-background-dark border border-slate-200 dark:border-line rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-primary/10 transition-all">
                 <span class="material-symbols-outlined text-[20px]">refresh</span>
                 <span>Reset</span>
             </a>
@@ -61,23 +56,23 @@
 
 <!-- Log Table -->
 <div class="flex-1 overflow-auto custom-scrollbar p-6">
-    <div class="bg-white dark:bg-background-dark/60 rounded-xl border border-primary/10 overflow-hidden shadow-sm">
+    <div class="bg-white dark:bg-card-dark rounded-lg border border-slate-200 dark:border-line overflow-hidden shadow-sm">
         <table class="w-full text-left border-collapse">
             <thead>
-                <tr class="border-b border-primary/10 bg-slate-50 dark:bg-primary/5">
-                    <th class="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-primary/70 uppercase tracking-wider">Timestamp</th>
-                    <th class="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-primary/70 uppercase tracking-wider w-32 justify-center flex items-center">Type</th>
-                    <th class="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-primary/70 uppercase tracking-wider">Host</th>
-                    <th class="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-primary/70 uppercase tracking-wider">Message</th>
-                    <th class="px-4 py-3 text-[11px] font-bold text-slate-500 dark:text-primary/70 uppercase tracking-wider text-right">Action</th>
+                <tr class="border-b border-slate-200 dark:border-line bg-slate-100 dark:bg-elev">
+                    <th class="px-4 py-3 text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Timestamp</th>
+                    <th class="px-4 py-3 text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em] w-32 justify-center flex items-center">Type</th>
+                    <th class="px-4 py-3 text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Host</th>
+                    <th class="px-4 py-3 text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Message</th>
+                    <th class="px-4 py-3 text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em] text-right">Action</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-primary/5">
+            <tbody class="divide-y divide-slate-200 dark:divide-line">
                 {% for log in logs %}
-                <tr class="hover:bg-primary/5 transition-colors group">
+                <tr class="hover:bg-slate-50 dark:hover:bg-hover-dark transition-colors group">
                     <td class="px-4 py-2.5 text-xs font-mono text-slate-500">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                     <td class="px-4 py-2.5">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20 uppercase tracking-tight">{{ log.log_type }}</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-info/10 text-info border border-info/20 font-mono uppercase tracking-tight">{{ log.log_type }}</span>
                     </td>
                     <td class="px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300">
                         {{ log.host }}
@@ -110,7 +105,7 @@
 </div>
 
 <!-- Footer Stats & Pagination -->
-<footer class="h-10 px-6 bg-background-light dark:bg-background-dark/80 border-t border-primary/10 flex items-center justify-between text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+<footer class="h-10 px-6 bg-background-light dark:bg-background-dark/80 border-t border-slate-200 dark:border-line flex items-center justify-between text-[10px] text-slate-500 uppercase tracking-widest font-bold">
     <div class="flex items-center gap-6">
         <div class="flex items-center gap-2">
             <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
