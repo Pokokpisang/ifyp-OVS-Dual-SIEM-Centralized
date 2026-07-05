@@ -57,6 +57,7 @@ CLIENT_DELETED = "CLIENT_DELETED"
 CLIENT_KEY_ROTATED = "CLIENT_KEY_ROTATED"
 CLIENT_KEY_REVOKED = "CLIENT_KEY_REVOKED"
 CLIENT_AGENTS_CHANGED = "CLIENT_AGENTS_CHANGED"
+DATA_RETENTION_APPLIED = "DATA_RETENTION_APPLIED"
 
 # Category shown in the Audit Trail UI, keyed by action.
 ACTION_CATEGORIES: Dict[str, str] = {
@@ -85,6 +86,7 @@ ACTION_CATEGORIES: Dict[str, str] = {
     CLIENT_KEY_ROTATED: "System",
     CLIENT_KEY_REVOKED: "System",
     CLIENT_AGENTS_CHANGED: "System",
+    DATA_RETENTION_APPLIED: "System",
 }
 
 # Actions whose records reference secret material (rendered with a
@@ -248,6 +250,8 @@ def _derive_result(action: str, details: Dict[str, str]) -> Tuple[str, str]:
         return "Rotated", "info"
     if action == CLIENT_KEY_REVOKED:
         return "Revoked", "high"
+    if action == DATA_RETENTION_APPLIED:
+        return "Applied", "ok"
     return "Recorded", "muted"
 
 
