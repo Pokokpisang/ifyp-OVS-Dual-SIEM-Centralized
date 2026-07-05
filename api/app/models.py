@@ -227,6 +227,19 @@ class SystemHealthRule(Base):
     last_triggered = Column(DateTime, nullable=True)
 
 
+class DetectionRuleOverride(Base):
+    """Runtime disable-switch for YAML detection rules. Overrides can only
+    DISABLE a file-enabled rule — the YAML `enabled` flag (detection-as-code)
+    remains authoritative for enabling."""
+    __tablename__ = "detection_rule_overrides"
+
+    id = Column(Integer, primary_key=True, index=True)
+    rule_id = Column(String, unique=True, index=True, nullable=False)
+    enabled = Column(Boolean, nullable=False, default=False)  # False = rule suppressed at runtime
+    updated_by = Column(String, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class User(Base):
     """Dashboard user account. The env-var bootstrap accounts
     (DASHBOARD_USERNAME / CLIENT_USERNAME) remain as fallback logins and are

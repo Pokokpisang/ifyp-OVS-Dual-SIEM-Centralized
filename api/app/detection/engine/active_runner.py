@@ -146,10 +146,13 @@ class ActiveDetectionRunner:
         Evaluate event and trigger alert creation for matches.
         """
         try:
+            from ...services.rule_override_service import get_disabled_rule_ids
+
             candidates = self.engine.evaluate_event(
                 normalized_event,
                 include_suppressed=self.include_suppressed,
-                return_unmatched=self.return_unmatched
+                return_unmatched=self.return_unmatched,
+                disabled_rule_ids=get_disabled_rule_ids(self.db),
             )
 
             yaml_fired_t1059 = False

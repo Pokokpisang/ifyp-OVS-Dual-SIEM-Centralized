@@ -36,14 +36,18 @@ class YAMLDetectionEngine:
         self.suppressor = SuppressionEngine(evaluator=self.evaluator)
 
     def evaluate_event(
-        self, 
-        event: Dict[str, Any], 
-        include_disabled: bool = False, 
-        return_unmatched: bool = False, 
-        include_suppressed: bool = True
+        self,
+        event: Dict[str, Any],
+        include_disabled: bool = False,
+        return_unmatched: bool = False,
+        include_suppressed: bool = True,
+        disabled_rule_ids: Optional[set] = None,
     ) -> List[DetectionCandidate]:
         """
         Evaluate a normalized event against all loaded YAML rules.
+
+        ``disabled_rule_ids`` — rule ids blocked by a runtime override
+        (admin toggle in the dashboard); they are skipped entirely.
         """
         candidates = []
 
@@ -54,6 +58,8 @@ class YAMLDetectionEngine:
 
         # 1. Load rules
         rules = self.loader.load_rules_from_directory(self.loader.rules_path, include_disabled=include_disabled)
+        if disabled_rule_ids:
+            rules = [r for r in rules if r.id not in disabled_rule_ids]
         
         # Add any loader errors to the first candidate or a dummy one? 
         # Requirement says: "does not crash if one rule is invalid and records/propagates loader error if possible"

@@ -138,9 +138,8 @@
             <div>
                 <p class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Detection</p>
                 <div class="space-y-1">
-                    {% if role == 'admin' %}
-                        {{ nav_item('/detection/rules', 'gavel', 'Detection Rules', request.url.path == '/detection/rules') }}
-                    {% endif %}
+                    {{ nav_item('/detection/rules', 'gavel', 'Detection Rules', request.url.path == '/detection/rules') }}
+                    {{ nav_item('/detection/mitre', 'grid_view', 'MITRE Coverage', request.url.path == '/detection/mitre') }}
                     {{ nav_item('/ai-triage', 'psychology', 'AI Triage', request.url.path == '/ai-triage') }}
                 </div>
             </div>
