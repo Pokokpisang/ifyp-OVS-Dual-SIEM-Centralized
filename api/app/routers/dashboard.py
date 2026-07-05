@@ -51,14 +51,14 @@ def view_settings(request: Request, db: Session = Depends(db.get_db)):
     from ..services.notification_service import smtp_configured
     from ..services.agent_service import get_offline_threshold_minutes
 
+    from ..services.retention_service import get_retention_policy
+
     rules = db.query(models.SystemHealthRule).all()
     return templates.TemplateResponse("settings.html", {
         "request": request,
         "rules": rules,
-        "retention": {
-            "log_days": os.getenv("LOG_RETENTION_DAYS", ""),
-            "metrics_days": os.getenv("METRICS_RETENTION_DAYS", ""),
-        },
+        "retention": get_retention_policy(),
+        "retention_enabled": os.getenv("RETENTION_ENABLED", "true").lower() == "true",
         "session_max_age_hours": int(os.getenv("SESSION_MAX_AGE_SECONDS", "28800")) // 3600,
         "silence_threshold_minutes": get_offline_threshold_minutes(),
         "smtp_configured": smtp_configured(),

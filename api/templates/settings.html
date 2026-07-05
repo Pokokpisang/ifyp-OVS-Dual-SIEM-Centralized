@@ -136,13 +136,22 @@
     <!-- ============ Retention ============ -->
     <section id="retention" class="space-y-3">
         <h2 class="text-sm font-bold">Data retention</h2>
+        {% if retention_enabled %}
+        <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-xs">
+            <span class="material-symbols-outlined text-[16px]">auto_delete</span>
+            <span><strong>Enforced:</strong> a background sweep deletes logs/metrics past their windows (hourly by default).
+            Deletions are recorded in the <a href="/audit" class="underline">Audit Trail</a>. Alerts, audit events, and SOAR history are never deleted — they are the security record.</span>
+        </div>
+        {% else %}
         <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs">
             <span class="material-symbols-outlined text-[16px]">hourglass_empty</span>
-            <span><strong>Not yet enforced:</strong> retention values are configuration only — the cleanup job that deletes old rows has not been implemented. Logs and metrics currently grow unbounded.</span>
+            <span><strong>Sweep disabled</strong> (<code class="font-mono">RETENTION_ENABLED=false</code>) — logs and metrics currently grow unbounded.</span>
         </div>
+        {% endif %}
         <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 p-4 text-xs space-y-1">
-            <p>Log retention: <span class="font-mono font-bold">{{ retention.log_days or 'not set' }}</span>{% if retention.log_days %} days{% endif %} <span class="text-slate-500">(<code class="font-mono">LOG_RETENTION_DAYS</code>)</span></p>
-            <p>Metrics retention: <span class="font-mono font-bold">{{ retention.metrics_days or 'not set' }}</span>{% if retention.metrics_days %} days{% endif %} <span class="text-slate-500">(<code class="font-mono">METRICS_RETENTION_DAYS</code>)</span></p>
+            <p>Log retention: <span class="font-mono font-bold">{{ retention.log_days if retention.log_days else 'unlimited' }}</span>{% if retention.log_days %} days{% endif %} <span class="text-slate-500">(<code class="font-mono">LOG_RETENTION_DAYS</code>{% if not retention.log_days %} unset{% endif %})</span></p>
+            <p>Metrics retention: <span class="font-mono font-bold">{{ retention.metrics_days if retention.metrics_days else 'unlimited' }}</span>{% if retention.metrics_days %} days{% endif %} <span class="text-slate-500">(<code class="font-mono">METRICS_RETENTION_DAYS</code>{% if not retention.metrics_days %} unset{% endif %})</span></p>
+            <p class="text-slate-500">Change values in <code class="font-mono">api/.env</code> and restart the API to apply.</p>
         </div>
     </section>
 

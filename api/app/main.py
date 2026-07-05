@@ -325,6 +325,31 @@ async def _agent_silence_sweeper():
             print(f"[AGENT_MONITOR] sweep failed: {exc}")
 
 
+# Data-retention sweep — deletes logs/metrics past their retention windows
+# (unset retention vars mean unlimited; see services/retention_service.py).
+_RETENTION_SWEEP_SECONDS = int(os.getenv("RETENTION_SWEEP_SECONDS", "3600"))
+_RETENTION_ENABLED = os.getenv("RETENTION_ENABLED", "true").lower() == "true"
+
+
+def _run_retention_sweep():
+    from .services.retention_service import run_retention_sweep
+    session = db.SessionLocal()
+    try:
+        run_retention_sweep(session)
+    finally:
+        session.close()
+
+
+async def _retention_sweeper():
+    import asyncio as _asyncio
+    while True:
+        await _asyncio.sleep(_RETENTION_SWEEP_SECONDS)
+        try:
+            await _asyncio.to_thread(_run_retention_sweep)
+        except Exception as exc:  # noqa: BLE001 — sweep must never kill the loop
+            print(f"[RETENTION] sweep failed: {exc}")
+
+
 @app.on_event("startup")
 async def startup_event():
     # Purge expired server sessions on startup to keep the table tidy.
@@ -338,6 +363,8 @@ async def startup_event():
     seed_health_rules()
     if _SILENCE_SWEEP_ENABLED:
         asyncio.create_task(_agent_silence_sweeper())
+    if _RETENTION_ENABLED:
+        asyncio.create_task(_retention_sweeper())
 
 
 @app.get("/", include_in_schema=False)
