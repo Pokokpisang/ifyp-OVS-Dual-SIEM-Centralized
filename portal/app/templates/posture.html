@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block page_title %}Monthly Posture{% endblock %}
+{% block main_content %}
+<div class="space-y-4 max-w-[1100px]">
+    <div class="flex items-end justify-between flex-wrap gap-3">
+        <div>
+            <h1 class="text-lg font-bold">Security posture</h1>
+            <p class="text-xs text-slate-400">Summary of detections over the selected window.</p>
+        </div>
+        <div class="flex items-center gap-1.5">
+            {% for d in [7, 30, 90] %}
+            <a href="/posture?days={{ d }}"
+               class="px-2.5 py-1 rounded text-[11px] font-bold border {% if days == d %}bg-accent text-white border-accent{% else %}border-slate-700 text-slate-300 hover:border-accent hover:text-accent{% endif %}">{{ d }}d</a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="p-5 rounded-xl bg-card-dark border border-accent/10">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Total events ({{ posture.window_days }}d)</p>
+            <span class="text-3xl font-bold tabular-nums">{{ posture.total_alerts }}</span>
+            <div class="mt-3 space-y-1.5">
+                {% for sev, count in posture.by_severity.items() %}
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-mono font-bold {% if sev in ['HIGH', 'CRITICAL'] %}text-red-400{% elif sev in ['MED', 'MEDIUM'] %}text-amber-400{% else %}text-accent{% endif %}">{{ sev }}</span>
+                    <span class="font-mono">{{ count }}</span>
+                </div>
+                {% else %}
+                <p class="text-xs text-slate-500">No events in this window.</p>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="p-5 rounded-xl bg-card-dark border border-accent/10">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Top attack techniques</p>
+            <div class="space-y-1.5">
+                {% for t in posture.top_techniques %}
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-mono text-slate-300">{{ t.technique }}</span>
+                    <span class="font-mono text-slate-500">{{ t.count }}</span>
+                </div>
+                {% else %}
+                <p class="text-xs text-slate-500">Nothing detected in this window.</p>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="p-5 rounded-xl bg-card-dark border border-accent/10">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Most-targeted servers</p>
+            <div class="space-y-1.5">
+                {% for h in posture.top_hosts %}
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-mono text-slate-300 truncate">{{ h.host }}</span>
+                    <span class="font-mono text-slate-500">{{ h.count }}</span>
+                </div>
+                {% else %}
+                <p class="text-xs text-slate-500">Nothing detected in this window.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <p class="text-[11px] text-slate-500 flex items-center gap-2">
+        <span class="material-symbols-outlined text-[14px]">info</span>
+        These numbers come directly from your security operations server and reflect only your own servers.
+    </p>
+</div>
+{% endblock %}

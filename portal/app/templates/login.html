@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Sign in — OVS Client Portal</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-[#18161a] text-[#ededed] h-screen flex items-center justify-center">
+    <form method="POST" action="/login" class="w-80 space-y-4 p-8 rounded-xl bg-[#232126] border border-[#5b9eff]/20">
+        <div>
+            <h1 class="text-xl font-bold text-[#5b9eff]">OVS</h1>
+            <p class="text-xs text-slate-400 uppercase tracking-widest">Client Portal</p>
+        </div>
+        {% if error %}<p class="text-xs text-red-400">{{ error }}</p>{% endif %}
+        <label class="block space-y-1">
+            <span class="text-[10px] font-bold text-slate-500 uppercase">Portal password</span>
+            <input type="password" name="password" autofocus
+                class="w-full bg-[#18161a] border border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-[#5b9eff]" />
+        </label>
+        <button type="submit" class="w-full py-2 rounded-lg bg-[#5b9eff] text-white text-sm font-bold hover:opacity-90 transition-opacity">Sign in</button>
+    </form>
+</body>
+</html>

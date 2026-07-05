@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>{% block title %}OVS — Client Portal{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "accent": "#5b9eff",
+                        "background-dark": "#18161a",
+                        "card-dark": "#232126",
+                        "text-main": "#ededed",
+                    },
+                    fontFamily: { "display": ["Inter", "sans-serif"] },
+                },
+            },
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+</head>
+
+{% macro nav_item(href, icon, label, is_active) -%}
+    <a class="flex items-center gap-3 px-3 py-2 rounded-lg {% if is_active %}bg-accent text-white{% else %}text-slate-300 hover:bg-accent/10 hover:text-accent{% endif %} font-medium transition-colors" href="{{ href }}">
+        <span class="material-symbols-outlined text-[20px]">{{ icon }}</span>
+        <span class="text-sm">{{ label }}</span>
+    </a>
+{%- endmacro %}
+
+{% macro nav_soon(icon, label) -%}
+    <div class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 cursor-not-allowed select-none" title="Coming soon">
+        <span class="material-symbols-outlined text-[20px]">{{ icon }}</span>
+        <span class="text-sm">{{ label }}</span>
+        <span class="ml-auto text-[9px] font-bold uppercase tracking-widest border border-slate-700 rounded px-1.5 py-0.5">Soon</span>
+    </div>
+{%- endmacro %}
+
+<body class="bg-background-dark text-text-main font-display h-screen flex overflow-hidden">
+    <aside class="w-64 border-r border-accent/10 flex flex-col h-full shrink-0">
+        <div class="p-6">
+            <h1 class="text-xl font-bold text-accent tracking-tight">OVS</h1>
+            <p class="text-xs text-slate-400 font-medium uppercase tracking-widest">Client Portal</p>
+        </div>
+        <nav class="flex-1 px-4 py-2 space-y-6 overflow-y-auto">
+            <div>
+                <p class="px-3 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Portal</p>
+                <div class="space-y-1">
+                    {{ nav_item('/', 'dashboard', 'Overview', active == 'overview') }}
+                    {{ nav_item('/agents', 'dns', 'My Agents', active == 'agents') }}
+                    {{ nav_item('/events', 'shield', 'Security Events', active == 'events') }}
+                </div>
+            </div>
+            <div>
+                <p class="px-3 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reporting</p>
+                <div class="space-y-1">
+                    {{ nav_item('/posture', 'monitoring', 'Monthly Posture', active == 'posture') }}
+                    {{ nav_soon('summarize', 'Reports') }}
+                </div>
+            </div>
+            <div>
+                <p class="px-3 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Account</p>
+                <div class="space-y-1">
+                    {{ nav_soon('support_agent', 'Support') }}
+                    {{ nav_soon('person', 'My Account') }}
+                </div>
+            </div>
+        </nav>
+        <div class="p-4 border-t border-accent/10 space-y-2">
+            <p class="text-[10px] text-slate-500">Read-only view of your monitored servers, provided by your security operations team.</p>
+            {% if gate_enabled %}
+            <form method="POST" action="/logout">
+                <button type="submit" class="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-400 hover:text-accent hover:border-accent text-xs font-bold transition-colors">
+                    <span class="material-symbols-outlined text-[16px]">logout</span>Log out
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        <header class="h-16 border-b border-accent/10 flex items-center justify-between px-6 shrink-0">
+            <h2 class="text-lg font-bold">{% block page_title %}Overview{% endblock %}</h2>
+            <span class="text-[10px] font-bold uppercase tracking-widest border border-accent/40 text-accent rounded-full px-2.5 py-1">Client view</span>
+        </header>
+        <div class="flex-1 overflow-y-auto p-6 lg:p-8">
+            {% block main_content %}{% endblock %}
+        </div>
+    </main>
+</body>
+</html>
