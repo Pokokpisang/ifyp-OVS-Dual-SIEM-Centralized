@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Clients — OVS{% endblock %}
+{% block page_title %}Clients{% endblock %}
+
+{% block main_content %}
+<div class="p-4 lg:p-8 space-y-4 max-w-[1500px]">
+
+    <div>
+        <h1 class="text-lg font-bold">Clients</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+            Tenants whose servers you monitor. Assign agents on each client's detail page; the client portal
+            (separate environment) reads only its own tenant's data via a per-client API key.
+        </p>
+    </div>
+
+    {% if is_admin %}
+    <!-- Add client -->
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 p-4">
+        <p class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest mb-3">Add client</p>
+        <div class="flex flex-wrap items-end gap-3">
+            <label class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold text-slate-500 uppercase">Name</span>
+                <input id="c-name" type="text" placeholder="Northwind Cloud"
+                    class="w-48 bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary" />
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold text-slate-500 uppercase">Type</span>
+                <select id="c-org" class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2 py-1.5 text-xs">
+                    {% for t in org_types %}<option>{{ t }}</option>{% endfor %}
+                </select>
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold text-slate-500 uppercase">Contact name</span>
+                <input id="c-contact" type="text"
+                    class="w-40 bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs" />
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold text-slate-500 uppercase">Contact email</span>
+                <input id="c-email" type="text"
+                    class="w-52 bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2.5 py-1.5 text-xs font-mono" />
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class="text-[10px] font-bold text-slate-500 uppercase">Status</span>
+                <select id="c-status" class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2 py-1.5 text-xs">
+                    {% for s in statuses %}<option>{{ s }}</option>{% endfor %}
+                </select>
+            </label>
+            <button id="btn-add" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-primary text-white hover:bg-primary/90 transition-all">Add client</button>
+        </div>
+        <p id="form-msg" class="hidden text-xs mt-2"></p>
+    </div>
+    {% endif %}
+
+    <!-- Clients table -->
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[760px] text-left">
+                <thead class="bg-slate-200/60 dark:bg-background-dark/60">
+                    <tr class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
+                        <th class="px-4 py-2.5">Client</th>
+                        <th class="px-4 py-2.5 w-32">Type</th>
+                        <th class="px-4 py-2.5 w-40">Contact</th>
+                        <th class="px-4 py-2.5 w-36">Agents</th>
+                        <th class="px-4 py-2.5 w-28">Open alerts</th>
+                        <th class="px-4 py-2.5 w-28">Portal key</th>
+                        <th class="px-4 py-2.5 w-24">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="clients-tbody" class="divide-y divide-slate-200 dark:divide-slate-700/40 text-xs"></tbody>
+            </table>
+        </div>
+        <div id="clients-empty" class="hidden flex-col items-center gap-2 py-12 text-center">
+            <span class="material-symbols-outlined text-[40px] text-slate-300 dark:text-slate-700">group</span>
+            <p class="text-sm font-bold">No clients yet</p>
+            <p class="text-xs text-slate-500">{% if is_admin %}Add your first client above, then assign agents on its detail page.{% else %}An admin can add clients here.{% endif %}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const H = { 'Content-Type': 'application/json' };
+    const STATUS_STYLES = {
+        active: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+        trial: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
+        suspended: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+    };
+
+    function msg(text, ok) {
+        const el = document.getElementById('form-msg');
+        if (!el) return;
+        el.textContent = text;
+        el.className = `text-xs mt-2 ${ok ? 'text-emerald-400' : 'text-red-400'}`;
+        setTimeout(() => el.classList.add('hidden'), 6000);
+    }
+
+    async function load() {
+        const r = await fetch('/api/clients');
+        if (!r.ok) return;
+        const { clients } = await r.json();
+        const tb = document.getElementById('clients-tbody');
+        const empty = document.getElementById('clients-empty');
+        empty.classList.toggle('hidden', clients.length > 0);
+        empty.classList.toggle('flex', clients.length === 0);
+        tb.innerHTML = clients.map(c => `
+            <tr class="cursor-pointer hover:bg-slate-200/50 dark:hover:bg-background-dark/60 transition-colors"
+                onclick="location.href='/clients/${c.id}'">
+                <td class="px-4 py-2.5">
+                    <span class="font-bold text-primary">${esc(c.name)}</span>
+                    <div class="text-[10px] text-slate-500 font-mono">since ${esc(c.created_at || '—')}</div>
+                </td>
+                <td class="px-4 py-2.5 text-slate-500">${esc(c.org_type)}</td>
+                <td class="px-4 py-2.5">
+                    <div>${esc(c.contact_name || '—')}</div>
+                    <div class="text-[10px] text-slate-500 font-mono">${esc(c.contact_email || '')}</div>
+                </td>
+                <td class="px-4 py-2.5 font-mono">
+                    <span class="font-bold">${c.agents_total}</span>
+                    <span class="text-emerald-400 ml-1" title="online">●${c.agents_online}</span>
+                    <span class="text-slate-500 ml-1" title="offline">●${c.agents_offline}</span>
+                    ${c.agents_pending ? `<span class="text-amber-400 ml-1" title="pending">●${c.agents_pending}</span>` : ''}
+                </td>
+                <td class="px-4 py-2.5"><span class="font-mono font-bold ${c.open_alerts ? 'text-red-400' : 'text-slate-500'}">${c.open_alerts}</span></td>
+                <td class="px-4 py-2.5">${c.api_key_set
+                    ? '<span class="inline-flex px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border-emerald-500/20">ISSUED</span>'
+                    : '<span class="inline-flex px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold text-slate-400 bg-slate-500/10 border-slate-500/20">NONE</span>'}</td>
+                <td class="px-4 py-2.5"><span class="inline-flex px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold ${STATUS_STYLES[c.status] || ''}">${esc(c.status)}</span></td>
+            </tr>`).join('');
+    }
+
+    const addBtn = document.getElementById('btn-add');
+    if (addBtn) addBtn.addEventListener('click', async () => {
+        const r = await fetch('/api/clients', {
+            method: 'POST', headers: H,
+            body: JSON.stringify({
+                name: document.getElementById('c-name').value,
+                org_type: document.getElementById('c-org').value,
+                contact_name: document.getElementById('c-contact').value,
+                contact_email: document.getElementById('c-email').value,
+                status: document.getElementById('c-status').value,
+            }),
+        });
+        const out = await r.json().catch(() => ({}));
+        if (r.ok) {
+            document.getElementById('c-name').value = '';
+            msg('Client created ✓ — open it to assign agents and issue a portal key.', true);
+            load();
+        } else {
+            msg(out.detail || 'Failed to create client', false);
+        }
+    });
+
+    load();
+})();
+</script>
+{% endblock %}

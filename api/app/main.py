@@ -8,7 +8,7 @@ from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 from typing import List
 from . import models, db
-from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings, ai_triage, audit, notifications, users
+from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings, ai_triage, audit, notifications, users, clients
 from .routers import auth as auth_router_module
 from .auth.dependencies import require_html_auth, require_api_auth, require_admin_auth
 from .auth.exceptions import LoginRequiredException
@@ -135,6 +135,23 @@ def run_startup_migrations():
             "  updated_at TIMESTAMP DEFAULT NOW()"
             ")"
         ),
+        # v2.13.0 Tenant layer (Phase 4): clients + agent assignment
+        (
+            "CREATE TABLE IF NOT EXISTS clients ("
+            "  id SERIAL PRIMARY KEY,"
+            "  name VARCHAR UNIQUE NOT NULL,"
+            "  org_type VARCHAR DEFAULT 'Hosting Provider',"
+            "  contact_name VARCHAR DEFAULT '',"
+            "  contact_email VARCHAR DEFAULT '',"
+            "  status VARCHAR NOT NULL DEFAULT 'active',"
+            "  api_key_hash VARCHAR,"
+            "  api_key_rotated_at TIMESTAMP,"
+            "  created_at TIMESTAMP DEFAULT NOW(),"
+            "  updated_at TIMESTAMP DEFAULT NOW()"
+            ")"
+        ),
+        "ALTER TABLE agent_records ADD COLUMN IF NOT EXISTS client_id INTEGER",
+        "CREATE INDEX IF NOT EXISTS ix_agent_records_client_id ON agent_records (client_id)",
     ]
     with db.engine.connect() as conn:
         for sql in migrations:
@@ -223,6 +240,8 @@ app.include_router(audit.router)
 app.include_router(notifications.router)
 # Users & RBAC — per-route admin deps (mixed HTML page + JSON endpoints)
 app.include_router(users.router)
+# Clients (tenants) — per-route deps (analyst read, admin manage)
+app.include_router(clients.router)
 
 # Protected JSON API routes — unauthenticated request → 401
 # api_metrics: POST /api/metrics is agent-key protected (per-route), other endpoints need session

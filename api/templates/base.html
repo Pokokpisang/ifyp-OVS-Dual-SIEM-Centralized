@@ -129,7 +129,7 @@
                     {{ nav_item('/logs', 'description', 'Logs', request.url.path == '/logs') }}
                     {% if role in ('admin', 'analyst') %}
                         {{ nav_item('/network', 'lan', 'Network', request.url.path == '/network') }}
-                        {{ nav_soon('group', 'Clients') }}
+                        {{ nav_item('/clients', 'group', 'Clients', request.url.path.startswith('/clients')) }}
                     {% endif %}
                 </div>
             </div>
