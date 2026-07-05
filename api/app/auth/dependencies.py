@@ -56,6 +56,27 @@ def require_analyst_auth(request: Request) -> None:
         raise HTTPException(status_code=403, detail="Analyst or admin access required.")
 
 
+def require_client_key(
+    x_client_key: Optional[str] = Header(None, alias="X-Client-Key"),
+    database: Session = Depends(db_module.get_db),
+):
+    """Authenticate a client-portal request by its X-Client-Key header.
+
+    Returns the ACTIVE ``models.Client`` row (suspended/trial clients and
+    revoked keys fail closed with the same 401 — no state disclosure).
+    Portal endpoints are read-only; this dependency never grants dashboard
+    session semantics.
+    """
+    from ..services.client_service import get_client_by_api_key
+
+    if not x_client_key:
+        raise HTTPException(status_code=401, detail="X-Client-Key header is required.")
+    client = get_client_by_api_key(database, x_client_key)
+    if client is None:
+        raise HTTPException(status_code=401, detail="Invalid or inactive client key.")
+    return client
+
+
 def require_agent_key(
     x_agent_key: Optional[str] = Header(None, alias="X-Agent-Key"),
     database: Session = Depends(db_module.get_db),

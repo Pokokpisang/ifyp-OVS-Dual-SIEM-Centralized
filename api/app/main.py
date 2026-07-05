@@ -8,7 +8,7 @@ from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 from typing import List
 from . import models, db
-from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings, ai_triage, audit, notifications, users, clients
+from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings, ai_triage, audit, notifications, users, clients, portal
 from .routers import auth as auth_router_module
 from .auth.dependencies import require_html_auth, require_api_auth, require_admin_auth
 from .auth.exceptions import LoginRequiredException
@@ -242,6 +242,8 @@ app.include_router(notifications.router)
 app.include_router(users.router)
 # Clients (tenants) — per-route deps (analyst read, admin manage)
 app.include_router(clients.router)
+# Client portal API — READ-ONLY, X-Client-Key authenticated, tenant-scoped
+app.include_router(portal.router)
 
 # Protected JSON API routes — unauthenticated request → 401
 # api_metrics: POST /api/metrics is agent-key protected (per-route), other endpoints need session

@@ -19,8 +19,9 @@ from starlette.requests import Request
 from .session_store import validate_session
 from ..db import SessionLocal
 
-# Prefix exemptions: any path starting with these is exempt (agent ingestion, static)
-_EXEMPT_PREFIXES = ("/ingest/", "/static/")
+# Prefix exemptions: any path starting with these is exempt
+# (agent ingestion, static assets, client-portal API — key-authenticated)
+_EXEMPT_PREFIXES = ("/ingest/", "/static/", "/api/portal/")
 
 # Exact-match exemptions: only these specific paths are exempt
 _EXEMPT_EXACT = frozenset({
