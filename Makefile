@@ -2,9 +2,12 @@
 
 up: build-agent
 	@echo "🧪 Cleaning up potential container conflicts..."
-	@-docker rm -f siem_api 2>/dev/null || true
-	@echo "🚀 Starting SIEM infrastructure (API, DB, OpenSearch, Data Prepper)..."
+	@-docker rm -f siem_api ovs_portal 2>/dev/null || true
+	@test -f portal/.env || (cp portal/env.example portal/.env && echo "📝 Created portal/.env from template — set CLIENT_API_KEY after issuing a portal key (Assets → Clients).")
+	@echo "🚀 Starting SIEM infrastructure (API, DB, OpenSearch, Data Prepper, Client Portal)..."
 	./docker-compose-v2 up -d --build
+	@echo "🌐 SOC dashboard:  http://localhost:8000"
+	@echo "🌐 Client portal:  http://localhost:8100  (needs CLIENT_API_KEY in portal/.env)"
 	@echo "🛡️  Starting Go Agent in the background..."
 	@echo "   (You may be prompted for your sudo password to allow reading /var/log/syslog)"
 	@sudo -v
@@ -35,7 +38,7 @@ build-agent:
 
 down:
 	@echo "🛑 Stopping SIEM infrastructure..."
-	@-docker rm -f siem_api 2>/dev/null || true
+	@-docker rm -f siem_api ovs_portal 2>/dev/null || true
 	./docker-compose-v2 down
 	@echo "🛑 Stopping Go Agent process..."
 	@-sudo pkill -f "./agent/agent" 2>/dev/null || true
