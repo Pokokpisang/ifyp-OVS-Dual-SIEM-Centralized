@@ -61,7 +61,7 @@
     <!-- ================================================================= -->
     {% if localhost_warning %}
     <div id="localhost-warning"
-         class="flex items-start gap-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+         class="flex items-start gap-3 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400">
       <span class="material-symbols-outlined text-amber-500 mt-0.5 shrink-0">warning</span>
       <div>
         <p class="font-semibold text-sm">Localhost Detected</p>
@@ -75,7 +75,7 @@
     <!-- ================================================================= -->
     {% if created_agent and install_command %}
     <div id="success-section"
-         class="bg-white dark:bg-card-dark rounded-xl border border-green-500/30 shadow-sm overflow-hidden">
+         class="bg-white dark:bg-card-dark rounded-lg border border-green-500/30 shadow-sm overflow-hidden">
       <!-- Header -->
       <div class="flex items-center gap-3 px-6 py-4 border-b border-green-500/20 bg-green-500/5">
         <div class="p-2 rounded-lg bg-green-500/10 text-green-500">
@@ -100,7 +100,7 @@
           </p>
           <div class="relative group">
             <pre id="install-command-block"
-                 class="bg-slate-900 dark:bg-black rounded-xl p-4 font-mono text-sm text-green-400 overflow-x-auto whitespace-pre leading-relaxed border border-slate-700">{{ install_command }}</pre>
+                 class="bg-slate-900 dark:bg-black rounded-lg p-4 font-mono text-sm text-green-400 overflow-x-auto whitespace-pre leading-relaxed border border-slate-700">{{ install_command }}</pre>
             <button onclick="copyCommand()"
                     id="copy-btn"
                     class="absolute top-3 right-3 p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all flex items-center gap-1.5 text-xs font-semibold">
@@ -147,7 +147,7 @@
         <!-- ============================================================= -->
         <!-- Agent Information                                             -->
         <!-- ============================================================= -->
-        <section class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm flex flex-col gap-4">
+        <section class="bg-white dark:bg-card-dark p-6 rounded-lg border border-primary/5 shadow-sm flex flex-col gap-4">
           <div class="flex items-center gap-2 mb-1">
             <span class="p-1.5 rounded-lg bg-primary/10 text-primary">
               <span class="material-symbols-outlined text-[18px]">badge</span>
@@ -163,7 +163,7 @@
               <input id="agent_name" name="agent_name" type="text" required
                      placeholder="e.g. prod-web-01"
                      value=""
-                     class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
+                     class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-line rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
             </div>
 
             <div>
@@ -172,7 +172,7 @@
               </label>
               <div class="relative">
                 <select id="group" name="group"
-                        class="w-full appearance-none bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all">
+                        class="w-full appearance-none bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-line rounded-lg px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all">
                   <option value="Default Group">Default Group</option>
                   <option value="Production Servers">Production Servers</option>
                   <option value="Staging">Staging</option>
@@ -188,7 +188,7 @@
               </label>
               <input id="tags" name="tags" type="text"
                      placeholder="web, production, nginx (comma-separated)"
-                     class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
+                     class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-line rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
             </div>
           </div>
         </section>
@@ -196,7 +196,7 @@
         <!-- ============================================================= -->
         <!-- Target Server                                                 -->
         <!-- ============================================================= -->
-        <section class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm flex flex-col gap-4">
+        <section class="bg-white dark:bg-card-dark p-6 rounded-lg border border-primary/5 shadow-sm flex flex-col gap-4">
           <div class="flex items-center gap-2 mb-1">
             <span class="p-1.5 rounded-lg bg-primary/10 text-primary">
               <span class="material-symbols-outlined text-[18px]">dns</span>
@@ -210,7 +210,7 @@
               <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                 Operating System
               </label>
-              <div class="flex items-center gap-2 bg-slate-100 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5 opacity-70 cursor-not-allowed">
+              <div class="flex items-center gap-2 bg-slate-100 dark:bg-background-dark border border-slate-200 dark:border-line rounded-lg px-4 py-2.5 opacity-70 cursor-not-allowed">
                 <span class="material-symbols-outlined text-sm text-slate-500">terminal</span>
                 <span class="text-sm font-medium">Linux</span>
                 <span class="ml-auto text-xs text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">Only supported OS</span>
@@ -223,7 +223,7 @@
               </label>
               <div class="relative">
                 <select id="distribution" name="distribution"
-                        class="w-full appearance-none bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all">
+                        class="w-full appearance-none bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-line rounded-lg px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all">
                   <option value="Ubuntu">Ubuntu</option>
                   <option value="Debian">Debian</option>
                   <option value="Rocky Linux">Rocky Linux</option>
@@ -240,7 +240,7 @@
               </label>
               <div class="relative">
                 <select id="architecture" name="architecture"
-                        class="w-full appearance-none bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all">
+                        class="w-full appearance-none bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-line rounded-lg px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all">
                   <option value="x86_64">x86_64 (AMD64)</option>
                   <option value="arm64">ARM64 (AArch64)</option>
                 </select>
@@ -253,7 +253,7 @@
         <!-- ============================================================= -->
         <!-- Connection Configuration (full width)                         -->
         <!-- ============================================================= -->
-        <section class="md:col-span-2 bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm flex flex-col gap-4">
+        <section class="md:col-span-2 bg-white dark:bg-card-dark p-6 rounded-lg border border-primary/5 shadow-sm flex flex-col gap-4">
           <div class="flex items-center gap-2 mb-1">
             <span class="p-1.5 rounded-lg bg-primary/10 text-primary">
               <span class="material-symbols-outlined text-[18px]">hub</span>
@@ -266,7 +266,7 @@
               <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                 SIEM Server Address
               </label>
-              <div class="flex items-center gap-2 bg-slate-100 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5">
+              <div class="flex items-center gap-2 bg-slate-100 dark:bg-background-dark border border-slate-200 dark:border-line rounded-lg px-4 py-2.5">
                 <span class="material-symbols-outlined text-sm text-primary">cloud</span>
                 <span class="text-sm font-mono text-slate-700 dark:text-slate-200">{{ siem_server_address }}</span>
                 <span class="ml-auto text-xs text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">Auto-detected</span>
@@ -280,7 +280,7 @@
               <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                 API Port
               </label>
-              <div class="flex items-center gap-2 bg-slate-100 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5">
+              <div class="flex items-center gap-2 bg-slate-100 dark:bg-background-dark border border-slate-200 dark:border-line rounded-lg px-4 py-2.5">
                 <span class="material-symbols-outlined text-sm text-slate-400">settings_ethernet</span>
                 <span class="text-sm font-mono">{{ siem_port }}</span>
               </div>
@@ -290,7 +290,7 @@
               <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                 Registration Token
               </label>
-              <div class="flex items-center gap-2 bg-slate-100 dark:bg-background-dark border border-slate-200 dark:border-primary/10 rounded-lg px-4 py-2.5">
+              <div class="flex items-center gap-2 bg-slate-100 dark:bg-background-dark border border-slate-200 dark:border-line rounded-lg px-4 py-2.5">
                 <span class="material-symbols-outlined text-sm text-slate-400">key</span>
                 <span class="text-sm text-slate-500 italic">Generated automatically when you click "Register Agent"</span>
               </div>
@@ -301,7 +301,7 @@
         <!-- ============================================================= -->
         <!-- Optional Monitoring Features                                  -->
         <!-- ============================================================= -->
-        <section class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm flex flex-col gap-4">
+        <section class="bg-white dark:bg-card-dark p-6 rounded-lg border border-primary/5 shadow-sm flex flex-col gap-4">
           <div class="flex items-center gap-2 mb-1">
             <span class="p-1.5 rounded-lg bg-primary/10 text-primary">
               <span class="material-symbols-outlined text-[18px]">toggle_on</span>
@@ -311,7 +311,7 @@
 
           <div class="space-y-3">
             <!-- Enable Logs -->
-            <label class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-background-dark border border-transparent hover:border-primary/10 cursor-pointer transition-colors">
+            <label class="flex items-center justify-between p-3.5 rounded-lg bg-slate-50 dark:bg-background-dark border border-transparent hover:border-primary/10 cursor-pointer transition-colors">
               <div class="flex items-center gap-3">
                 <span class="material-symbols-outlined text-slate-400 text-[20px]">description</span>
                 <div>
@@ -328,7 +328,7 @@
             </label>
 
             <!-- Enable FIM -->
-            <label class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-background-dark border border-transparent hover:border-primary/10 cursor-pointer transition-colors">
+            <label class="flex items-center justify-between p-3.5 rounded-lg bg-slate-50 dark:bg-background-dark border border-transparent hover:border-primary/10 cursor-pointer transition-colors">
               <div class="flex items-center gap-3">
                 <span class="material-symbols-outlined text-slate-400 text-[20px]">lock_reset</span>
                 <div>
@@ -345,7 +345,7 @@
             </label>
 
             <!-- Enable Metrics -->
-            <label class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-background-dark border border-transparent hover:border-primary/10 cursor-pointer transition-colors">
+            <label class="flex items-center justify-between p-3.5 rounded-lg bg-slate-50 dark:bg-background-dark border border-transparent hover:border-primary/10 cursor-pointer transition-colors">
               <div class="flex items-center gap-3">
                 <span class="material-symbols-outlined text-slate-400 text-[20px]">monitoring</span>
                 <div>
@@ -366,7 +366,7 @@
         <!-- ============================================================= -->
         <!-- Quick Reference                                               -->
         <!-- ============================================================= -->
-        <section class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm flex flex-col gap-3">
+        <section class="bg-white dark:bg-card-dark p-6 rounded-lg border border-primary/5 shadow-sm flex flex-col gap-3">
           <div class="flex items-center gap-2 mb-1">
             <span class="p-1.5 rounded-lg bg-primary/10 text-primary">
               <span class="material-symbols-outlined text-[18px]">help_outline</span>
@@ -406,7 +406,7 @@
       <!-- ============================================================= -->
       <div class="mt-6 flex items-center justify-end gap-4 pb-8">
         <a href="/agents"
-           class="px-6 py-2.5 rounded-lg border border-slate-200 dark:border-primary/10 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-card-dark transition-colors">
+           class="px-6 py-2.5 rounded-lg border border-slate-200 dark:border-line font-semibold text-sm hover:bg-slate-100 dark:hover:bg-card-dark transition-colors">
           Cancel
         </a>
         <button type="submit" id="register-btn"

@@ -55,18 +55,9 @@
                 <span class="text-slate-400 text-sm">ID: #{{ alert.id }}</span>
                 <span id="hdr-mitre" class="hidden px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-mono font-bold border border-primary/20"></span>
             </div>
-            <h3 id="hdr-title" class="text-2xl lg:text-3xl font-bold">{{ alert.title }}</h3>
+            <h3 id="hdr-title" class="text-xl lg:text-2xl font-bold">{{ alert.title }}</h3>
         </div>
-        <div class="flex gap-2 shrink-0">
-            <button disabled title="Not implemented — backend action required"
-                class="px-4 py-2 bg-primary/20 text-primary/40 rounded-lg text-sm font-bold cursor-not-allowed border border-primary/10 flex items-center gap-2">
-                <span class="material-symbols-outlined text-[16px]">shield_lock</span>Isolate Host
-            </button>
-            <button disabled title="Not implemented — backend action required"
-                class="px-4 py-2 bg-slate-700/50 text-slate-400/40 rounded-lg text-sm font-bold cursor-not-allowed border border-slate-600/10 flex items-center gap-2">
-                <span class="material-symbols-outlined text-[16px]">block</span>Block IP
-            </button>
-        </div>
+
     </div>
 
     <!-- 3-column grid -->
@@ -76,7 +67,7 @@
         <div class="lg:col-span-2 space-y-8">
 
             <!-- Card: Alert Details -->
-            <section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+            <section class="bg-primary/5 border border-primary/10 rounded-lg p-6">
                 <h4 class="text-sm font-bold text-primary mb-6 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">info</span>Alert Details
                 </h4>
@@ -116,13 +107,13 @@
             </section>
 
             <!-- Card: Detection Details (YAML Metadata) -->
-            <section id="yaml-metadata-section" class="hidden bg-violet-500/5 border border-violet-500/20 rounded-xl p-6">
+            <section id="yaml-metadata-section" class="hidden bg-violet-500/5 border border-violet-500/20 rounded-lg p-6">
                 <h4 class="text-sm font-bold text-violet-400 mb-6 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">analytics</span>Detection Metadata
                 </h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <!-- Risk Score Gauge -->
-                    <div class="flex flex-col items-center justify-center p-4 bg-background-dark/50 rounded-xl border border-white/5">
+                    <div class="flex flex-col items-center justify-center p-4 bg-background-dark/50 rounded-lg border border-white/5">
                         <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Risk Confidence</p>
                         <div class="relative flex items-center justify-center">
                             <svg class="w-32 h-32 transform -rotate-90">
@@ -196,7 +187,7 @@
             </section>
 
             <!-- Card: Analyst Assessment -->
-            <section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+            <section class="bg-primary/5 border border-primary/10 rounded-lg p-6">
                 <h4 class="text-sm font-bold text-primary mb-6 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">rate_review</span>Analyst Assessment
                 </h4>
@@ -232,7 +223,7 @@
             </section>
 
             <!-- Card: AI Alert Triage (v2.5.0) -->
-            <section id="ai-triage-card" class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+            <section id="ai-triage-card" class="bg-primary/5 border border-primary/10 rounded-lg p-6">
                 <h4 class="text-sm font-bold text-primary mb-4 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">psychology</span>AI Alert Triage
                     <span class="text-[10px] font-normal text-slate-500 ml-1">(Advisory Only — AI output requires analyst review)</span>
@@ -277,7 +268,7 @@
             </section>
 
             <!-- Card: SOAR Response -->
-            <section id="soar-card" class="bg-primary/5 border border-primary/10 rounded-xl p-6 hidden">
+            <section id="soar-card" class="bg-primary/5 border border-primary/10 rounded-lg p-6 hidden">
                 <h4 class="text-sm font-bold text-primary mb-4 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">security</span>SOAR Response
                     <span id="soar-mode-badge" class="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold border uppercase bg-slate-500/10 text-slate-400 border-slate-500/20 ml-auto"></span>
@@ -309,7 +300,7 @@
             </section>
 
             <!-- Card: Correlated Events -->
-            <section class="bg-primary/5 border border-primary/10 rounded-xl overflow-hidden">
+            <section class="bg-primary/5 border border-primary/10 rounded-lg overflow-hidden">
                 <div class="p-6 border-b border-primary/10 flex justify-between items-center">
                     <h4 class="text-sm font-bold text-primary uppercase flex items-center gap-2">
                         <span class="material-symbols-outlined text-sm">timeline</span>Correlated Events
@@ -346,7 +337,7 @@
         <div class="space-y-8">
 
             <!-- Card: Timeline -->
-            <section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+            <section class="bg-primary/5 border border-primary/10 rounded-lg p-6">
                 <h4 class="text-sm font-bold text-primary mb-6 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">schedule</span>Timeline
                 </h4>
@@ -355,7 +346,7 @@
             </section>
 
             <!-- Card: Source Intelligence -->
-            <section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+            <section class="bg-primary/5 border border-primary/10 rounded-lg p-6">
                 <h4 class="text-sm font-bold text-primary mb-6 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">travel_explore</span>Source Intelligence
                 </h4>
@@ -383,7 +374,7 @@
             </section>
 
             <!-- Card: Endpoint Health -->
-            <section id="endpoint-health-card" class="bg-primary/5 border border-primary/10 rounded-xl p-6">
+            <section id="endpoint-health-card" class="bg-primary/5 border border-primary/10 rounded-lg p-6">
                 <h4 class="text-sm font-bold text-primary mb-6 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">monitor_heart</span>Endpoint Health
                 </h4>
@@ -391,25 +382,6 @@
                 <div id="health-unavailable" class="hidden text-sm text-slate-500 text-center py-4">
                     <span class="material-symbols-outlined text-3xl text-slate-600 block mb-2">sensors_off</span>
                     No metrics available for this host.
-                </div>
-            </section>
-
-            <!-- Card: Active Responses (all disabled) -->
-            <section class="bg-primary/5 border border-primary/10 rounded-xl p-6">
-                <h4 class="text-sm font-bold text-primary mb-4 uppercase flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">crisis_alert</span>Active Responses
-                </h4>
-                <p class="text-[10px] text-slate-500 mb-4">Backend actions not yet implemented.</p>
-                <div class="grid grid-cols-1 gap-2">
-                    <button disabled class="w-full py-2 bg-primary/5 text-primary/30 text-xs font-bold rounded flex items-center justify-center gap-2 border border-primary/10 cursor-not-allowed">
-                        <span class="material-symbols-outlined text-sm">shield_lock</span>Isolate Host
-                    </button>
-                    <button disabled class="w-full py-2 bg-primary/5 text-primary/30 text-xs font-bold rounded flex items-center justify-center gap-2 border border-primary/10 cursor-not-allowed">
-                        <span class="material-symbols-outlined text-sm">block</span>Block IP
-                    </button>
-                    <button disabled class="w-full py-2 bg-primary/5 text-red-400/20 text-xs font-bold rounded flex items-center justify-center gap-2 border border-red-500/10 cursor-not-allowed">
-                        <span class="material-symbols-outlined text-sm">key_off</span>Revoke Credentials
-                    </button>
                 </div>
             </section>
 
