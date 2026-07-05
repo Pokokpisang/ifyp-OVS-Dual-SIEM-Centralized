@@ -1,156 +1,112 @@
 {% extends "base.html" %}
 
-{% block title %}OVS SIEM - Dashboard Overview{% endblock %}
+{% block title %}Overview — OVS{% endblock %}
 
-{% block page_title %}Dashboard Overview{% endblock %}
+{% block page_title %}Overview{% endblock %}
 
 {% block header_actions %}
-<div class="flex items-center gap-4">
-    <select id="hostSelect" class="bg-slate-100 dark:bg-card-dark border-none rounded-lg py-1.5 text-sm focus:ring-1 focus:ring-primary text-slate-700 dark:text-slate-300">
-        <option value="">All Hosts</option>
-        {% for host in hosts %}
-        <option value="{{ host }}">{{ host }}</option>
-        {% endfor %}
-    </select>
-    <button onclick="updateData()" class="p-2 text-slate-500 hover:text-primary transition-colors" title="Refresh data">
-        <span class="material-symbols-outlined">refresh</span>
-    </button>
-</div>
-<div class="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[11px] font-bold border border-emerald-500/20">
-    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-    LIVE STATUS
-</div>
+<select id="hostSelect" class="bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-line rounded-md px-2 py-1.5 text-xs focus:ring-1 focus:ring-primary text-slate-700 dark:text-text-muted">
+    <option value="">All hosts</option>
+    {% for host in hosts %}
+    <option value="{{ host }}">{{ host }}</option>
+    {% endfor %}
+</select>
+<button onclick="updateData()" class="p-1.5 text-slate-500 dark:text-text-dim hover:text-primary transition-colors" title="Refresh data">
+    <span class="material-symbols-outlined text-[18px]">refresh</span>
+</button>
 {% endblock %}
 
 {% block main_content %}
-<div class="p-4 lg:p-8 space-y-6">
+<div class="p-4 lg:p-6 space-y-3 max-w-[1680px]">
+
     {% if silent_agents %}
     <!-- Silent agents banner -->
-    <div class="flex items-center justify-between p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+    <div class="flex items-center justify-between px-4 py-3 rounded-lg bg-severity-warning/10 border border-severity-warning/30">
         <div class="flex items-center gap-3">
-            <div class="h-10 w-10 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400">
-                <span class="material-symbols-outlined">sensors_off</span>
-            </div>
+            <span class="material-symbols-outlined text-severity-warning text-[20px]">sensors_off</span>
             <div>
-                <h3 class="text-sm font-bold text-amber-300">{{ silent_agents|length }} agent{{ 's' if silent_agents|length != 1 }} silent</h3>
-                <p class="text-xs text-slate-500 dark:text-slate-400">
+                <h3 class="text-sm font-bold text-severity-warning">{{ silent_agents|length }} agent{{ 's' if silent_agents|length != 1 }} silent</h3>
+                <p class="text-xs text-slate-500 dark:text-text-muted">
                     No heartbeat past the silence threshold:
                     <span class="font-mono">{{ silent_agents[:5]|join(', ') }}{% if silent_agents|length > 5 %} +{{ silent_agents|length - 5 }} more{% endif %}</span>
                 </p>
             </div>
         </div>
-        <a href="/agents" class="text-xs font-bold text-amber-400 hover:underline whitespace-nowrap">View Agents →</a>
+        <a href="/agents" class="text-xs font-bold text-severity-warning hover:underline whitespace-nowrap">View Agents →</a>
     </div>
     {% endif %}
 
-    <!-- Summary Cards (KPIs) -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
-            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">CPU Usage</span>
-            <div class="flex items-end justify-between">
-                <span class="text-3xl font-bold tracking-tight" id="kpi-cpu">-</span>
-                <!-- <span class="text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">+5%</span> -->
-            </div>
-            <!-- <div class="mt-4 h-1.5 w-full bg-slate-200 dark:bg-background-dark rounded-full overflow-hidden">
-                <div class="h-full bg-primary" id="bar-cpu" style="width: 0%"></div>
-            </div> -->
+    <!-- Host metrics KPI row -->
+    <div class="rounded-lg bg-white dark:bg-card-dark border border-slate-200 dark:border-line grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-slate-200 dark:divide-line">
+        <div class="px-4 py-3 flex flex-col gap-0.5">
+            <span class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">CPU usage</span>
+            <span class="text-[21px] font-semibold tabular-nums" id="kpi-cpu">-</span>
+            <span class="text-[10px] text-slate-400 dark:text-text-dim">latest sample</span>
         </div>
-
-        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
-            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">RAM Usage</span>
-            <div class="flex items-end justify-between">
-                <span class="text-3xl font-bold tracking-tight text-severity-warning" id="kpi-ram">-</span>
-                <!-- <span class="text-xs font-medium text-severity-critical bg-severity-critical/10 px-2 py-0.5 rounded-full">+12%</span> -->
-            </div>
-            <!-- <div class="mt-4 h-1.5 w-full bg-slate-200 dark:bg-background-dark rounded-full overflow-hidden">
-                <div class="h-full bg-severity-warning" id="bar-ram" style="width: 0%"></div>
-            </div> -->
+        <div class="px-4 py-3 flex flex-col gap-0.5">
+            <span class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">RAM usage</span>
+            <span class="text-[21px] font-semibold tabular-nums text-severity-warning" id="kpi-ram">-</span>
+            <span class="text-[10px] text-slate-400 dark:text-text-dim">latest sample</span>
         </div>
-
-        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
-            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Net In</span>
-            <div class="flex items-end justify-between">
-                <span class="text-3xl font-bold tracking-tight" id="kpi-net-in">-</span>
-                <!-- <span class="text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">-2%</span> -->
-            </div>
-             <!-- <div class="mt-4 h-1.5 w-full bg-slate-200 dark:bg-background-dark rounded-full overflow-hidden">
-                <div class="h-full bg-slate-400" id="bar-net-in" style="width: 0%"></div>
-            </div> -->
+        <div class="px-4 py-3 flex flex-col gap-0.5">
+            <span class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Net in</span>
+            <span class="text-[21px] font-semibold tabular-nums" id="kpi-net-in">-</span>
+            <span class="text-[10px] text-slate-400 dark:text-text-dim">bytes/interval</span>
         </div>
-
-        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
-            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Net Out</span>
-            <div class="flex items-end justify-between">
-                <span class="text-3xl font-bold tracking-tight" id="kpi-net-out">-</span>
-                <!-- <span class="text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">-2%</span> -->
-            </div>
-             <!-- <div class="mt-4 h-1.5 w-full bg-slate-200 dark:bg-background-dark rounded-full overflow-hidden">
-                <div class="h-full bg-slate-400" id="bar-net-out" style="width: 0%"></div>
-            </div> -->
+        <div class="px-4 py-3 flex flex-col gap-0.5">
+            <span class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Net out</span>
+            <span class="text-[21px] font-semibold tabular-nums" id="kpi-net-out">-</span>
+            <span class="text-[10px] text-slate-400 dark:text-text-dim">bytes/interval</span>
         </div>
     </div>
 
-    <!-- Threat KPI Row -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="p-5 rounded-xl bg-red-500/5 border border-red-500/20 flex flex-col gap-2">
-            <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-red-400 text-base">gpp_bad</span>
-                <span class="text-[10px] font-bold text-red-400/80 uppercase tracking-widest">MITRE Detections</span>
-            </div>
+    <!-- Threat KPI row -->
+    <div class="rounded-lg bg-white dark:bg-card-dark border border-slate-200 dark:border-line grid grid-cols-2 md:grid-cols-3 divide-x divide-y md:divide-y-0 divide-slate-200 dark:divide-line">
+        <div class="px-4 py-3 flex flex-col gap-0.5">
             <div class="flex items-center justify-between">
-                <span class="text-3xl font-black tracking-tight text-red-400" id="kpi-mitre">-</span>
-                <button onclick="markAllRead()" class="px-2 py-0.5 rounded text-[9px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all">MARK READ</button>
+                <span class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">MITRE detections</span>
+                <button onclick="markAllRead()" class="px-1.5 py-0.5 rounded font-mono text-[9px] font-bold text-severity-critical border border-severity-critical/30 hover:bg-severity-critical hover:text-white transition-all">MARK READ</button>
             </div>
-            <span class="text-[10px] text-slate-500">Total MITRE ATT&amp;CK hits</span>
+            <span class="text-[21px] font-semibold tabular-nums text-severity-critical" id="kpi-mitre">-</span>
+            <span class="text-[10px] text-slate-400 dark:text-text-dim">ATT&amp;CK-mapped hits</span>
         </div>
-        <div class="p-5 rounded-xl bg-amber-500/5 border border-amber-500/20 flex flex-col gap-2">
-            <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-amber-400 text-base">notifications_active</span>
-                <span class="text-[10px] font-bold text-amber-400/80 uppercase tracking-widest">High Severity Alerts</span>
-            </div>
+        <div class="px-4 py-3 flex flex-col gap-0.5">
             <div class="flex items-center justify-between">
-                <span class="text-3xl font-black tracking-tight text-amber-400" id="kpi-high-severity">-</span>
-                <button onclick="markAllRead()" class="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all">MARK READ</button>
+                <span class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">High severity</span>
+                <button onclick="markAllRead()" class="px-1.5 py-0.5 rounded font-mono text-[9px] font-bold text-severity-warning border border-severity-warning/30 hover:bg-severity-warning hover:text-white transition-all">MARK READ</button>
             </div>
-            <span class="text-[10px] text-slate-500">Critical & High events detected</span>
+            <span class="text-[21px] font-semibold tabular-nums text-severity-warning" id="kpi-high-severity">-</span>
+            <span class="text-[10px] text-slate-400 dark:text-text-dim">critical &amp; high events</span>
         </div>
-        <div class="p-5 rounded-xl bg-violet-500/5 border border-violet-500/20 flex flex-col gap-2 col-span-2">
-            <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-violet-400 text-base">shield</span>
-                <span class="text-[10px] font-bold text-violet-400/80 uppercase tracking-widest">Active Coverage</span>
-            </div>
-            <div class="flex items-center gap-3 mt-1">
-                <span class="text-3xl font-black tracking-tight text-violet-300">{{ active_rule_count }}</span>
-                <span class="text-[11px] text-slate-400">active MITRE ATT&amp;CK-mapped detection rules</span>
-            </div>
+        <div class="px-4 py-3 flex flex-col gap-0.5">
+            <span class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Active coverage</span>
+            <span class="text-[21px] font-semibold tabular-nums text-violet-400">{{ active_rule_count }}</span>
             {% if request.state.user and request.state.user.role == 'admin' %}
-            <a href="/detection/rules" class="text-[10px] font-bold text-violet-400 hover:underline mt-1">View detection rules →</a>
+            <a href="/detection/rules" class="text-[10px] font-bold text-violet-400 hover:underline">MITRE ATT&amp;CK-mapped rules →</a>
             {% else %}
-            <p class="text-[10px] text-slate-500 mt-1">YAML detection-as-code rule engine</p>
+            <span class="text-[10px] text-slate-400 dark:text-text-dim">MITRE ATT&amp;CK-mapped rules</span>
             {% endif %}
         </div>
     </div>
 
-    <!-- Dashboard Panels -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Panels -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <!-- Charts -->
-        <div class="lg:col-span-2 space-y-6">
-             <!-- CPU Chart -->
-             <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-sm font-bold">CPU & RAM Usage</h3>
-                    <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Live</span>
+        <div class="lg:col-span-2 space-y-3">
+             <div class="p-4 rounded-lg bg-white dark:bg-card-dark border border-slate-200 dark:border-line flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-bold">CPU &amp; RAM usage</h3>
+                    <span class="text-[10px] font-mono text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Live · 5s</span>
                 </div>
                 <div class="relative w-full h-64">
                     <canvas id="cpuChart"></canvas>
                 </div>
             </div>
 
-            <!-- NET Chart -->
-            <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-sm font-bold">Network Traffic</h3>
-                    <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Live</span>
+            <div class="p-4 rounded-lg bg-white dark:bg-card-dark border border-slate-200 dark:border-line flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-bold">Network traffic</h3>
+                    <span class="text-[10px] font-mono text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Live · 5s</span>
                 </div>
                 <div class="relative w-full h-64">
                     <canvas id="netChart"></canvas>
@@ -158,19 +114,18 @@
             </div>
         </div>
 
-        <!-- Security Alerts / Threat Feed -->
-        <div class="lg:col-span-1 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col h-full max-h-[800px] overflow-hidden">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-primary/10">
+        <!-- Threat feed -->
+        <div class="lg:col-span-1 rounded-lg bg-white dark:bg-card-dark border border-slate-200 dark:border-line flex flex-col h-full max-h-[800px] overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-line">
                 <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-violet-400 text-base">gpp_bad</span>
-                    <h3 class="text-sm font-bold">MITRE Threat Feed</h3>
-                    <button onclick="markAllRead()" class="ml-2 px-2 py-0.5 rounded text-[9px] font-bold bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-colors">MARK ALL READ</button>
+                    <span class="material-symbols-outlined text-violet-400 text-[16px]">gpp_bad</span>
+                    <h3 class="text-sm font-bold">MITRE threat feed</h3>
                 </div>
-                <a href="/alerts" class="text-xs font-bold text-primary hover:underline">View All →</a>
+                <a href="/alerts" class="text-xs font-bold text-primary hover:underline">View all →</a>
             </div>
-            <div class="flex-1 overflow-y-auto p-3 space-y-2" id="alert-container">
-                <div class="p-4 rounded-lg bg-slate-800/30 border border-slate-700/30">
-                     <p class="text-xs text-slate-400 text-center py-4">Waiting for MITRE detections...</p>
+            <div class="flex-1 overflow-y-auto p-2.5 space-y-2" id="alert-container">
+                <div class="p-4 rounded-lg border border-slate-200 dark:border-line">
+                     <p class="text-xs text-slate-400 dark:text-text-dim text-center py-4">Waiting for MITRE detections…</p>
                 </div>
             </div>
         </div>
@@ -179,16 +134,9 @@
 
 <style>
 /* Custom styled scrollbars for alert container */
-#alert-container::-webkit-scrollbar {
-    width: 4px;
-}
-#alert-container::-webkit-scrollbar-track {
-    background: transparent;
-}
-#alert-container::-webkit-scrollbar-thumb {
-    background: #333;
-    border-radius: 4px;
-}
+#alert-container::-webkit-scrollbar { width: 4px; }
+#alert-container::-webkit-scrollbar-track { background: transparent; }
+#alert-container::-webkit-scrollbar-thumb { background: #3a3640; border-radius: 4px; }
 </style>
 {% endblock %}
 

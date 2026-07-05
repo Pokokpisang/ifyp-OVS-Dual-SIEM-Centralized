@@ -4,43 +4,43 @@
 {% block page_title %}SOAR History{% endblock %}
 
 {% block main_content %}
-<div class="p-4 lg:p-8 space-y-6">
+<div class="p-4 lg:p-6 space-y-3 max-w-[1680px]">
 
     <!-- Header -->
     <div>
-        <h3 class="text-2xl font-black text-slate-900 dark:text-slate-50">SOAR Action Audit Trail
+        <h3 class="text-lg font-bold text-slate-900 dark:text-text-main">SOAR Action Audit Trail
             <span class="align-middle ml-2 inline-flex px-2 py-0.5 rounded border border-sky-500/30 text-sky-400 font-mono text-[10px] font-bold tracking-widest">SIMULATION MODE</span></h3>
-        <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Centralized log of all simulated response actions across every alert. Showing the latest 100 records.</p>
+        <p class="text-slate-500 dark:text-text-muted text-xs mt-1">Centralized log of all simulated response actions across every alert. Showing the latest 100 records.</p>
     </div>
 
     <!-- Summary Cards -->
     <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <a href="/soar/history" class="flex flex-col gap-1 p-4 rounded-xl border border-slate-200 dark:border-primary/10 bg-white dark:bg-card-dark hover:border-primary/30 transition-colors">
+        <a href="/soar/history" class="flex flex-col gap-1 p-4 rounded-lg border border-slate-200 dark:border-line bg-white dark:bg-card-dark hover:border-primary/30 transition-colors">
             <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Total Executions</span>
-            <span class="text-2xl font-black text-slate-900 dark:text-slate-50">{{ summary.total }}</span>
+            <span class="text-[21px] font-semibold tabular-nums text-slate-900 dark:text-slate-50">{{ summary.total }}</span>
         </a>
         <a href="/soar/history?status=pending_approval" class="flex flex-col gap-1 p-4 rounded-xl border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/5 hover:border-amber-400 dark:hover:border-amber-500/50 transition-colors">
             <span class="text-xs text-amber-600 dark:text-amber-400 font-medium">Pending Approval</span>
-            <span class="text-2xl font-black text-amber-600 dark:text-amber-400">{{ summary.pending }}</span>
+            <span class="text-[21px] font-semibold tabular-nums text-amber-600 dark:text-amber-400">{{ summary.pending }}</span>
         </a>
         <a href="/soar/history?status=executed" class="flex flex-col gap-1 p-4 rounded-xl border border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/5 hover:border-emerald-400 dark:hover:border-emerald-500/50 transition-colors">
             <span class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Executed</span>
-            <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400">{{ summary.executed }}</span>
+            <span class="text-[21px] font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{{ summary.executed }}</span>
         </a>
         <a href="/soar/history?status=failed" class="flex flex-col gap-1 p-4 rounded-xl border border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/5 hover:border-red-400 dark:hover:border-red-500/50 transition-colors">
             <span class="text-xs text-red-600 dark:text-red-400 font-medium">Failed</span>
-            <span class="text-2xl font-black text-red-600 dark:text-red-400">{{ summary.failed }}</span>
+            <span class="text-[21px] font-semibold tabular-nums text-red-600 dark:text-red-400">{{ summary.failed }}</span>
         </a>
         <a href="/soar/history?status=rejected" class="flex flex-col gap-1 p-4 rounded-xl border border-slate-300 dark:border-slate-600/50 bg-slate-50 dark:bg-slate-700/10 hover:border-slate-400 dark:hover:border-slate-500/50 transition-colors">
             <span class="text-xs text-slate-600 dark:text-slate-400 font-medium">Rejected</span>
-            <span class="text-2xl font-black text-slate-600 dark:text-slate-300">{{ summary.rejected }}</span>
+            <span class="text-[21px] font-semibold tabular-nums text-slate-600 dark:text-slate-300">{{ summary.rejected }}</span>
         </a>
     </div>
 
     <!-- Filters -->
-    <form method="get" action="/soar/history" class="flex flex-wrap gap-3 items-end p-4 rounded-xl border border-slate-200 dark:border-primary/10 bg-white dark:bg-card-dark">
+    <form method="get" action="/soar/history" class="flex flex-wrap gap-3 items-end p-4 rounded-lg border border-slate-200 dark:border-line bg-white dark:bg-card-dark">
         <div class="flex flex-col gap-1">
-            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</label>
+            <label class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Status</label>
             <select name="status" class="bg-slate-100 dark:bg-background-dark border-none rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-slate-200 focus:ring-1 focus:ring-primary">
                 <option value="">All</option>
                 <option value="pending_approval" {% if filters.status == 'pending_approval' %}selected{% endif %}>Pending Approval</option>
@@ -51,7 +51,7 @@
             </select>
         </div>
         <div class="flex flex-col gap-1">
-            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mode</label>
+            <label class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Mode</label>
             <select name="mode" class="bg-slate-100 dark:bg-background-dark border-none rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-slate-200 focus:ring-1 focus:ring-primary">
                 <option value="">All</option>
                 {% for m in filter_options.modes %}
@@ -60,7 +60,7 @@
             </select>
         </div>
         <div class="flex flex-col gap-1">
-            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Action Type</label>
+            <label class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Action Type</label>
             <select name="action_type" class="bg-slate-100 dark:bg-background-dark border-none rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-slate-200 focus:ring-1 focus:ring-primary">
                 <option value="">All</option>
                 {% for t in filter_options.action_types %}
@@ -69,7 +69,7 @@
             </select>
         </div>
         <div class="flex flex-col gap-1">
-            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Alert ID</label>
+            <label class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Alert ID</label>
             <input type="number" name="alert_id" value="{{ filters.alert_id }}" placeholder="e.g. 42"
                 class="bg-slate-100 dark:bg-background-dark border-none rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-slate-200 focus:ring-1 focus:ring-primary w-28" />
         </div>
@@ -86,22 +86,22 @@
     </form>
 
     <!-- Table -->
-    <div class="rounded-xl border border-slate-200 dark:border-primary/10 bg-white dark:bg-card-dark overflow-hidden">
+    <div class="rounded-lg border border-slate-200 dark:border-line bg-white dark:bg-card-dark overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
-                    <tr class="border-b border-slate-200 dark:border-primary/10 bg-slate-50 dark:bg-background-dark/60">
-                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Time</th>
-                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Alert</th>
-                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Playbook</th>
-                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Action</th>
-                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Target</th>
-                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Mode</th>
-                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Status</th>
-                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Actor</th>
-                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Decision</th>
-                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Result</th>
-                        <th class="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
+                    <tr class="border-b border-slate-200 dark:border-primary/10 bg-slate-100 dark:bg-elev">
+                        <th class="px-4 py-3 text-left text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em] whitespace-nowrap">Time</th>
+                        <th class="px-4 py-3 text-left text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em] whitespace-nowrap">Alert</th>
+                        <th class="px-4 py-3 text-left text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em] whitespace-nowrap">Playbook</th>
+                        <th class="px-4 py-3 text-left text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em] whitespace-nowrap">Action</th>
+                        <th class="px-4 py-3 text-left text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em] whitespace-nowrap">Target</th>
+                        <th class="px-4 py-3 text-left text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em] whitespace-nowrap">Mode</th>
+                        <th class="px-4 py-3 text-left text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em] whitespace-nowrap">Status</th>
+                        <th class="px-4 py-3 text-left text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em] whitespace-nowrap">Actor</th>
+                        <th class="px-4 py-3 text-left text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em] whitespace-nowrap">Decision</th>
+                        <th class="px-4 py-3 text-left text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em] whitespace-nowrap">Result</th>
+                        <th class="px-4 py-3 text-left text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em] whitespace-nowrap">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="soar-history-tbody">
@@ -123,7 +123,7 @@
                         'rejected': 'text-slate-400 bg-slate-500/10 border-slate-500/20',
                         'failed': 'text-red-400 bg-red-500/10 border-red-500/20',
                     }.get(r.status, 'text-red-400 bg-red-500/10 border-red-500/20') %}
-                    <tr class="border-b border-slate-100 dark:border-primary/5 hover:bg-slate-50 dark:hover:bg-primary/5 transition-colors">
+                    <tr class="border-b border-slate-100 dark:border-line hover:bg-slate-50 dark:hover:bg-hover-dark transition-colors">
                         <!-- Time -->
                         <td class="px-4 py-3 whitespace-nowrap text-xs text-slate-500 dark:text-slate-400">
                             {% if r.executed_at %}
