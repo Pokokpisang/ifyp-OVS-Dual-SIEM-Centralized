@@ -10,7 +10,7 @@ from typing import List
 from . import models, db
 from .routers import dashboard, api_metrics, rules, collector, agents, system_health_rules, soar, settings, ai_triage, audit, notifications, users
 from .routers import auth as auth_router_module
-from .auth.dependencies import require_html_auth, require_api_auth, require_admin_auth, require_admin_html
+from .auth.dependencies import require_html_auth, require_api_auth, require_admin_auth
 from .auth.exceptions import LoginRequiredException
 from .auth.session_middleware import ServerSessionMiddleware
 from .middleware.security_headers import SecurityHeadersMiddleware
@@ -125,6 +125,16 @@ def run_startup_migrations():
         "CREATE INDEX IF NOT EXISTS ix_users_username ON users (username)",
         # v2.12.0 SOAR approval decision notes
         "ALTER TABLE soar_action_executions ADD COLUMN IF NOT EXISTS decision_note TEXT",
+        # v2.12.0 Detection rule runtime overrides
+        (
+            "CREATE TABLE IF NOT EXISTS detection_rule_overrides ("
+            "  id SERIAL PRIMARY KEY,"
+            "  rule_id VARCHAR UNIQUE NOT NULL,"
+            "  enabled BOOLEAN NOT NULL DEFAULT FALSE,"
+            "  updated_by VARCHAR,"
+            "  updated_at TIMESTAMP DEFAULT NOW()"
+            ")"
+        ),
     ]
     with db.engine.connect() as conn:
         for sql in migrations:
@@ -205,8 +215,8 @@ app.include_router(agents.router)        # agent registration, heartbeat, instal
 
 # Protected HTML dashboard routes — unauthenticated browser → 302 /login
 app.include_router(dashboard.router, dependencies=[Depends(require_html_auth)])
-# ST-012: Rules page restricted to admin role only
-app.include_router(rules.router, dependencies=[Depends(require_admin_html)])
+# Detection rules + MITRE coverage — per-route deps (analyst read, admin toggle)
+app.include_router(rules.router)
 # Audit Trail — per-route admin deps (mixed HTML page + JSON/CSV endpoints)
 app.include_router(audit.router)
 # Notifications — per-route admin deps (mixed HTML page + JSON endpoints)

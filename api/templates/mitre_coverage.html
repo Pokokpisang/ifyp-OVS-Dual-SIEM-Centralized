@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}MITRE Coverage — OVS{% endblock %}
+{% block page_title %}MITRE Coverage{% endblock %}
+
+{% block main_content %}
+<div class="p-4 lg:p-8 space-y-4 max-w-[1400px]">
+
+    <div class="flex items-end justify-between flex-wrap gap-3">
+        <div>
+            <h1 class="text-lg font-bold">ATT&amp;CK coverage</h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                Computed from the loaded YAML detection rules — this is real coverage, not a target.
+                Sparse cells mean no detection exists yet for that area.
+            </p>
+        </div>
+        <a href="/detection/rules" class="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold hover:border-primary hover:text-primary transition-colors">← Detection Rules</a>
+    </div>
+
+    <!-- Summary -->
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 grid grid-cols-3 divide-x divide-slate-200 dark:divide-slate-700/40">
+        <div class="p-4 flex flex-col gap-1">
+            <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">Rules loaded</span>
+            <span class="text-xl font-bold tabular-nums text-primary">{{ coverage.total_rules }}</span>
+        </div>
+        <div class="p-4 flex flex-col gap-1">
+            <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">Techniques covered</span>
+            <span class="text-xl font-bold tabular-nums text-violet-400">{{ coverage.total_techniques }}</span>
+        </div>
+        <div class="p-4 flex flex-col gap-1">
+            <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">Tactics covered</span>
+            <span class="text-xl font-bold tabular-nums text-sky-400">{{ coverage.covered_tactics }} <span class="text-xs text-slate-500 font-normal">/ {{ coverage.tactic_universe }}</span></span>
+        </div>
+    </div>
+
+    <!-- Matrix -->
+    {% if coverage.tactics %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {% for tactic in coverage.tactics %}
+        <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 p-4 space-y-2">
+            <div class="flex items-center justify-between">
+                <span class="text-sm font-bold">{{ tactic.name }}</span>
+                <span class="font-mono text-[10px] font-bold text-slate-500">{{ tactic.id }}</span>
+            </div>
+            <div class="space-y-1.5">
+                {% for tech in tactic.techniques %}
+                <div class="flex items-center gap-2 p-2 rounded-lg border {% if tech.enabled_rules %}border-emerald-500/20 bg-emerald-500/5{% else %}border-amber-500/20 bg-amber-500/5{% endif %}">
+                    <span class="font-mono text-[10px] font-bold {% if tech.enabled_rules %}text-emerald-400{% else %}text-amber-400{% endif %}">{{ tech.id }}</span>
+                    <span class="text-xs flex-1 truncate" title="{{ tech.name }}">{{ tech.name }}</span>
+                    <span class="text-[10px] font-mono text-slate-500" title="{{ tech.enabled_rules }} of {{ tech.rules }} rule(s) active">
+                        {{ tech.enabled_rules }}/{{ tech.rules }}
+                        {% if not tech.enabled_rules %}<span class="text-amber-400 font-bold ml-1">paused</span>{% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center gap-2 py-14 text-center rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5">
+        <span class="material-symbols-outlined text-[40px] text-slate-300 dark:text-slate-700">grid_off</span>
+        <p class="text-sm font-bold">No detection rules loaded</p>
+        <p class="text-xs text-slate-500">Add YAML rules under <code class="font-mono">api/app/detection/rules/</code>.</p>
+    </div>
+    {% endif %}
+
+    <p class="text-[11px] text-slate-500 flex items-center gap-2">
+        <span class="material-symbols-outlined text-[14px]">info</span>
+        Uncovered tactics are not shown — absence here is honest absence, not a rendering choice.
+        Counts reflect the YAML <code class="font-mono">enabled</code> flag and runtime overrides.
+    </p>
+</div>
+{% endblock %}

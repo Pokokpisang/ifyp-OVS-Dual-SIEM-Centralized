@@ -6,7 +6,7 @@
 
 {% block header_actions %}
 <div class="flex items-center gap-2">
-    <span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-primary/10 text-[10px] font-bold text-primary uppercase">{{ yaml_rules|length }} YAML Rules</span>
+    <span class="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-primary/10 text-[10px] font-bold text-primary uppercase">{{ rules_view|length }} YAML Rules</span>
 </div>
 {% endblock %}
 
@@ -17,9 +17,17 @@
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
             <h3 class="text-2xl font-black text-slate-900 dark:text-slate-50">Detection Rules</h3>
-            <p class="text-slate-500 dark:text-slate-400 text-sm">YAML Detection-as-Code rules. Edit rule files directly to modify detection logic.</p>
+            <p class="text-slate-500 dark:text-slate-400 text-sm">YAML Detection-as-Code rules. Edit rule files directly to modify detection logic; the toggle is a runtime override that only pauses file-enabled rules.</p>
         </div>
+        <a href="/detection/mitre" class="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold hover:border-primary hover:text-primary transition-colors">MITRE Coverage →</a>
     </div>
+
+    {% if loader_errors %}
+    <div class="flex items-center gap-3 px-4 py-2.5 mb-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-300 text-xs">
+        <span class="material-symbols-outlined text-[16px]">error</span>
+        <span><strong>{{ loader_errors|length }} rule file(s) failed to load</strong> — {{ loader_errors[0].file }}: {{ loader_errors[0].error }}</span>
+    </div>
+    {% endif %}
 
     <!-- YAML Rules Table -->
     <div class="bg-white dark:bg-card-dark border border-slate-200 dark:border-primary/10 rounded-xl overflow-hidden shadow-sm">
@@ -32,12 +40,14 @@
                         <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Severity</th>
                         <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Risk Score</th>
                         <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Platform</th>
+                        <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Alerts (30d)</th>
                         <th class="px-6 py-4 border-b border-slate-200 dark:border-primary/10">Status</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200 dark:divide-primary/10">
-                    {% for rule in yaml_rules %}
-                    <tr class="hover:bg-slate-50 dark:hover:bg-primary/5 transition-colors">
+                    {% for row in rules_view %}
+                    {% set rule = row.rule %}
+                    <tr class="hover:bg-slate-50 dark:hover:bg-primary/5 transition-colors {% if not row.effective_enabled %}opacity-60{% endif %}">
                         <!-- Rule Name + ID -->
                         <td class="px-6 py-5">
                             <div class="font-semibold text-slate-900 dark:text-slate-100">{{ rule.name }}</div>
@@ -105,17 +115,37 @@
                             </div>
                         </td>
 
+                        <!-- Alerts (30d) -->
+                        <td class="px-6 py-5">
+                            <span class="text-sm font-mono font-bold {% if row.alert_count_30d %}text-slate-700 dark:text-slate-300{% else %}text-slate-400 dark:text-slate-600{% endif %}">{{ row.alert_count_30d }}</span>
+                            {% if row.last_alert %}
+                            <div class="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">last {{ row.last_alert.strftime('%m-%d %H:%M') }}</div>
+                            {% endif %}
+                        </td>
+
                         <!-- Status -->
                         <td class="px-6 py-5">
-                            {% if rule.enabled %}
+                            {% if not rule.enabled %}
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-bold border border-slate-200 dark:border-slate-700"
+                                  title="Set enabled: true in the rule YAML to activate">
+                                <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                Disabled in YAML
+                            </span>
+                            {% elif is_admin %}
+                            <label class="relative inline-flex items-center cursor-pointer" title="Runtime override — audited">
+                                <input type="checkbox" class="sr-only peer" onchange="toggleRule('{{ rule.id }}', this)" {% if row.effective_enabled %}checked{% endif %}>
+                                <div class="w-9 h-5 bg-slate-300 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                            {% if row.override_disabled %}<div class="text-[10px] text-amber-400 mt-1">Paused by override</div>{% endif %}
+                            {% elif row.effective_enabled %}
                             <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-bold border border-green-500/20">
                                 <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
                                 Enabled
                             </span>
                             {% else %}
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-bold border border-slate-200 dark:border-slate-700">
-                                <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                                Disabled
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-bold border border-amber-500/20">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                                Paused
                             </span>
                             {% endif %}
                         </td>
@@ -126,4 +156,19 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function toggleRule(ruleId, checkbox) {
+    const res = await fetch(`/api/detection/rules/${encodeURIComponent(ruleId)}/toggle`, { method: 'PUT' });
+    if (!res.ok) {
+        checkbox.checked = !checkbox.checked; // revert
+        const out = await res.json().catch(() => ({}));
+        alert(out.detail || 'Failed to toggle rule');
+        return;
+    }
+    location.reload();
+}
+</script>
 {% endblock %}

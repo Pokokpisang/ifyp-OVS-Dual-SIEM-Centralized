@@ -50,6 +50,7 @@ NOTIFICATION_TEST_SENT = "NOTIFICATION_TEST_SENT"
 USER_CREATED = "USER_CREATED"
 USER_UPDATED = "USER_UPDATED"
 USER_DELETED = "USER_DELETED"
+DETECTION_RULE_TOGGLED = "DETECTION_RULE_TOGGLED"
 
 # Category shown in the Audit Trail UI, keyed by action.
 ACTION_CATEGORIES: Dict[str, str] = {
@@ -71,6 +72,7 @@ ACTION_CATEGORIES: Dict[str, str] = {
     USER_CREATED: "System",
     USER_UPDATED: "System",
     USER_DELETED: "System",
+    DETECTION_RULE_TOGGLED: "System",
 }
 
 # Actions whose records reference secret material (rendered with a
@@ -222,6 +224,8 @@ def _derive_result(action: str, details: Dict[str, str]) -> Tuple[str, str]:
         return "Updated", "info"
     if action == USER_DELETED:
         return "Removed", "muted"
+    if action == DETECTION_RULE_TOGGLED:
+        return ("Updated", "info") if details.get("to") == "enabled" else ("Updated", "high")
     return "Recorded", "muted"
 
 
