@@ -84,7 +84,6 @@
         
         <!-- Actions Panel -->
         <div class="flex flex-wrap gap-3">
-            <button class="px-4 py-2 bg-[#F05484]/10 text-[#F05484] text-[10px] font-bold uppercase tracking-widest border border-[#F05484] opacity-50 cursor-not-allowed" title="Coming Soon">Restart Agent</button>
             {% if not agent.is_deleted %}
             <a href="?reinstall=true" class="px-4 py-2 bg-transparent text-[#ededed]/60 text-[10px] font-bold uppercase tracking-widest border border-[#ededed]/20 hover:border-[#ededed]/50 transition-all">Reinstall</a>
             <button type="button" onclick="document.getElementById('delete-modal').classList.remove('hidden')"
@@ -138,7 +137,7 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         <!-- Metric: CPU -->
-        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
+        <div class="p-6 rounded-lg bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-line flex flex-col gap-2">
             <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">CPU Usage</span>
             <div class="flex items-end justify-between">
                 <span class="text-3xl font-bold tracking-tight" id="kpi-cpu">
@@ -148,7 +147,7 @@
         </div>
         
         <!-- Metric: Memory -->
-        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
+        <div class="p-6 rounded-lg bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-line flex flex-col gap-2">
             <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">RAM Usage</span>
             <div class="flex items-end justify-between">
                 <span class="text-3xl font-bold tracking-tight text-severity-warning" id="kpi-ram">
@@ -158,7 +157,7 @@
         </div>
         
         <!-- Metric: Net In -->
-        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
+        <div class="p-6 rounded-lg bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-line flex flex-col gap-2">
             <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Net In</span>
             <div class="flex items-end justify-between">
                 <span class="text-3xl font-bold tracking-tight" id="kpi-net-in">
@@ -168,7 +167,7 @@
         </div>
 
         <!-- Metric: Net Out -->
-        <div class="p-6 rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 flex flex-col gap-2">
+        <div class="p-6 rounded-lg bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-line flex flex-col gap-2">
             <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Net Out</span>
             <div class="flex items-end justify-between">
                 <span class="text-3xl font-bold tracking-tight" id="kpi-net-out">
@@ -182,7 +181,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-10">
 
         
-        <div class="bg-slate-100 dark:bg-card-dark p-6 border border-slate-200 dark:border-primary/5 rounded-xl">
+        <div class="bg-slate-100 dark:bg-card-dark p-6 border border-slate-200 dark:border-line rounded-lg">
             <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">MONITORING_MODULES</h3>
 
             <ul class="space-y-4">
@@ -323,15 +322,6 @@
                 REALTIME_LOG_STREAM
             </h3>
             <div class="flex items-center gap-3 w-full md:w-auto">
-                <div class="relative flex-1 md:w-64">
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#ededed]/30">search</span>
-                    <input class="w-full bg-[#18161a] border border-[#F05484]/20 text-xs px-9 py-2 focus:ring-0 focus:border-[#F05484] placeholder-[#ededed]/20" placeholder="Filter logs..." type="text"/>
-                </div>
-                <select class="bg-[#18161a] border border-[#F05484]/20 text-[10px] px-3 py-2 text-[#ededed]/70 font-bold uppercase tracking-widest focus:ring-0">
-                    <option>Level: All</option>
-                    <option>Error</option>
-                    <option>Warning</option>
-                </select>
             </div>
         </div>
         <div class="bg-[#121014] border-2 border-[#F05484]/10 p-4 font-mono text-[11px] h-80 overflow-y-auto custom-scrollbar shadow-inner">
@@ -357,7 +347,7 @@
 
 <!-- Delete Confirmation Modal -->
 <div id="delete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-    <div class="bg-[#1e1c22] border border-[#ce2e46]/30 rounded-xl p-8 w-full max-w-md shadow-2xl">
+    <div class="bg-[#1e1c22] border border-[#ce2e46]/30 rounded-lg p-8 w-full max-w-md shadow-2xl">
         <div class="flex items-center gap-3 mb-4">
             <span class="material-symbols-outlined text-[#ce2e46] text-2xl">warning</span>
             <h2 class="text-lg font-bold text-[#ededed]">Remove Agent from Inventory</h2>
