@@ -1,175 +1,148 @@
 {% extends "base.html" %}
 
-{% block title %}Agents Management - OVS SIEM{% endblock %}
-{% block page_title %}Agents Management{% endblock %}
+{% block title %}Agents — OVS{% endblock %}
+{% block page_title %}Agents{% endblock %}
 
 {% block header_actions %}
-<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 text-[10px] font-bold uppercase tracking-widest border border-green-500/20">
-    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-    Live
-</div>
+<a href="/agents/history" class="px-3 py-1.5 rounded-lg text-[11px] font-bold border border-slate-300 dark:border-line text-slate-600 dark:text-text-muted hover:border-primary hover:text-primary transition-colors">History</a>
+{% if request.state.user and request.state.user.role == 'admin' %}
+<a href="/agents/deploy" class="inline-flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white px-3.5 py-1.5 rounded-lg font-bold text-xs transition-all">
+    <span class="material-symbols-outlined text-[15px]">add</span>Register agent
+</a>
+{% endif %}
 {% endblock %}
 
 {% block main_content %}
-<div class="p-4 lg:p-8 space-y-8">
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm">
-            <div class="flex justify-between items-start mb-4">
-                <div class="p-2 rounded-lg bg-primary/10 text-primary">
-                    <span class="material-symbols-outlined">dns</span>
-                </div>
-                <span class="text-xs font-medium text-slate-400">Total</span>
-            </div>
-            <p class="text-3xl font-bold">{{ summary.total }}</p>
-            <p class="text-sm text-slate-500 mt-1">Managed Endpoints</p>
+<div class="p-4 lg:p-6 space-y-3 max-w-[1680px]">
+
+    <div>
+        <h1 class="text-lg font-bold">Agent fleet</h1>
+        <p class="text-xs text-slate-500 dark:text-text-muted">Endpoint collectors across all monitored hosts. Offline = no heartbeat past the silence threshold.</p>
+    </div>
+
+    <!-- KPI row (design .kpi-row) -->
+    <div class="rounded-lg bg-white dark:bg-card-dark border border-slate-200 dark:border-line grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-slate-200 dark:divide-line">
+        <div class="px-4 py-3 flex flex-col gap-0.5">
+            <span class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Total agents</span>
+            <span class="text-[21px] font-semibold tabular-nums text-primary">{{ summary.total }}</span>
+            <span class="text-[10px] text-slate-400 dark:text-text-dim">managed endpoints</span>
         </div>
-        <div class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm">
-            <div class="flex justify-between items-start mb-4">
-                <div class="p-2 rounded-lg bg-green-500/10 text-green-500">
-                    <span class="material-symbols-outlined">check_circle</span>
-                </div>
-                <span class="text-xs font-medium text-slate-400">Online</span>
-            </div>
-            <p class="text-3xl font-bold">{{ summary.online }}</p>
-            <p class="text-sm text-green-500 mt-1">Active Now</p>
+        <div class="px-4 py-3 flex flex-col gap-0.5">
+            <span class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Online</span>
+            <span class="text-[21px] font-semibold tabular-nums text-ok">{{ summary.online }}</span>
+            <span class="text-[10px] text-slate-400 dark:text-text-dim">reporting now</span>
         </div>
-        <div class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm">
-            <div class="flex justify-between items-start mb-4">
-                <div class="p-2 rounded-lg bg-red-500/10 text-red-500">
-                    <span class="material-symbols-outlined">error</span>
-                </div>
-                <span class="text-xs font-medium text-slate-400">Offline</span>
-            </div>
-            <p class="text-3xl font-bold">{{ summary.offline }}</p>
-            <p class="text-sm text-slate-500 mt-1">Unresponsive > 5m</p>
+        <div class="px-4 py-3 flex flex-col gap-0.5">
+            <span class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Offline</span>
+            <span class="text-[21px] font-semibold tabular-nums {% if summary.offline %}text-severity-critical{% else %}text-slate-400 dark:text-text-dim{% endif %}">{{ summary.offline }}</span>
+            <span class="text-[10px] text-slate-400 dark:text-text-dim">silent past threshold</span>
         </div>
-        <div class="bg-white dark:bg-card-dark p-6 rounded-xl border border-primary/5 shadow-sm">
-            <div class="flex justify-between items-start mb-4">
-                <div class="p-2 rounded-lg bg-amber-500/10 text-amber-500">
-                    <span class="material-symbols-outlined">monitoring</span>
-                </div>
-                <span class="text-xs font-medium text-slate-400">High Load</span>
-            </div>
-            <p class="text-3xl font-bold">{{ summary.high_load }}</p>
-            <p class="text-sm text-amber-500 mt-1">Needs attention</p>
+        <div class="px-4 py-3 flex flex-col gap-0.5">
+            <span class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">High load</span>
+            <span class="text-[21px] font-semibold tabular-nums {% if summary.high_load %}text-severity-warning{% else %}text-slate-400 dark:text-text-dim{% endif %}">{{ summary.high_load }}</span>
+            <span class="text-[10px] text-slate-400 dark:text-text-dim">CPU &gt; 85%</span>
         </div>
     </div>
 
-    <!-- Actions Bar -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <form method="GET" action="/agents" class="flex flex-1 items-center gap-3">
-            <div class="relative flex-1 max-w-sm">
-                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
-                <input name="q" value="{{ q }}" class="pl-10 pr-4 py-2.5 w-full bg-white dark:bg-card-dark border border-primary/10 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all" placeholder="Filter agents by hostname..." type="text"/>
-            </div>
-            <div class="relative">
-                <select name="status_filter" onchange="this.form.submit()" class="appearance-none pl-4 pr-10 py-2.5 bg-white dark:bg-card-dark border border-primary/10 rounded-lg text-sm font-medium focus:ring-2 focus:ring-primary focus:border-transparent">
-                    <option value="All" {% if status_filter == 'All' %}selected{% endif %}>Status: All</option>
-                    <option value="ONLINE" {% if status_filter == 'ONLINE' %}selected{% endif %}>Online</option>
-                    <option value="OFFLINE" {% if status_filter == 'OFFLINE' %}selected{% endif %}>Offline</option>
-                    <option value="HIGH LOAD" {% if status_filter == 'HIGH LOAD' %}selected{% endif %}>High Load</option>
-                </select>
-                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
-            </div>
-        </form>
-        <div class="flex items-center gap-3">
-            <a href="/agents/history"
-               class="border border-primary/20 text-slate-400 hover:text-primary hover:border-primary/50 px-5 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2">
-                <span class="material-symbols-outlined text-lg">history</span>
-                Agent History
-            </a>
-            <a href="/agents/deploy"
-               class="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-primary/20">
-                <span class="material-symbols-outlined text-lg">add</span>
-                Register New Agent
-            </a>
+    <!-- Filter bar (design .filters) -->
+    <form method="GET" action="/agents" class="rounded-lg bg-white dark:bg-elev border border-slate-200 dark:border-line px-3 py-2.5 flex flex-wrap items-center gap-3">
+        <div class="relative w-72 max-w-full">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-text-dim text-[18px]">search</span>
+            <input name="q" value="{{ q }}" placeholder="Filter by hostname…"
+                class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-line rounded-md pl-9 pr-3 py-1.5 text-xs focus:ring-1 focus:ring-primary focus:border-primary" type="text" />
         </div>
-    </div>
+        <label class="flex items-center gap-2">
+            <span class="text-[11px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">Status</span>
+            <select name="status_filter" onchange="this.form.submit()"
+                class="bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-line rounded-md px-2 py-1.5 text-xs focus:ring-1 focus:ring-primary">
+                <option value="All" {% if status_filter == 'All' %}selected{% endif %}>All</option>
+                <option value="ONLINE" {% if status_filter == 'ONLINE' %}selected{% endif %}>Online</option>
+                <option value="OFFLINE" {% if status_filter == 'OFFLINE' %}selected{% endif %}>Offline</option>
+                <option value="HIGH LOAD" {% if status_filter == 'HIGH LOAD' %}selected{% endif %}>High load</option>
+            </select>
+        </label>
+        <div class="flex-1"></div>
+        <button type="submit" class="px-3.5 py-1.5 rounded-md text-xs font-bold bg-primary text-white hover:bg-primary/90 transition-all">Apply</button>
+    </form>
 
-    <!-- Table -->
-    <div class="bg-white dark:bg-card-dark rounded-xl border border-primary/5 shadow-sm overflow-hidden">
+    <!-- Table card -->
+    <div class="rounded-lg bg-white dark:bg-card-dark border border-slate-200 dark:border-line overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-left">
-                <thead>
-                    <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-primary/10">
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Agent Name</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Hostname / IP</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">CPU Load</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Memory</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Last Seen</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</th>
+            <table class="w-full min-w-[880px] text-left">
+                <thead class="bg-slate-100 dark:bg-elev">
+                    <tr class="text-[10.5px] font-mono font-medium text-slate-500 dark:text-text-dim uppercase tracking-[0.12em]">
+                        <th class="px-4 py-2.5">Agent</th>
+                        <th class="px-4 py-2.5">Host / IP</th>
+                        <th class="px-4 py-2.5 w-24">Status</th>
+                        <th class="px-4 py-2.5 w-36">CPU</th>
+                        <th class="px-4 py-2.5 w-36">Memory</th>
+                        <th class="px-4 py-2.5 w-32">Last seen</th>
+                        <th class="px-4 py-2.5 w-24 text-right">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-primary/5">
+                <tbody class="divide-y divide-slate-200 dark:divide-line text-xs">
                     {% for agent in agents %}
-                    <tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                        <td class="px-6 py-5">
-                            <div class="flex flex-col">
-                                {% if agent.id %}
-                                <a href="/agents/{{ agent.agent_id }}" class="text-sm font-bold hover:text-primary transition-colors">{{ agent.agent_name }}</a>
-                                <span class="text-xs text-slate-400 font-mono">{{ agent.agent_id[:16] }}…</span>
-                                {% else %}
-                                <span class="text-sm font-bold">{{ agent.agent_name }}</span>
-                                <span class="text-xs text-slate-400">metrics-only host</span>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td class="px-6 py-5">
-                            <div class="flex flex-col">
-                                <span class="text-sm font-semibold">{{ agent.hostname }}</span>
-                                <span class="text-xs text-slate-500">{{ agent.ip_address }}</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-5">
-                            {% if agent.status == 'active' %}
-                            <span class="px-2.5 py-1 rounded-full bg-green-500/10 text-green-500 text-[11px] font-bold">ACTIVE</span>
-                            {% elif agent.status == 'offline' %}
-                            <span class="px-2.5 py-1 rounded-full bg-red-500/10 text-red-500 text-[11px] font-bold">OFFLINE</span>
-                            {% elif agent.status == 'pending' %}
-                            <span class="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[11px] font-bold">PENDING</span>
+                    <tr class="hover:bg-slate-50 dark:hover:bg-hover-dark transition-colors {% if agent.id %}cursor-pointer{% endif %}"
+                        {% if agent.id %}onclick="location.href='/agents/{{ agent.agent_id }}'"{% endif %}>
+                        <td class="px-4 py-2.5">
+                            {% if agent.id %}
+                            <span class="font-medium text-slate-800 dark:text-text-main">{{ agent.agent_name }}</span>
+                            <div class="font-mono text-[10.5px] text-slate-400 dark:text-text-dim mt-0.5">{{ agent.agent_id[:16] }}…</div>
                             {% else %}
-                            <span class="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[11px] font-bold uppercase">{{ agent.status }}</span>
+                            <span class="font-medium">{{ agent.agent_name }}</span>
+                            <div class="text-[10.5px] text-slate-400 dark:text-text-dim mt-0.5">metrics-only host</div>
                             {% endif %}
                         </td>
-                        <td class="px-6 py-5">
-                            <div class="flex items-center gap-3 w-32">
-                                <div class="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                    <div class="h-full bg-primary" style="--w: {{ agent.cpu }}%; width: var(--w);"></div>
+                        <td class="px-4 py-2.5 font-mono text-slate-500 dark:text-text-muted">
+                            {{ agent.hostname }}<span class="text-slate-400 dark:text-text-dim"> · {{ agent.ip_address }}</span>
+                        </td>
+                        <td class="px-4 py-2.5">
+                            {% set status_map = {
+                                'active': ('text-ok bg-ok/10 border-ok/20', 'ONLINE'),
+                                'offline': ('text-severity-critical bg-severity-critical/10 border-severity-critical/20', 'OFFLINE'),
+                                'pending': ('text-severity-warning bg-severity-warning/10 border-severity-warning/20', 'PENDING'),
+                            } %}
+                            {% set st = status_map.get(agent.status, ('text-severity-warning bg-severity-warning/10 border-severity-warning/20', agent.status|upper)) %}
+                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold {{ st[0] }}"><span class="h-1 w-1 rounded-full bg-current"></span>{{ st[1] }}</span>
+                        </td>
+                        <td class="px-4 py-2.5">
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 h-1 bg-slate-200 dark:bg-line rounded-full overflow-hidden max-w-[80px]">
+                                    <div class="h-full {% if agent.cpu > 85 %}bg-severity-warning{% else %}bg-primary{% endif %}" style="--w: {{ agent.cpu }}%; width: var(--w);"></div>
                                 </div>
-                                <span class="text-xs font-medium {% if agent.cpu > 85 %}text-amber-500{% endif %}">{{ agent.cpu }}%</span>
+                                <span class="font-mono tabular-nums {% if agent.cpu > 85 %}text-severity-warning font-bold{% else %}text-slate-500 dark:text-text-muted{% endif %}">{{ agent.cpu }}%</span>
                             </div>
                         </td>
-                        <td class="px-6 py-5">
-                            <div class="flex items-center gap-3 w-32">
-                                <div class="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                    <div class="h-full bg-primary" style="--w: {{ agent.ram }}%; width: var(--w);"></div>
+                        <td class="px-4 py-2.5">
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 h-1 bg-slate-200 dark:bg-line rounded-full overflow-hidden max-w-[80px]">
+                                    <div class="h-full {% if agent.ram > 85 %}bg-severity-warning{% else %}bg-primary{% endif %}" style="--w: {{ agent.ram }}%; width: var(--w);"></div>
                                 </div>
-                                <span class="text-xs font-medium {% if agent.ram > 85 %}text-amber-500{% endif %}">{{ agent.ram }}%</span>
+                                <span class="font-mono tabular-nums {% if agent.ram > 85 %}text-severity-warning font-bold{% else %}text-slate-500 dark:text-text-muted{% endif %}">{{ agent.ram }}%</span>
                             </div>
                         </td>
-                        <td class="px-6 py-5">
-                            <span class="text-xs text-slate-500">{{ agent.last_seen }}</span>
-                        </td>
-                        <td class="px-6 py-5 text-right">
-                            {% if not agent.id %}
-                            <form action="/agents/{{ agent.agent_id }}/delete" method="POST"
+                        <td class="px-4 py-2.5 font-mono text-slate-500 dark:text-text-dim whitespace-nowrap">{{ agent.last_seen }}</td>
+                        <td class="px-4 py-2.5 text-right" onclick="event.stopPropagation()">
+                            {% if agent.id %}
+                            <a href="/agents/{{ agent.agent_id }}" class="text-primary font-bold hover:underline">View ›</a>
+                            {% else %}
+                            <form action="/agents/{{ agent.agent_id }}/delete" method="POST" class="inline"
                                   onsubmit="return confirm('Remove metrics-only host {{ agent.agent_name }}? Its logs and alerts are kept.');">
-                                <button type="submit"
-                                        class="px-2.5 py-1 rounded text-[11px] font-bold uppercase tracking-wider text-red-500 border border-red-500/30 hover:bg-red-500/10 transition-colors">
-                                    Remove
-                                </button>
+                                <button type="submit" class="font-mono text-[10px] font-bold text-severity-critical border border-severity-critical/30 rounded px-1.5 py-0.5 hover:bg-severity-critical/10 transition-colors">REMOVE</button>
                             </form>
                             {% endif %}
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="7" class="px-6 py-12 text-center text-slate-500 text-sm">
-                            <div class="flex flex-col items-center gap-3">
-                                <span class="material-symbols-outlined text-slate-300 text-4xl">dns</span>
-                                <p>No agents found. <a href="/agents/deploy" class="text-primary underline">Register your first agent</a>.</p>
+                        <td colspan="7" class="px-4 py-14 text-center">
+                            <div class="flex flex-col items-center gap-2">
+                                <span class="material-symbols-outlined text-[40px] text-slate-300 dark:text-line-strong">dns</span>
+                                <p class="text-sm font-bold">No agents yet</p>
+                                <p class="text-xs text-slate-500 dark:text-text-dim">Register your first agent to start collecting telemetry.</p>
+                                {% if request.state.user and request.state.user.role == 'admin' %}
+                                <a href="/agents/deploy" class="mt-1 px-3 py-1.5 rounded-md text-xs font-bold bg-primary text-white hover:bg-primary/90 transition-all">Register agent</a>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -177,15 +150,13 @@
                 </tbody>
             </table>
         </div>
-        <div class="px-6 py-4 border-t border-primary/10 flex items-center justify-between bg-slate-50 dark:bg-slate-800/30">
-            <p class="text-xs text-slate-500 font-medium">Showing {{ agents|length }} of {{ total_count }} agents</p>
-            <div class="flex gap-2">
-                <a href="?page={{ page - 1 }}&q={{ q }}&status_filter={{ status_filter }}" class="p-1.5 rounded border border-primary/10 hover:bg-white dark:hover:bg-card-dark transition-colors {% if page <= 1 %}pointer-events-none opacity-50{% endif %}">
-                    <span class="material-symbols-outlined text-sm">chevron_left</span>
-                </a>
-                <a href="?page={{ page + 1 }}&q={{ q }}&status_filter={{ status_filter }}" class="p-1.5 rounded border border-primary/10 hover:bg-white dark:hover:bg-card-dark transition-colors {% if page >= total_pages %}pointer-events-none opacity-50{% endif %}">
-                    <span class="material-symbols-outlined text-sm">chevron_right</span>
-                </a>
+        <div class="flex items-center justify-between px-3 py-2.5 border-t border-slate-200 dark:border-line">
+            <span class="text-[11px] font-mono text-slate-500 dark:text-text-dim">Showing {{ agents|length }} of {{ total_count }} agent{{ 's' if total_count != 1 }}</span>
+            <div class="flex items-center gap-1">
+                <a href="?page={{ page - 1 }}&q={{ q }}&status_filter={{ status_filter }}"
+                   class="px-2.5 py-1 rounded text-[11px] font-bold border border-slate-300 dark:border-line text-slate-600 dark:text-text-muted hover:border-primary hover:text-primary transition-colors {% if page <= 1 %}pointer-events-none opacity-40{% endif %}">Prev</a>
+                <a href="?page={{ page + 1 }}&q={{ q }}&status_filter={{ status_filter }}"
+                   class="px-2.5 py-1 rounded text-[11px] font-bold border border-slate-300 dark:border-line text-slate-600 dark:text-text-muted hover:border-primary hover:text-primary transition-colors {% if page >= total_pages %}pointer-events-none opacity-40{% endif %}">Next</a>
             </div>
         </div>
     </div>
