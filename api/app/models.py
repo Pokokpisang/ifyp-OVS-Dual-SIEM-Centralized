@@ -162,6 +162,10 @@ class AgentRecord(Base):
     last_seen = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Tenant assignment (nullable — unassigned agents are SOC-internal only
+    # and never visible through the client portal API)
+    client_id = Column(Integer, index=True, nullable=True)
+
     # Soft-delete / inventory lifecycle fields
     # lifecycle_status: pending_registration | active_inventory | deleted | retired | test_agent
     is_deleted = Column(Boolean, default=False, nullable=False, server_default="false")
@@ -225,6 +229,28 @@ class SystemHealthRule(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_triggered = Column(DateTime, nullable=True)
+
+
+class Client(Base):
+    """Tenant: a hosting-provider/MSP customer whose agents we monitor.
+
+    The client portal runs in a SEPARATE environment and reads data through
+    tenant-scoped API endpoints authenticated by ``api_key_hash`` (issued and
+    rotated by SOC admins; raw key shown once, stored hashed). Clients never
+    register agents — agent lifecycle stays SOC-side.
+    """
+    __tablename__ = "clients"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    org_type = Column(String, default="Hosting Provider")  # Hosting Provider | MSP | SaaS | Other
+    contact_name = Column(String, default="")
+    contact_email = Column(String, default="")
+    status = Column(String, nullable=False, default="active")  # active | trial | suspended
+    api_key_hash = Column(String, nullable=True)  # SHA-256; null until first issue
+    api_key_rotated_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class DetectionRuleOverride(Base):

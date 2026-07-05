@@ -51,6 +51,12 @@ USER_CREATED = "USER_CREATED"
 USER_UPDATED = "USER_UPDATED"
 USER_DELETED = "USER_DELETED"
 DETECTION_RULE_TOGGLED = "DETECTION_RULE_TOGGLED"
+CLIENT_CREATED = "CLIENT_CREATED"
+CLIENT_UPDATED = "CLIENT_UPDATED"
+CLIENT_DELETED = "CLIENT_DELETED"
+CLIENT_KEY_ROTATED = "CLIENT_KEY_ROTATED"
+CLIENT_KEY_REVOKED = "CLIENT_KEY_REVOKED"
+CLIENT_AGENTS_CHANGED = "CLIENT_AGENTS_CHANGED"
 
 # Category shown in the Audit Trail UI, keyed by action.
 ACTION_CATEGORIES: Dict[str, str] = {
@@ -73,11 +79,17 @@ ACTION_CATEGORIES: Dict[str, str] = {
     USER_UPDATED: "System",
     USER_DELETED: "System",
     DETECTION_RULE_TOGGLED: "System",
+    CLIENT_CREATED: "System",
+    CLIENT_UPDATED: "System",
+    CLIENT_DELETED: "System",
+    CLIENT_KEY_ROTATED: "System",
+    CLIENT_KEY_REVOKED: "System",
+    CLIENT_AGENTS_CHANGED: "System",
 }
 
 # Actions whose records reference secret material (rendered with a
 # "sensitive" badge in the UI; the secret itself is never stored).
-SENSITIVE_ACTIONS = {AGENT_KEY_ROTATED, AGENT_REGISTERED}
+SENSITIVE_ACTIONS = {AGENT_KEY_ROTATED, AGENT_REGISTERED, CLIENT_KEY_ROTATED}
 
 _MAX_VALUE_LEN = 256
 
@@ -226,6 +238,16 @@ def _derive_result(action: str, details: Dict[str, str]) -> Tuple[str, str]:
         return "Removed", "muted"
     if action == DETECTION_RULE_TOGGLED:
         return ("Updated", "info") if details.get("to") == "enabled" else ("Updated", "high")
+    if action == CLIENT_CREATED:
+        return "Created", "ok"
+    if action in (CLIENT_UPDATED, CLIENT_AGENTS_CHANGED):
+        return "Updated", "info"
+    if action == CLIENT_DELETED:
+        return "Removed", "muted"
+    if action == CLIENT_KEY_ROTATED:
+        return "Rotated", "info"
+    if action == CLIENT_KEY_REVOKED:
+        return "Revoked", "high"
     return "Recorded", "muted"
 
 

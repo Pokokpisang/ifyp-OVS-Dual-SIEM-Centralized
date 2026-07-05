@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}{{ client.name }} — Clients — OVS{% endblock %}
+{% block page_title %}Client · {{ client.name }}{% endblock %}
+
+{% block header_actions %}
+<a href="/clients" class="text-xs font-bold text-slate-500 hover:text-primary transition-colors">← All clients</a>
+{% endblock %}
+
+{% block main_content %}
+<div class="p-4 lg:p-8 space-y-4 max-w-[1400px]">
+
+    <!-- Summary card -->
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 grid grid-cols-2 md:grid-cols-5 divide-x divide-slate-200 dark:divide-slate-700/40">
+        <div class="p-4 flex flex-col gap-1">
+            <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">Status</span>
+            <span class="text-sm font-bold {% if client.status == 'active' %}text-emerald-400{% elif client.status == 'trial' %}text-sky-400{% else %}text-slate-400{% endif %}">{{ client.status|upper }}</span>
+            <span class="text-[10px] text-slate-500">{{ client.org_type }}</span>
+        </div>
+        <div class="p-4 flex flex-col gap-1">
+            <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">Agents</span>
+            <span class="text-xl font-bold tabular-nums">{{ client.agents_total }}</span>
+            <span class="text-[10px] text-slate-500">{{ client.agents_online }} online · {{ client.agents_offline }} offline</span>
+        </div>
+        <div class="p-4 flex flex-col gap-1">
+            <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">Open alerts</span>
+            <span class="text-xl font-bold tabular-nums {% if client.open_alerts %}text-red-400{% endif %}">{{ client.open_alerts }}</span>
+            <span class="text-[10px] text-slate-500">unread, tenant-scoped</span>
+        </div>
+        <div class="p-4 flex flex-col gap-1">
+            <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">Contact</span>
+            <span class="text-sm font-medium truncate">{{ client.contact_name or '—' }}</span>
+            <span class="text-[10px] text-slate-500 font-mono truncate">{{ client.contact_email or '' }}</span>
+        </div>
+        <div class="p-4 flex flex-col gap-1">
+            <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">Portal API key</span>
+            <span class="text-sm font-bold {% if client.api_key_set %}text-emerald-400{% else %}text-slate-400{% endif %}">{{ 'ISSUED' if client.api_key_set else 'NOT ISSUED' }}</span>
+            <span class="text-[10px] text-slate-500">{% if client.api_key_rotated_at %}rotated {{ client.api_key_rotated_at }}{% else %}portal cannot connect yet{% endif %}</span>
+        </div>
+    </div>
+
+    {% if is_admin %}
+    <!-- Admin actions -->
+    <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 p-4 flex flex-wrap items-center gap-3">
+        <span class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">Admin</span>
+        <button id="btn-issue-key" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white hover:bg-primary/90 transition-all">
+            {{ 'Rotate portal key' if client.api_key_set else 'Issue portal key' }}
+        </button>
+        {% if client.api_key_set %}
+        <button id="btn-revoke-key" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition-colors">Revoke key</button>
+        {% endif %}
+        <select id="status-select" class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2 py-1.5 text-xs">
+            {% for s in statuses %}<option {% if s == client.status %}selected{% endif %}>{{ s }}</option>{% endfor %}
+        </select>
+        <div class="flex-1"></div>
+        <button id="btn-delete" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-colors">Delete client</button>
+    </div>
+    <div id="key-reveal" class="hidden rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs space-y-1">
+        <p class="font-bold text-emerald-300">Portal API key issued — copy it now, it cannot be retrieved again:</p>
+        <code id="key-value" class="block font-mono text-emerald-200 break-all select-all"></code>
+        <p class="text-slate-500">Configure this key in the client-portal environment. Suspending the client disables the key without deleting it.</p>
+    </div>
+    <p id="action-msg" class="hidden text-xs"></p>
+    {% endif %}
+
+    <!-- Agents -->
+    <div>
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+            <h2 class="text-sm font-bold">Assigned agents</h2>
+            {% if is_admin and unassigned_agents %}
+            <div class="flex items-center gap-2">
+                <select id="assign-select" class="bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-700/60 rounded-lg px-2 py-1.5 text-xs max-w-[240px]">
+                    {% for a in unassigned_agents %}<option value="{{ a.agent_id }}">{{ a.agent_name }}</option>{% endfor %}
+                </select>
+                <button id="btn-assign" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-primary text-white hover:bg-primary/90 transition-all">Assign agent</button>
+            </div>
+            {% endif %}
+        </div>
+        <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[640px] text-left">
+                    <thead class="bg-slate-200/60 dark:bg-background-dark/60">
+                        <tr class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
+                            <th class="px-4 py-2.5">Agent</th>
+                            <th class="px-4 py-2.5">Host / IP</th>
+                            <th class="px-4 py-2.5 w-24">Status</th>
+                            <th class="px-4 py-2.5 w-36">Last seen</th>
+                            {% if is_admin %}<th class="px-4 py-2.5 w-24">Actions</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-700/40 text-xs">
+                        {% for a in agents %}
+                        <tr>
+                            <td class="px-4 py-2.5"><a href="/agents/{{ a.agent_id }}" class="font-bold text-primary hover:underline">{{ a.agent_name }}</a></td>
+                            <td class="px-4 py-2.5 font-mono text-slate-500">{{ a.hostname or '—' }} · {{ a.ip_address or '—' }}</td>
+                            <td class="px-4 py-2.5">
+                                <span class="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold
+                                    {% if a.status == 'active' %}text-emerald-400 bg-emerald-500/10 border-emerald-500/20
+                                    {% elif a.status == 'pending' %}text-amber-400 bg-amber-500/10 border-amber-500/20
+                                    {% else %}text-red-400 bg-red-500/10 border-red-500/20{% endif %}">{{ a.status }}</span>
+                            </td>
+                            <td class="px-4 py-2.5 font-mono text-slate-500">{{ a.last_seen }}</td>
+                            {% if is_admin %}
+                            <td class="px-4 py-2.5">
+                                <button data-unassign="{{ a.agent_id }}" class="text-[11px] font-bold text-amber-400 hover:underline">Unassign</button>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="px-4 py-8 text-center text-slate-500 text-xs">
+                            No agents assigned — this client's portal will show no data until agents are assigned.
+                        </td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent tenant-scoped alerts -->
+    <div>
+        <h2 class="text-sm font-bold mb-2">Recent alerts (tenant-scoped)</h2>
+        <div class="rounded-xl bg-slate-100 dark:bg-card-dark border border-slate-200 dark:border-primary/5 overflow-hidden">
+            <table class="w-full min-w-[640px] text-left">
+                <thead class="bg-slate-200/60 dark:bg-background-dark/60">
+                    <tr class="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
+                        <th class="px-4 py-2.5 w-40">Time</th>
+                        <th class="px-4 py-2.5 w-24">Severity</th>
+                        <th class="px-4 py-2.5">Title</th>
+                        <th class="px-4 py-2.5 w-36">Host</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-700/40 text-xs">
+                    {% for alert in alerts %}
+                    <tr class="cursor-pointer hover:bg-slate-200/50 dark:hover:bg-background-dark/60 transition-colors"
+                        onclick="location.href='/alerts/{{ alert.id }}/investigation'">
+                        <td class="px-4 py-2.5 font-mono text-slate-500">{{ alert.timestamp.strftime('%Y-%m-%d %H:%M') if alert.timestamp else '—' }}</td>
+                        <td class="px-4 py-2.5">
+                            <span class="inline-flex px-1.5 py-0.5 rounded border font-mono text-[10px] font-bold
+                                {% if alert.severity in ['HIGH', 'CRITICAL', 'high', 'critical'] %}text-red-400 bg-red-500/10 border-red-500/20
+                                {% elif alert.severity in ['MED', 'MEDIUM'] %}text-amber-400 bg-amber-500/10 border-amber-500/20
+                                {% else %}text-sky-400 bg-sky-500/10 border-sky-500/20{% endif %}">{{ alert.severity }}</span>
+                        </td>
+                        <td class="px-4 py-2.5">{{ alert.title }}</td>
+                        <td class="px-4 py-2.5 font-mono text-slate-500">{{ alert.host or '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="px-4 py-8 text-center text-slate-500 text-xs">No alerts for this client's agents.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if is_admin %}
+<script>
+(function () {
+    const CID = {{ client.id }};
+    const H = { 'Content-Type': 'application/json' };
+
+    function msg(text, ok) {
+        const el = document.getElementById('action-msg');
+        el.textContent = text;
+        el.className = `text-xs ${ok ? 'text-emerald-400' : 'text-red-400'}`;
+        setTimeout(() => el.classList.add('hidden'), 6000);
+    }
+
+    document.getElementById('btn-issue-key').addEventListener('click', async () => {
+        if (!confirm('Issue/rotate the portal API key? Any previously issued key stops working immediately.')) return;
+        const r = await fetch(`/api/clients/${CID}/api-key`, { method: 'POST', headers: H });
+        const out = await r.json().catch(() => ({}));
+        if (!r.ok) { msg(out.detail || 'Failed to issue key', false); return; }
+        document.getElementById('key-value').textContent = out.api_key;
+        document.getElementById('key-reveal').classList.remove('hidden');
+    });
+
+    const revokeBtn = document.getElementById('btn-revoke-key');
+    if (revokeBtn) revokeBtn.addEventListener('click', async () => {
+        if (!confirm('Revoke the portal API key? The portal loses access until a new key is issued.')) return;
+        const r = await fetch(`/api/clients/${CID}/api-key`, { method: 'DELETE', headers: H });
+        if (r.ok) location.reload(); else msg('Failed to revoke key', false);
+    });
+
+    document.getElementById('status-select').addEventListener('change', async e => {
+        const r = await fetch(`/api/clients/${CID}`, { method: 'PUT', headers: H, body: JSON.stringify({ status: e.target.value }) });
+        if (r.ok) msg(`Status set to ${e.target.value}. ${e.target.value !== 'active' ? 'Portal key is now inactive.' : ''}`, true);
+        else msg('Failed to update status', false);
+    });
+
+    document.getElementById('btn-delete').addEventListener('click', async () => {
+        if (!confirm('Delete this client? Agents become unassigned; alerts/logs are retained.')) return;
+        const r = await fetch(`/api/clients/${CID}`, { method: 'DELETE', headers: H });
+        if (r.ok) location.href = '/clients'; else msg('Failed to delete client', false);
+    });
+
+    const assignBtn = document.getElementById('btn-assign');
+    if (assignBtn) assignBtn.addEventListener('click', async () => {
+        const agentId = document.getElementById('assign-select').value;
+        const r = await fetch(`/api/clients/${CID}/agents`, { method: 'PUT', headers: H, body: JSON.stringify({ agent_ids: [agentId] }) });
+        if (r.ok) location.reload(); else msg('Failed to assign agent', false);
+    });
+
+    document.querySelectorAll('[data-unassign]').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm(`Unassign agent? It becomes SOC-internal and disappears from this client's portal.`)) return;
+        const r = await fetch(`/api/clients/${CID}/agents/${b.dataset.unassign}`, { method: 'DELETE', headers: H });
+        if (r.ok) location.reload(); else msg('Failed to unassign agent', false);
+    }));
+})();
+</script>
+{% endif %}
+{% endblock %}
