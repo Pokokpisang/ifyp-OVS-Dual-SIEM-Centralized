@@ -123,6 +123,8 @@ def run_startup_migrations():
             ")"
         ),
         "CREATE INDEX IF NOT EXISTS ix_users_username ON users (username)",
+        # v2.12.0 SOAR approval decision notes
+        "ALTER TABLE soar_action_executions ADD COLUMN IF NOT EXISTS decision_note TEXT",
     ]
     with db.engine.connect() as conn:
         for sql in migrations:

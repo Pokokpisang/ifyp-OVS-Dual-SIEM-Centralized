@@ -218,6 +218,7 @@ def approve_action(
     db: Session,
     approved_by: str = "analyst",
     source_ip: str = None,
+    decision_note: str = None,
 ) -> SOARExecutionResult:
     exec_record = (
         db.query(models.SOARActionExecution)
@@ -263,6 +264,8 @@ def approve_action(
     exec_record.status = "executed" if result.success else "failed"
     exec_record.approved_by = approved_by
     exec_record.approved_at = datetime.utcnow()
+    if decision_note:
+        exec_record.decision_note = decision_note[:500]
     exec_record.executed_at = datetime.utcnow()
     exec_record.result_message = result.message
     exec_record.error_message = result.error
@@ -280,6 +283,7 @@ def approve_action(
             "playbook_id": playbook.id,
             "action_id": action.id,
             "status": exec_record.status,
+            "note": decision_note or "",
         },
         commit=False,
     )
@@ -310,6 +314,7 @@ def reject_action(
     db: Session,
     rejected_by: str = "analyst",
     source_ip: str = None,
+    decision_note: str = None,
 ) -> Dict[str, Any]:
     exec_record = (
         db.query(models.SOARActionExecution)
@@ -333,6 +338,8 @@ def reject_action(
     exec_record.status = "rejected"
     exec_record.rejected_by = rejected_by
     exec_record.rejected_at = datetime.utcnow()
+    if decision_note:
+        exec_record.decision_note = decision_note[:500]
     audit_service.record_audit_event(
         db,
         actor=rejected_by,
@@ -345,6 +352,7 @@ def reject_action(
             "playbook_id": exec_record.playbook_id,
             "action_id": exec_record.action_id,
             "status": "rejected",
+            "note": decision_note or "",
         },
         commit=False,
     )
@@ -487,4 +495,5 @@ def _row_to_dict(r: models.SOARActionExecution) -> Dict[str, Any]:
         "approved_at": r.approved_at.strftime("%Y-%m-%d %H:%M:%S") if r.approved_at else None,
         "rejected_by": r.rejected_by,
         "rejected_at": r.rejected_at.strftime("%Y-%m-%d %H:%M:%S") if r.rejected_at else None,
+        "decision_note": r.decision_note,
     }

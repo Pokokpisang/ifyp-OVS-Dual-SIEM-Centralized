@@ -148,7 +148,9 @@
             <div>
                 <p class="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Response</p>
                 <div class="space-y-1">
-                    {{ nav_soon('bolt', 'SOAR') }}
+                    {% call nav_item('/soar/actions', 'bolt', 'SOAR', request.url.path == '/soar/actions') %}
+                        <span id="nav-soar-badge" class="ml-auto hidden text-[10px] font-bold bg-amber-500/20 text-amber-400 rounded-full px-2 py-0.5"></span>
+                    {% endcall %}
                     {{ nav_item('/soar/history', 'history', 'SOAR History', request.url.path == '/soar/history') }}
                     {% if role == 'admin' %}
                         {{ nav_item('/soar/settings', 'security', 'SOAR Settings', request.url.path == '/soar/settings') }}
@@ -248,6 +250,19 @@
                 }
             })
             .catch(() => {});
+
+        // Pending SOAR approvals badge (analyst/admin only — element absent otherwise).
+        if (document.getElementById('nav-soar-badge')) {
+            fetch('/api/soar/pending')
+                .then(r => r.ok ? r.json() : null)
+                .then(data => {
+                    if (!data || !data.total) return;
+                    const badge = document.getElementById('nav-soar-badge');
+                    badge.textContent = data.total > 99 ? '99+' : data.total;
+                    badge.classList.remove('hidden');
+                })
+                .catch(() => {});
+        }
     </script>
     {% block scripts %}
     {% endblock %}
