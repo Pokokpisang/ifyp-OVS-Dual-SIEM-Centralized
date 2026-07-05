@@ -197,6 +197,7 @@ class SOARActionExecution(Base):
     approved_at        = Column(DateTime, nullable=True)
     rejected_by        = Column(String, nullable=True)
     rejected_at        = Column(DateTime, nullable=True)
+    decision_note      = Column(Text, nullable=True)  # approver/rejecter reason
 
 
 class SystemSetting(Base):

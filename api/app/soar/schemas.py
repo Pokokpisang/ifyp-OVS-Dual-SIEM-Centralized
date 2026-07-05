@@ -73,9 +73,9 @@ class SOARRunRequest(BaseModel):
 
 class SOARApproveRequest(BaseModel):
     # ST-027: approved_by removed — actor is read from authenticated session server-side.
-    pass
+    note: Optional[str] = Field(default=None, max_length=500)
 
 
 class SOARRejectRequest(BaseModel):
     # ST-027: rejected_by removed — actor is read from authenticated session server-side.
-    pass
+    note: Optional[str] = Field(default=None, max_length=500)

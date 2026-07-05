@@ -8,7 +8,8 @@
 
     <!-- Header -->
     <div>
-        <h3 class="text-2xl font-black text-slate-900 dark:text-slate-50">SOAR Action Audit Trail</h3>
+        <h3 class="text-2xl font-black text-slate-900 dark:text-slate-50">SOAR Action Audit Trail
+            <span class="align-middle ml-2 inline-flex px-2 py-0.5 rounded border border-sky-500/30 text-sky-400 font-mono text-[10px] font-bold tracking-widest">SIMULATION MODE</span></h3>
         <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Centralized log of all simulated response actions across every alert. Showing the latest 100 records.</p>
     </div>
 
@@ -177,12 +178,14 @@
                                 <span class="font-semibold">Approved</span>
                                 <div class="text-[10px] text-slate-400">{{ r.approved_by }}</div>
                                 {% if r.approved_at %}<div class="text-[10px] text-slate-500">{{ r.approved_at.strftime('%Y-%m-%d %H:%M') }}</div>{% endif %}
+                                {% if r.decision_note %}<div class="text-[10px] text-slate-500 italic max-w-[180px] truncate" title="{{ r.decision_note }}">“{{ r.decision_note }}”</div>{% endif %}
                             </div>
                             {% elif r.rejected_by %}
                             <div class="text-slate-400">
                                 <span class="font-semibold">Rejected</span>
                                 <div class="text-[10px] text-slate-500">{{ r.rejected_by }}</div>
                                 {% if r.rejected_at %}<div class="text-[10px] text-slate-500">{{ r.rejected_at.strftime('%Y-%m-%d %H:%M') }}</div>{% endif %}
+                                {% if r.decision_note %}<div class="text-[10px] text-slate-500 italic max-w-[180px] truncate" title="{{ r.decision_note }}">“{{ r.decision_note }}”</div>{% endif %}
                             </div>
                             {% else %}
                             <span class="text-slate-500 dark:text-slate-600">—</span>
@@ -229,11 +232,13 @@
 
 <script>
 async function approveExecution(executionId, alertId) {
+    const note = prompt(`Approve execution #${executionId} — decision note (recorded in history and the audit trail):`);
+    if (note === null) return;
     try {
         const res = await fetch(`/api/alerts/${alertId}/soar/executions/${executionId}/approve`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({approved_by: 'analyst'}),
+            body: JSON.stringify({note: note.trim() || null}),
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
@@ -244,11 +249,14 @@ async function approveExecution(executionId, alertId) {
 }
 
 async function rejectExecution(executionId, alertId) {
+    const note = prompt(`Reject execution #${executionId} — a note is required:`);
+    if (note === null) return;
+    if (!note.trim()) { alert('A note is required when rejecting.'); return; }
     try {
         const res = await fetch(`/api/alerts/${alertId}/soar/executions/${executionId}/reject`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({rejected_by: 'analyst'}),
+            body: JSON.stringify({note: note.trim()}),
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);

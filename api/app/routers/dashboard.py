@@ -315,6 +315,30 @@ def view_network(request: Request, database: Session = Depends(db.get_db)):
 
 
 @router.get(
+    "/soar/actions",
+    response_class=HTMLResponse,
+    dependencies=[Depends(require_analyst_html)],
+)
+def view_soar_actions(request: Request):
+    """SOAR actions: pending approvals queue + playbook catalog."""
+    user_role = (getattr(request.state, "user", None) or {}).get("role", "client")
+    return templates.TemplateResponse("soar_actions.html", {
+        "request": request,
+        "user_role": user_role,
+    })
+
+
+@router.get(
+    "/soar/approvals",
+    include_in_schema=False,
+    dependencies=[Depends(require_analyst_html)],
+)
+def redirect_soar_approvals():
+    """Approvals live on the SOAR actions page."""
+    return RedirectResponse(url="/soar/actions#pending", status_code=302)
+
+
+@router.get(
     "/soar/settings",
     response_class=HTMLResponse,
     dependencies=[Depends(require_admin_html)],
