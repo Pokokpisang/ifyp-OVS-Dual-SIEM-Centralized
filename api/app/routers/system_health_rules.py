@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api")
 
 @router.get("/system-health-rules", response_model=List[models.SystemHealthRuleOut])
 def get_system_health_rules(db: Session = Depends(db.get_db)):
-    return db.query(models.SystemHealthRule).all()
+    return db.query(models.SystemHealthRule).order_by(models.SystemHealthRule.rule_id).all()
 
 @router.put("/system-health-rules/{rule_id}/toggle", dependencies=[Depends(verify_json_csrf)])
 def toggle_system_health_rule(rule_id: str, request: Request, db: Session = Depends(db.get_db)):

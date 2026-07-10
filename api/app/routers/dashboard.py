@@ -53,7 +53,7 @@ def view_settings(request: Request, db: Session = Depends(db.get_db)):
 
     from ..services.retention_service import get_retention_policy
 
-    rules = db.query(models.SystemHealthRule).all()
+    rules = db.query(models.SystemHealthRule).order_by(models.SystemHealthRule.rule_id).all()
     return templates.TemplateResponse("settings.html", {
         "request": request,
         "rules": rules,
