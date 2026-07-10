@@ -1,0 +1,122 @@
+id: linux_t1543_002_systemd_enable_exec
+name: Systemd Service Enabled via systemctl (Execution-Based)
+description: >
+  Detects `systemctl enable` (optionally with --now) executed against a
+  systemd unit, matched from the process-execution side rather than a
+  file-write event.
+
+  This complements linux_t1543_002_systemd_service_persistence, which only
+  fires on an auditd file-write event for the .service unit file itself. On
+  hosts where auditd has no watch rule covering systemd unit directories
+  (e.g. `-w /etc/systemd/system -p wa`), that file-write event never
+  arrives and the sibling rule can never match — even though the same
+  persistence technique (T1543.002) is actively occurring. This rule
+  detects the technique from `systemctl enable` execution instead, which
+  is captured by ordinary EXECVE/SYSCALL auditing regardless of whether
+  file-write watches are configured.
+enabled: true
+platform:
+  - linux
+log_source:
+  product: linux
+  service: auditd
+severity: medium
+risk_score: 50
+mitre:
+  tactic:
+    id: TA0003
+    name: Persistence
+  technique:
+    id: T1543
+    name: Create or Modify System Process
+  subtechnique:
+    id: T1543.002
+    name: Systemd Service
+tags:
+  - Linux
+  - T1543
+  - T1543.002
+  - Persistence
+  - Rule-Based Detection
+  - Execution-Based
+required_fields:
+  - process.name
+  - process.command_line
+  - host.name
+condition:
+  all:
+    - field: process.name
+      operator: in
+      value:
+        - systemctl
+    - field: process.normalized_command
+      operator: contains_any
+      value:
+        - "systemctl enable"
+risk_adjustment:
+  increase_if:
+    - field: process.normalized_command
+      operator: contains_any
+      value:
+        - "--now"
+      add_score: 10
+      reason: Immediate activation (--now) skips a separate start/review step, consistent with fast attacker tradecraft
+    - field: process.parent.name
+      operator: in
+      value:
+        - bash
+        - sh
+        - dash
+        - zsh
+      add_score: 15
+      reason: Enabled from an interactive shell rather than a package manager or configuration-management tool
+    - field: process.normalized_command
+      operator: contains_any
+      value:
+        - backdoor
+        - implant
+        - malware
+        - rootkit
+        - reverse
+        - agent-update
+        - system-helper
+        - update-helper
+      add_score: 20
+      reason: Unit name contains a keyword commonly used to masquerade malicious persistence as a legitimate helper service
+  decrease_if:
+    - field: process.parent.name
+      operator: in
+      value:
+        - dpkg
+        - apt
+        - apt-get
+        - rpm
+        - yum
+        - dnf
+        - pacman
+        - ansible
+        - puppet
+        - chef-client
+        - cloud-init
+      subtract_score: 25
+      reason: Enabled by a package manager or configuration-management tool during expected provisioning
+false_positives:
+  - System administrator enabling a newly installed, legitimate service
+  - Package post-install/maintainer scripts running `systemctl enable --now <pkg>.service`
+  - Configuration management tools (Ansible, Puppet, Chef) enabling managed services
+  - cloud-init or first-boot provisioning enabling services during instance setup
+investigation_guide: |
+  1. Identify the unit name and check whether a corresponding .service file
+     write was also captured (correlate with linux_t1543_002_systemd_service_persistence).
+  2. Review the parent process — an interactive shell via sudo is more
+     suspicious than a package manager or config-management tool.
+  3. Check for recent network activity (curl/wget) on the same host shortly
+     before this event — a download followed by an enable is a strong
+     persistence-staging signal.
+  4. Inspect `systemctl cat <unit>` / `systemctl show <unit>` on the host to
+     see ExecStart and confirm what the service actually runs.
+  5. Determine whether the unit name matches any known/expected inventory
+     of services for this host.
+references:
+  - https://attack.mitre.org/techniques/T1543/002/
+  - https://man7.org/linux/man-pages/man1/systemctl.1.html
