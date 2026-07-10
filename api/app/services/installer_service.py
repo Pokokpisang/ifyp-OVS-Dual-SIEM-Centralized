@@ -183,7 +183,11 @@ if command -v systemctl &>/dev/null; then
 fi
 
 # Configure Auditd rules for execution logging (Required for T1059 detection)
-echo "    Configuring auditd rules for process execution logging..."
+# and systemd unit file-write watches (Required for T1543.002 persistence
+# detection — without these, `linux_t1543_002_systemd_service_persistence`
+# never receives the file-write event it needs and stays permanently silent
+# even while systemctl enable/start execution IS being logged).
+echo "    Configuring auditd rules for process execution and systemd persistence logging..."
 mkdir -p /etc/audit/rules.d
 cat > /etc/audit/rules.d/ovs-siem.rules <<EOF
 -D
@@ -192,6 +196,9 @@ cat > /etc/audit/rules.d/ovs-siem.rules <<EOF
 --backlog_wait_time 60000
 -a exit,always -F arch=b64 -S execve -k T1059
 -a exit,always -F arch=b32 -S execve -k T1059
+-w /etc/systemd/system/ -p wa -k T1543
+-w /usr/lib/systemd/system/ -p wa -k T1543
+-w /lib/systemd/system/ -p wa -k T1543
 EOF
 
 if command -v augenrules &>/dev/null; then
