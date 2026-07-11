@@ -115,19 +115,26 @@ risk_adjustment:
         - "/dev/udp/"
       add_score: 15
       reason: Bash/zsh built-in raw socket redirection is a high-confidence reverse-shell indicator with almost no legitimate use
-    - field: process.normalized_command
-      operator: contains_any
-      value:
-        - "-e /bin/sh"
-        - "-e /bin/bash"
-        - "-e sh"
-        - "-e bash"
-        - "-c /bin/sh"
-        - "-c /bin/bash"
-        - "-c sh"
-        - "-c bash"
-        - "--exec"
-        - "--sh-exec"
+    - all:
+        - field: process.name
+          operator: in
+          value:
+            - nc
+            - ncat
+            - netcat
+        - field: process.normalized_command
+          operator: contains_any
+          value:
+            - "-e /bin/sh"
+            - "-e /bin/bash"
+            - "-e sh"
+            - "-e bash"
+            - "-c /bin/sh"
+            - "-c /bin/bash"
+            - "-c sh"
+            - "-c bash"
+            - "--exec"
+            - "--sh-exec"
       add_score: 15
       reason: Netcat-family -e/-c/--exec directly binds a shell to the socket — a high-confidence reverse-shell indicator with almost no legitimate use
     - field: process.normalized_command

