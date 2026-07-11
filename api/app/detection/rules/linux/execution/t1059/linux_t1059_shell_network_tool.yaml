@@ -34,7 +34,6 @@ tags:
 required_fields:
   - process.name
   - process.command_line
-  - user.name
   - host.name
 condition:
   all:
